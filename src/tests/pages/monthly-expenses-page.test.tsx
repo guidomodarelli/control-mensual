@@ -664,11 +664,18 @@ describe("MonthlyExpensesPage", () => {
     await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
     await user.type(screen.getByLabelText("Subtotal"), "1000");
 
+    expect(screen.getByText("Completá la descripción.")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Completá descripción, subtotal y cantidad de veces por mes antes de guardar.",
-      ),
+      screen.getByText("Ingresá una cantidad mayor a 0."),
     ).toBeInTheDocument();
+    expect(screen.getByLabelText("Descripción")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(screen.getByLabelText("Cantidad de veces por mes")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
     expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
   });
 
@@ -849,11 +856,18 @@ describe("MonthlyExpensesPage", () => {
     await user.click(screen.getByRole("menuitem", { name: "Editar" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
 
+    expect(screen.getByText("Completá la fecha de inicio.")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Completá fecha de inicio y cantidad total de cuotas antes de guardar.",
-      ),
+      screen.getByText("Completá la cantidad total de cuotas."),
     ).toBeInTheDocument();
+    expect(screen.getByLabelText("Inicio de la deuda")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(screen.getByLabelText("Cantidad total de cuotas")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
     expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
   });
 

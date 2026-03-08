@@ -70,6 +70,8 @@ interface ExpenseSheetProps {
   validationMessage: string | null;
 }
 
+type ExpenseFieldErrorMap = Partial<Record<ExpenseEditableFieldName, string>>;
+
 function getFieldLabel(label: string, isChanged: boolean) {
   return (
     <span className={styles.fieldLabelRow}>
@@ -145,6 +147,35 @@ function formatCurrencyDisplay(value: string): string {
   }).format(numericValue);
 }
 
+function getFieldErrors(draft: MonthlyExpensesEditableRow): ExpenseFieldErrorMap {
+  const fieldErrors: ExpenseFieldErrorMap = {};
+  const subtotal = Number(draft.subtotal);
+  const occurrencesPerMonth = Number(draft.occurrencesPerMonth);
+  const installmentCount = Number(draft.installmentCount);
+
+  if (!draft.description.trim()) {
+    fieldErrors.description = "Completá la descripción.";
+  }
+
+  if (!Number.isFinite(subtotal) || subtotal <= 0) {
+    fieldErrors.subtotal = "Ingresá un subtotal mayor a 0.";
+  }
+
+  if (!Number.isInteger(occurrencesPerMonth) || occurrencesPerMonth <= 0) {
+    fieldErrors.occurrencesPerMonth = "Ingresá una cantidad mayor a 0.";
+  }
+
+  if (draft.isLoan && !draft.startMonth.trim()) {
+    fieldErrors.startMonth = "Completá la fecha de inicio.";
+  }
+
+  if (draft.isLoan && (!Number.isInteger(installmentCount) || installmentCount <= 0)) {
+    fieldErrors.installmentCount = "Completá la cantidad total de cuotas.";
+  }
+
+  return fieldErrors;
+}
+
 export function ExpenseSheet({
   actionDisabled,
   changedFields,
@@ -176,6 +207,10 @@ export function ExpenseSheet({
     "Marcá el check si este gasto representa una deuda con una persona o entidad.";
   const hasPendingChanges = changedFields.size > 0;
   const currencyPrefix = draft.currency === "USD" ? "US$" : "$";
+  const fieldErrors = getFieldErrors(draft);
+  const hasFieldErrors = Object.keys(fieldErrors).length > 0;
+  const shouldShowGlobalValidation =
+    Boolean(validationMessage) && !hasFieldErrors;
 
   return (
     <>
@@ -226,7 +261,7 @@ export function ExpenseSheet({
               onSave();
             }}
           >
-            {validationMessage ? (
+            {shouldShowGlobalValidation ? (
               <p className={cn(styles.feedback, styles.errorText)} role="alert">
                 {validationMessage}
               </p>
@@ -240,7 +275,9 @@ export function ExpenseSheet({
                 <div className={styles.fieldControlWrapper}>
                   <Input
                     aria-label="Descripción"
+                    aria-invalid={Boolean(fieldErrors.description)}
                     className={cn(
+                      fieldErrors.description && styles.invalidField,
                       changedFields.has("description") && styles.changedField,
                     )}
                     data-changed={changedFields.has("description") ? "true" : "false"}
@@ -252,6 +289,11 @@ export function ExpenseSheet({
                     type="text"
                     value={draft.description}
                   />
+                  {fieldErrors.description ? (
+                    <p className={styles.fieldErrorText} role="alert">
+                      {fieldErrors.description}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
@@ -288,7 +330,10 @@ export function ExpenseSheet({
                 </Label>
                 <div className={styles.fieldControlWrapper}>
                   <InputGroup
-                    className={cn(changedFields.has("subtotal") && styles.changedField)}
+                    className={cn(
+                      fieldErrors.subtotal && styles.invalidField,
+                      changedFields.has("subtotal") && styles.changedField,
+                    )}
                     data-changed={changedFields.has("subtotal") ? "true" : "false"}
                   >
                     <InputGroupPrefix aria-hidden="true">
@@ -296,6 +341,7 @@ export function ExpenseSheet({
                     </InputGroupPrefix>
                     <InputGroupInput
                       aria-label="Subtotal"
+                      aria-invalid={Boolean(fieldErrors.subtotal)}
                       data-changed={changedFields.has("subtotal") ? "true" : "false"}
                       id="expense-subtotal"
                       inputMode="decimal"
@@ -309,6 +355,11 @@ export function ExpenseSheet({
                       value={formatCurrencyDisplay(draft.subtotal)}
                     />
                   </InputGroup>
+                  {fieldErrors.subtotal ? (
+                    <p className={styles.fieldErrorText} role="alert">
+                      {fieldErrors.subtotal}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
@@ -322,7 +373,9 @@ export function ExpenseSheet({
                 <div className={styles.fieldControlWrapper}>
                   <Input
                     aria-label="Cantidad de veces por mes"
+                    aria-invalid={Boolean(fieldErrors.occurrencesPerMonth)}
                     className={cn(
+                      fieldErrors.occurrencesPerMonth && styles.invalidField,
                       changedFields.has("occurrencesPerMonth") && styles.changedField,
                     )}
                     data-changed={
@@ -338,6 +391,11 @@ export function ExpenseSheet({
                     type="number"
                     value={draft.occurrencesPerMonth}
                   />
+                  {fieldErrors.occurrencesPerMonth ? (
+                    <p className={styles.fieldErrorText} role="alert">
+                      {fieldErrors.occurrencesPerMonth}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
@@ -404,7 +462,9 @@ export function ExpenseSheet({
                       <div className={styles.fieldControlWrapper}>
                         <Input
                           aria-label="Inicio de la deuda"
+                          aria-invalid={Boolean(fieldErrors.startMonth)}
                           className={cn(
+                            fieldErrors.startMonth && styles.invalidField,
                             changedFields.has("startMonth") && styles.changedField,
                           )}
                           data-changed={
@@ -417,6 +477,11 @@ export function ExpenseSheet({
                           type="month"
                           value={draft.startMonth}
                         />
+                        {fieldErrors.startMonth ? (
+                          <p className={styles.fieldErrorText} role="alert">
+                            {fieldErrors.startMonth}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
 
@@ -430,7 +495,9 @@ export function ExpenseSheet({
                       <div className={styles.fieldControlWrapper}>
                         <Input
                           aria-label="Cantidad total de cuotas"
+                          aria-invalid={Boolean(fieldErrors.installmentCount)}
                           className={cn(
+                            fieldErrors.installmentCount && styles.invalidField,
                             changedFields.has("installmentCount") &&
                               styles.changedField,
                           )}
@@ -447,6 +514,11 @@ export function ExpenseSheet({
                           type="number"
                           value={draft.installmentCount}
                         />
+                        {fieldErrors.installmentCount ? (
+                          <p className={styles.fieldErrorText} role="alert">
+                            {fieldErrors.installmentCount}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
 

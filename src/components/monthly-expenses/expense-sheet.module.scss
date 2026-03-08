@@ -93,6 +93,17 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent);
 }
 
+.invalidField {
+  border-color: color-mix(in srgb, var(--destructive) 75%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--destructive) 35%, transparent);
+}
+
+.fieldErrorText {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--destructive);
+}
+
 .loanSection {
   display: grid;
   gap: 0.9rem;
