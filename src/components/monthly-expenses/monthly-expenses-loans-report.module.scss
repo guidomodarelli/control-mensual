@@ -1,0 +1,74 @@
+.content {
+  display: grid;
+  gap: 1rem;
+}
+
+.summaryGrid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.summaryCard {
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-radius: 0.875rem;
+  background: color-mix(in srgb, var(--muted) 35%, transparent);
+}
+
+.summaryLabel,
+.entryMeta,
+.entryBody,
+.feedback {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.summaryValue,
+.entryAmount,
+.entryTitle {
+  margin: 0;
+  font-weight: 700;
+}
+
+.summaryValue {
+  font-size: 1.5rem;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: end;
+}
+
+.filterField {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 14rem;
+}
+
+.entries {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.entry {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-radius: 0.875rem;
+}
+
+.entryHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+
+.entryAmount {
+  font-size: 1.125rem;
+}

@@ -3,6 +3,7 @@ import type { MonthlyExpensesDocument } from "../value-objects/monthly-expenses-
 
 export interface MonthlyExpensesRepository {
   getByMonth(month: string): Promise<MonthlyExpensesDocument | null>;
+  listAll(): Promise<MonthlyExpensesDocument[]>;
   save(
     document: MonthlyExpensesDocument,
   ): Promise<StoredMonthlyExpensesDocument>;

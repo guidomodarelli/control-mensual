@@ -14,6 +14,7 @@ const googleDriveMonthlyExpenseItemSchema = z.object({
   loan: z
     .object({
       installmentCount: z.number().int().positive(),
+      lenderId: z.string().optional(),
       lenderName: z.string().optional(),
       startMonth: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
     })
@@ -52,6 +53,7 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
               ? {
                   loan: {
                     installmentCount: loan.installmentCount,
+                    ...(loan.lenderId ? { lenderId: loan.lenderId } : {}),
                     ...(loan.lenderName ? { lenderName: loan.lenderName } : {}),
                     startMonth: loan.startMonth,
                   },

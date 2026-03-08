@@ -8,20 +8,45 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 
 import {
+  type LenderOption,
+} from "@/components/monthly-expenses/lender-picker";
+import { LendersPanel } from "@/components/monthly-expenses/lenders-panel";
+import { MonthlyExpensesLoansReport } from "@/components/monthly-expenses/monthly-expenses-loans-report";
+import {
   MonthlyExpensesTable,
   type MonthlyExpensesEditableRow,
 } from "@/components/monthly-expenses/monthly-expenses-table";
 import { isGoogleOAuthConfigured } from "@/modules/auth/infrastructure/oauth/google-oauth-config";
 import { GOOGLE_OAUTH_SCOPES } from "@/modules/auth/infrastructure/oauth/google-oauth-scopes";
+import {
+  createEmptyLendersCatalogDocumentResult,
+  type LendersCatalogDocumentResult,
+} from "@/modules/lenders/application/results/lenders-catalog-document-result";
+import {
+  getLendersCatalog,
+} from "@/modules/lenders/application/use-cases/get-lenders-catalog";
+import {
+  saveLendersCatalogViaApi,
+} from "@/modules/lenders/infrastructure/api/lenders-api";
 import type { SaveMonthlyExpensesCommand } from "@/modules/monthly-expenses/application/commands/save-monthly-expenses-command";
 import { getMonthlyExpenseLoanPreview } from "@/modules/monthly-expenses/application/queries/get-monthly-expense-loan-preview";
+import {
+  createEmptyMonthlyExpensesLoansReportResult,
+  type MonthlyExpensesLoansReportResult,
+} from "@/modules/monthly-expenses/application/results/monthly-expenses-loans-report-result";
 import {
   getMonthlyExpensesDocument,
 } from "@/modules/monthly-expenses/application/use-cases/get-monthly-expenses-document";
 import {
+  getMonthlyExpensesLoansReport,
+} from "@/modules/monthly-expenses/application/use-cases/get-monthly-expenses-loans-report";
+import {
   createEmptyMonthlyExpensesDocumentResult,
   type MonthlyExpensesDocumentResult,
 } from "@/modules/monthly-expenses/application/results/monthly-expenses-document-result";
+import {
+  getMonthlyExpensesLoansReportViaApi,
+} from "@/modules/monthly-expenses/infrastructure/api/monthly-expenses-report-api";
 import {
   saveMonthlyExpensesDocumentViaApi,
 } from "@/modules/monthly-expenses/infrastructure/api/monthly-expenses-api";
@@ -33,7 +58,11 @@ import styles from "./monthly-expenses.module.scss";
 type MonthlyExpensesPageProps = {
   bootstrap: StorageBootstrapResult;
   initialDocument: MonthlyExpensesDocumentResult;
+  initialLendersCatalog: LendersCatalogDocumentResult;
+  initialLoansReport: MonthlyExpensesLoansReportResult;
+  lendersLoadError: string | null;
   loadError: string | null;
+  reportLoadError: string | null;
 };
 
 interface MonthlyExpensesFormState {
@@ -48,6 +77,24 @@ interface MonthlyExpensesFormState {
   } | null;
   rows: MonthlyExpensesEditableRow[];
   successMessage: string | null;
+}
+
+interface LendersCatalogState {
+  error: string | null;
+  isSubmitting: boolean;
+  lenders: LenderOption[];
+  notes: string;
+  successMessage: string | null;
+  type: LenderOption["type"];
+  name: string;
+}
+
+interface LoansReportState {
+  entries: MonthlyExpensesLoansReportResult["entries"];
+  error: string | null;
+  lenderFilter: string;
+  typeFilter: string;
+  summary: MonthlyExpensesLoansReportResult["summary"];
 }
 
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -66,6 +113,14 @@ function createExpenseRowId(): string {
   }
 
   return `expense-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function createLenderId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `lender-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function formatEditableNumber(value: number): string {
@@ -95,6 +150,7 @@ function createEmptyRow(): MonthlyExpensesEditableRow {
     id: createExpenseRowId(),
     installmentCount: "",
     isLoan: false,
+    lenderId: "",
     lenderName: "",
     loanEndMonth: "",
     loanProgress: "",
@@ -121,6 +177,7 @@ function toEditableRows(
         ? formatEditableNumber(item.loan.installmentCount)
         : "",
       isLoan: Boolean(item.loan),
+      lenderId: item.loan?.lenderId ?? "",
       lenderName: item.loan?.lenderName ?? "",
       loanEndMonth: item.loan?.endMonth ?? "",
       loanProgress: item.loan
@@ -144,6 +201,38 @@ function createMonthlyExpensesFormState(
     result: null,
     rows: toEditableRows(document),
     successMessage: null,
+  };
+}
+
+function createLendersCatalogState(
+  catalog: LendersCatalogDocumentResult,
+): LendersCatalogState {
+  return {
+    error: null,
+    isSubmitting: false,
+    lenders: catalog.lenders.map(({ id, name, notes, type }) => ({
+      id,
+      name,
+      ...(notes ? { notes } : {}),
+      type,
+    })),
+    name: "",
+    notes: "",
+    successMessage: null,
+    type: "family",
+  };
+}
+
+function createLoansReportState(
+  report: MonthlyExpensesLoansReportResult,
+  error: string | null,
+): LoansReportState {
+  return {
+    entries: report.entries,
+    error,
+    lenderFilter: "all",
+    summary: report.summary,
+    typeFilter: "all",
   };
 }
 
@@ -197,6 +286,7 @@ function normalizeEditableRows(
       ? normalizeLoanPreview(month, row)
       : {
           installmentCount: "",
+          lenderId: "",
           lenderName: "",
           loanEndMonth: "",
           loanProgress: "",
@@ -261,6 +351,7 @@ function toSaveMonthlyExpensesCommand(
         ? {
             loan: {
               installmentCount: Number(row.installmentCount),
+              ...(row.lenderId ? { lenderId: row.lenderId } : {}),
               ...(row.lenderName.trim()
                 ? { lenderName: row.lenderName.trim() }
                 : {}),
@@ -284,15 +375,81 @@ function getRequestedMonth(queryValue: GetServerSidePropsContext["query"]["month
     : getCurrentMonthIdentifier();
 }
 
+function mapReportEntriesToCurrentLenders(
+  entries: MonthlyExpensesLoansReportResult["entries"],
+  lenders: LenderOption[],
+): MonthlyExpensesLoansReportResult["entries"] {
+  return entries.map((entry) => {
+    if (!entry.lenderId) {
+      return entry;
+    }
+
+    const lender = lenders.find((candidate) => candidate.id === entry.lenderId);
+
+    return lender
+      ? {
+          ...entry,
+          lenderName: lender.name,
+          lenderType: lender.type,
+        }
+      : entry;
+  });
+}
+
+function getFilteredLoansReportEntries(
+  reportState: LoansReportState,
+): MonthlyExpensesLoansReportResult["entries"] {
+  return reportState.entries.filter((entry) => {
+    const matchesType =
+      reportState.typeFilter === "all" || entry.lenderType === reportState.typeFilter;
+    const matchesLender =
+      reportState.lenderFilter === "all" ||
+      entry.lenderId === reportState.lenderFilter ||
+      (!entry.lenderId &&
+        `legacy:${entry.lenderName}` === reportState.lenderFilter);
+
+    return matchesType && matchesLender;
+  });
+}
+
+export function getReportProviderFilterOptions(
+  entries: MonthlyExpensesLoansReportResult["entries"],
+  lenders: LenderOption[],
+): Array<{ id: string; label: string }> {
+  const options = new Map<string, string>();
+
+  for (const lender of lenders) {
+    options.set(lender.id, lender.name);
+  }
+
+  for (const entry of entries) {
+    options.set(entry.lenderId ?? `legacy:${entry.lenderName}`, entry.lenderName);
+  }
+
+  return [...options.entries()]
+    .map(([id, label]) => ({ id, label }))
+    .sort((left, right) => left.label.localeCompare(right.label, "es"));
+}
+
 export default function MonthlyExpensesPage({
   bootstrap,
   initialDocument,
+  initialLendersCatalog,
+  initialLoansReport,
+  lendersLoadError,
   loadError,
+  reportLoadError,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const isOAuthConfigured = bootstrap.authStatus === "configured";
   const { status } = useSession();
   const [formState, setFormState] = useState<MonthlyExpensesFormState>(
     createMonthlyExpensesFormState(initialDocument),
+  );
+  const [lendersState, setLendersState] = useState<LendersCatalogState>(
+    createLendersCatalogState(initialLendersCatalog),
+  );
+  const [reportState, setReportState] = useState<LoansReportState>(
+    createLoansReportState(initialLoansReport, reportLoadError),
   );
 
   const isAuthenticated = status === "authenticated";
@@ -305,6 +462,11 @@ export default function MonthlyExpensesPage({
         ? "Sesión Google activa. Ya podés guardar tus gastos mensuales."
         : "Conectate con Google para cargar y guardar tus gastos mensuales.";
   const validationMessage = getValidationMessage(formState.month, formState.rows);
+  const filteredReportEntries = getFilteredLoansReportEntries(reportState);
+  const reportProviderFilterOptions = getReportProviderFilterOptions(
+    reportState.entries,
+    lendersState.lenders,
+  );
 
   const feedbackMessage =
     formState.error ??
@@ -323,11 +485,52 @@ export default function MonthlyExpensesPage({
     isSessionLoading ||
     formState.isSubmitting ||
     Boolean(validationMessage);
+  const lendersFeedbackMessage =
+    lendersState.error ??
+    lendersState.successMessage ??
+    lendersLoadError ??
+    "Registrá prestadores para reutilizarlos en el selector.";
+  const lendersFeedbackTone = lendersState.error || lendersLoadError
+    ? "error"
+    : lendersState.successMessage
+      ? "success"
+      : "default";
 
   const updateFormState = (
     updater: (currentState: MonthlyExpensesFormState) => MonthlyExpensesFormState,
   ) => {
     setFormState((currentState) => updater(currentState));
+  };
+  const updateLendersState = (
+    updater: (currentState: LendersCatalogState) => LendersCatalogState,
+  ) => {
+    setLendersState((currentState) => updater(currentState));
+  };
+  const updateReportState = (
+    updater: (currentState: LoansReportState) => LoansReportState,
+  ) => {
+    setReportState((currentState) => updater(currentState));
+  };
+
+  const refreshLoansReport = async (lenders: LenderOption[] = lendersState.lenders) => {
+    try {
+      const report = await getMonthlyExpensesLoansReportViaApi();
+
+      updateReportState((currentState) => ({
+        ...currentState,
+        entries: mapReportEntriesToCurrentLenders(report.entries, lenders),
+        error: null,
+        summary: report.summary,
+      }));
+    } catch (error) {
+      updateReportState((currentState) => ({
+        ...currentState,
+        error:
+          error instanceof Error
+            ? error.message
+            : "No pudimos actualizar el reporte de deudas.",
+      }));
+    }
   };
 
   const handleMonthChange = (value: string) => {
@@ -347,7 +550,6 @@ export default function MonthlyExpensesPage({
       | "currency"
       | "description"
       | "installmentCount"
-      | "lenderName"
       | "occurrencesPerMonth"
       | "startMonth"
       | "subtotal",
@@ -375,6 +577,31 @@ export default function MonthlyExpensesPage({
     }));
   };
 
+  const handleExpenseLenderSelect = (expenseId: string, lenderId: string | null) => {
+    const selectedLender = lenderId
+      ? lendersState.lenders.find((lender) => lender.id === lenderId)
+      : null;
+
+    updateFormState((currentState) => ({
+      ...currentState,
+      error: null,
+      result: null,
+      rows: normalizeEditableRows(
+        currentState.month,
+        currentState.rows.map((row) =>
+          row.id === expenseId
+            ? {
+                ...row,
+                lenderId: selectedLender?.id ?? "",
+                lenderName: selectedLender?.name ?? "",
+              }
+            : row,
+        ),
+      ),
+      successMessage: null,
+    }));
+  };
+
   const handleExpenseLoanToggle = (expenseId: string, checked: boolean) => {
     updateFormState((currentState) => ({
       ...currentState,
@@ -390,6 +617,7 @@ export default function MonthlyExpensesPage({
                   ...row,
                   installmentCount: "",
                   isLoan: false,
+                  lenderId: "",
                   lenderName: "",
                   loanEndMonth: "",
                   loanProgress: "",
@@ -427,6 +655,172 @@ export default function MonthlyExpensesPage({
     }));
   };
 
+  const handleLenderFieldChange = (
+    fieldName: "name" | "notes" | "type",
+    value: string,
+  ) => {
+    updateLendersState((currentState) => ({
+      ...currentState,
+      error: null,
+      [fieldName]: value,
+      successMessage: null,
+    }));
+  };
+
+  const handleLendersSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const lenderName = lendersState.name.trim();
+    const newLenderId = createLenderId();
+
+    if (!lenderName) {
+      updateLendersState((currentState) => ({
+        ...currentState,
+        error: "Completá el nombre del prestador antes de guardarlo.",
+      }));
+      return;
+    }
+
+    if (
+      lendersState.lenders.some(
+        (lender) =>
+          lender.name.toLocaleLowerCase() === lenderName.toLocaleLowerCase(),
+      )
+    ) {
+      updateLendersState((currentState) => ({
+        ...currentState,
+        error: "Ya existe un prestador con ese nombre.",
+      }));
+      return;
+    }
+
+    const nextLenders = [
+      ...lendersState.lenders,
+      {
+        id: newLenderId,
+        name: lenderName,
+        ...(lendersState.notes.trim() ? { notes: lendersState.notes.trim() } : {}),
+        type: lendersState.type,
+      },
+    ].sort((left, right) => left.name.localeCompare(right.name, "es"));
+
+    updateLendersState((currentState) => ({
+      ...currentState,
+      error: null,
+      isSubmitting: true,
+      successMessage: null,
+    }));
+
+    try {
+      await saveLendersCatalogViaApi({
+        lenders: nextLenders.map((lender) => ({
+          id: lender.id,
+          name: lender.name,
+          ...(lender.notes ? { notes: lender.notes } : {}),
+          type: lender.type,
+        })),
+      });
+
+      updateLendersState(() => ({
+        error: null,
+        isSubmitting: false,
+        lenders: nextLenders,
+        name: "",
+        notes: "",
+        successMessage: "Prestador guardado correctamente.",
+        type: "family",
+      }));
+      await refreshLoansReport(nextLenders);
+    } catch (error) {
+      updateLendersState((currentState) => ({
+        ...currentState,
+        error:
+          error instanceof Error
+            ? error.message
+            : "No pudimos guardar el catálogo de prestadores.",
+        isSubmitting: false,
+      }));
+    }
+  };
+
+  const handleDeleteLender = async (lenderId: string) => {
+    const nextLenders = lendersState.lenders.filter((lender) => lender.id !== lenderId);
+
+    updateLendersState((currentState) => ({
+      ...currentState,
+      error: null,
+      isSubmitting: true,
+      successMessage: null,
+    }));
+
+    try {
+      await saveLendersCatalogViaApi({
+        lenders: nextLenders.map((lender) => ({
+          id: lender.id,
+          name: lender.name,
+          ...(lender.notes ? { notes: lender.notes } : {}),
+          type: lender.type,
+        })),
+      });
+
+      updateFormState((currentState) => ({
+        ...currentState,
+        rows: currentState.rows.map((row) =>
+          row.lenderId === lenderId
+            ? {
+                ...row,
+                lenderId: "",
+                lenderName: "",
+              }
+            : row,
+        ),
+      }));
+      updateReportState((currentState) => ({
+        ...currentState,
+        lenderFilter:
+          currentState.lenderFilter === lenderId ? "all" : currentState.lenderFilter,
+      }));
+      updateLendersState((currentState) => ({
+        ...currentState,
+        isSubmitting: false,
+        lenders: nextLenders,
+        successMessage: "Prestador eliminado del catálogo.",
+      }));
+      await refreshLoansReport(nextLenders);
+    } catch (error) {
+      updateLendersState((currentState) => ({
+        ...currentState,
+        error:
+          error instanceof Error
+            ? error.message
+            : "No pudimos actualizar el catálogo de prestadores.",
+        isSubmitting: false,
+      }));
+    }
+  };
+
+  const handleReportTypeFilterChange = (value: string) => {
+    updateReportState((currentState) => ({
+      ...currentState,
+      typeFilter: value,
+    }));
+  };
+
+  const handleReportLenderFilterChange = (value: string) => {
+    updateReportState((currentState) => ({
+      ...currentState,
+      lenderFilter: value,
+    }));
+  };
+
+  const handleReportFiltersReset = () => {
+    updateReportState((currentState) => ({
+      ...currentState,
+      lenderFilter: "all",
+      typeFilter: "all",
+    }));
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -453,6 +847,7 @@ export default function MonthlyExpensesPage({
         result,
         successMessage: `Gastos mensuales guardados en Drive con id ${result.id}.`,
       }));
+      await refreshLoansReport();
     } catch (error) {
       updateFormState((currentState) => ({
         ...currentState,
@@ -474,10 +869,12 @@ export default function MonthlyExpensesPage({
           feedbackTone={feedbackTone}
           isAuthenticated={isAuthenticated}
           isSubmitting={formState.isSubmitting}
+          lenders={lendersState.lenders}
           loadError={loadError}
           month={formState.month}
           onAddExpense={handleAddExpense}
           onExpenseFieldChange={handleExpenseFieldChange}
+          onExpenseLenderSelect={handleExpenseLenderSelect}
           onExpenseLoanToggle={handleExpenseLoanToggle}
           onMonthChange={handleMonthChange}
           onRemoveExpense={handleRemoveExpense}
@@ -485,6 +882,31 @@ export default function MonthlyExpensesPage({
           result={formState.result}
           rows={formState.rows}
           sessionMessage={sessionMessage}
+        />
+        <LendersPanel
+          feedbackMessage={lendersFeedbackMessage}
+          feedbackTone={lendersFeedbackTone}
+          formValues={{
+            name: lendersState.name,
+            notes: lendersState.notes,
+            type: lendersState.type,
+          }}
+          isSubmitting={lendersState.isSubmitting}
+          lenders={lendersState.lenders}
+          onDelete={handleDeleteLender}
+          onFieldChange={handleLenderFieldChange}
+          onSubmit={handleLendersSubmit}
+        />
+        <MonthlyExpensesLoansReport
+          entries={filteredReportEntries}
+          feedbackMessage={reportState.error}
+          providerFilterOptions={reportProviderFilterOptions}
+          selectedLenderFilter={reportState.lenderFilter}
+          selectedTypeFilter={reportState.typeFilter}
+          summary={reportState.summary}
+          onLenderFilterChange={handleReportLenderFilterChange}
+          onResetFilters={handleReportFiltersReset}
+          onTypeFilterChange={handleReportTypeFilterChange}
         />
       </div>
     </main>
@@ -506,7 +928,11 @@ export const getServerSideProps: GetServerSideProps<MonthlyExpensesPageProps> =
           initialDocument: createEmptyMonthlyExpensesDocumentResult(
             selectedMonth,
           ),
+          initialLendersCatalog: createEmptyLendersCatalogDocumentResult(),
+          initialLoansReport: createEmptyMonthlyExpensesLoansReportResult(),
+          lendersLoadError: null,
           loadError: null,
+          reportLoadError: null,
         },
       };
     }
@@ -518,19 +944,61 @@ export const getServerSideProps: GetServerSideProps<MonthlyExpensesPageProps> =
       const { GoogleDriveMonthlyExpensesRepository } = await import(
         "@/modules/monthly-expenses/infrastructure/google-drive/repositories/google-drive-monthly-expenses-repository"
       );
+      const { GoogleDriveLendersRepository } = await import(
+        "@/modules/lenders/infrastructure/google-drive/repositories/google-drive-lenders-repository"
+      );
       const driveClient = await getGoogleDriveClientFromRequest(context.req);
-      const initialDocument = await getMonthlyExpensesDocument({
-        query: {
-          month: selectedMonth,
-        },
-        repository: new GoogleDriveMonthlyExpensesRepository(driveClient),
-      });
+      const monthlyExpensesRepository = new GoogleDriveMonthlyExpensesRepository(
+        driveClient,
+      );
+      const lendersRepository = new GoogleDriveLendersRepository(driveClient);
+      const [documentResult, lendersResult, reportResult] = await Promise.allSettled([
+        getMonthlyExpensesDocument({
+          query: {
+            month: selectedMonth,
+          },
+          repository: monthlyExpensesRepository,
+        }),
+        getLendersCatalog({
+          repository: lendersRepository,
+        }),
+        getLendersCatalog({
+          repository: lendersRepository,
+        }).then((catalog) =>
+          getMonthlyExpensesLoansReport({
+            lenders: catalog.lenders,
+            repository: monthlyExpensesRepository,
+          }),
+        ),
+      ]);
 
       return {
         props: {
           bootstrap,
-          initialDocument,
-          loadError: null,
+          initialDocument:
+            documentResult.status === "fulfilled"
+              ? documentResult.value
+              : createEmptyMonthlyExpensesDocumentResult(selectedMonth),
+          initialLendersCatalog:
+            lendersResult.status === "fulfilled"
+              ? lendersResult.value
+              : createEmptyLendersCatalogDocumentResult(),
+          initialLoansReport:
+            reportResult.status === "fulfilled"
+              ? reportResult.value
+              : createEmptyMonthlyExpensesLoansReportResult(),
+          lendersLoadError:
+            lendersResult.status === "rejected"
+              ? "No pudimos cargar el catálogo de prestadores desde Drive."
+              : null,
+          loadError:
+            documentResult.status === "rejected"
+              ? "No pudimos cargar el archivo mensual desde Drive. Igual podés editar la tabla y volver a guardarla."
+              : null,
+          reportLoadError:
+            reportResult.status === "rejected"
+              ? "No pudimos cargar el reporte de deudas desde Drive."
+              : null,
         },
       };
     } catch (error) {
@@ -540,12 +1008,16 @@ export const getServerSideProps: GetServerSideProps<MonthlyExpensesPageProps> =
           initialDocument: createEmptyMonthlyExpensesDocumentResult(
             selectedMonth,
           ),
+          initialLendersCatalog: createEmptyLendersCatalogDocumentResult(),
+          initialLoansReport: createEmptyMonthlyExpensesLoansReportResult(),
+          lendersLoadError: null,
           loadError:
             error instanceof Error &&
             (error.name === "GoogleOAuthAuthenticationError" ||
               error.name === "GoogleOAuthConfigurationError")
               ? null
               : "No pudimos cargar el archivo mensual desde Drive. Igual podés editar la tabla y volver a guardarla.",
+          reportLoadError: null,
         },
       };
     }

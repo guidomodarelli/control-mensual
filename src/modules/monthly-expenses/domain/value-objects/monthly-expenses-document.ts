@@ -7,6 +7,7 @@ export type MonthlyExpenseCurrency =
 
 export interface MonthlyExpenseLoanInput {
   installmentCount: number;
+  lenderId?: string;
   lenderName?: string;
   startMonth: string;
 }
@@ -171,8 +172,10 @@ function validateLoan(
     "a loan installment count",
   );
   const lenderName = loan.lenderName?.trim();
+  const lenderId = loan.lenderId?.trim();
 
   return {
+    ...(lenderId ? { lenderId } : {}),
     ...(lenderName ? { lenderName } : {}),
     endMonth: calculateLoanEndMonth({
       installmentCount,

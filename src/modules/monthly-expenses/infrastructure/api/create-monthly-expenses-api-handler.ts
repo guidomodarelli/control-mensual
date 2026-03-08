@@ -17,6 +17,7 @@ const monthlyExpenseItemSchema = z.object({
   loan: z
     .object({
       installmentCount: z.number().int().positive(),
+      lenderId: z.string().optional(),
       lenderName: z.string().optional(),
       startMonth: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
     })

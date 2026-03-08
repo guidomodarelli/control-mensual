@@ -1,0 +1,60 @@
+.content {
+  display: grid;
+  gap: 1rem;
+}
+
+.form {
+  display: grid;
+  gap: 1rem;
+}
+
+.formField {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.feedback,
+.emptyState,
+.listMeta {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.errorText {
+  color: var(--destructive);
+}
+
+.successText {
+  color: var(--primary);
+}
+
+.list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.listItem {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.875rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-radius: 0.875rem;
+}
+
+.listCopy {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.listTitle {
+  margin: 0;
+  font-weight: 600;
+}

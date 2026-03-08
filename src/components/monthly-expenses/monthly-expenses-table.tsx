@@ -20,6 +20,10 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
+import {
+  LenderPicker,
+  type LenderOption,
+} from "./lender-picker";
 import styles from "./monthly-expenses-table.module.scss";
 
 type MonthlyExpenseCurrency = "ARS" | "USD";
@@ -37,6 +41,7 @@ export interface MonthlyExpensesEditableRow {
   id: string;
   installmentCount: string;
   isLoan: boolean;
+  lenderId: string;
   lenderName: string;
   loanEndMonth: string;
   loanProgress: string;
@@ -50,7 +55,6 @@ type EditableFieldName =
   | "currency"
   | "description"
   | "installmentCount"
-  | "lenderName"
   | "occurrencesPerMonth"
   | "startMonth"
   | "subtotal";
@@ -61,6 +65,7 @@ interface MonthlyExpensesTableProps {
   feedbackTone: "default" | "error" | "success";
   isAuthenticated: boolean;
   isSubmitting: boolean;
+  lenders: LenderOption[];
   loadError: string | null;
   month: string;
   onAddExpense: () => void;
@@ -69,6 +74,7 @@ interface MonthlyExpensesTableProps {
     fieldName: EditableFieldName,
     value: string,
   ) => void;
+  onExpenseLenderSelect: (expenseId: string, lenderId: string | null) => void;
   onExpenseLoanToggle: (expenseId: string, checked: boolean) => void;
   onMonthChange: (value: string) => void;
   onRemoveExpense: (expenseId: string) => void;
@@ -84,10 +90,12 @@ export function MonthlyExpensesTable({
   feedbackTone,
   isAuthenticated,
   isSubmitting,
+  lenders,
   loadError,
   month,
   onAddExpense,
   onExpenseFieldChange,
+  onExpenseLenderSelect,
   onExpenseLoanToggle,
   onMonthChange,
   onRemoveExpense,
@@ -182,7 +190,6 @@ export function MonthlyExpensesTable({
                       const occurrencesFieldId = `expense-occurrences-${row.id}`;
                       const totalFieldId = `expense-total-${row.id}`;
                       const loanToggleFieldId = `expense-loan-toggle-${row.id}`;
-                      const lenderFieldId = `expense-lender-${row.id}`;
                       const loanStartFieldId = `expense-loan-start-${row.id}`;
                       const installmentCountFieldId =
                         `expense-installment-count-${row.id}`;
@@ -327,23 +334,14 @@ export function MonthlyExpensesTable({
                               {row.isLoan ? (
                                 <div className={styles.loanDetails}>
                                   <div className={styles.loanFieldGroup}>
-                                    <Label htmlFor={lenderFieldId}>
-                                      Prestador (opcional)
-                                    </Label>
-                                    <Input
-                                      aria-label="Prestador"
-                                      className={styles.cellField}
-                                      id={lenderFieldId}
-                                      onChange={(event) =>
-                                        onExpenseFieldChange(
-                                          row.id,
-                                          "lenderName",
-                                          event.target.value,
-                                        )
+                                    <Label>Prestador (opcional)</Label>
+                                    <LenderPicker
+                                      options={lenders}
+                                      onSelect={(lenderId) =>
+                                        onExpenseLenderSelect(row.id, lenderId)
                                       }
-                                      placeholder="Ej. papa, amigo, banco"
-                                      type="text"
-                                      value={row.lenderName}
+                                      selectedLenderId={row.lenderId}
+                                      selectedLenderName={row.lenderName}
                                     />
                                   </div>
 

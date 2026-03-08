@@ -5,6 +5,7 @@ describe("getMonthlyExpensesDocument", () => {
   it("returns an empty monthly document when Drive has no file for the requested month", async () => {
     const repository: MonthlyExpensesRepository = {
       getByMonth: jest.fn().mockResolvedValue(null),
+      listAll: jest.fn(),
       save: jest.fn(),
     };
 

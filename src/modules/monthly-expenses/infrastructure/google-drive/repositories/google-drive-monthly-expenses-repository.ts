@@ -104,6 +104,35 @@ export class GoogleDriveMonthlyExpensesRepository
     }
   }
 
+  async listAll(): Promise<MonthlyExpensesDocument[]> {
+    const files = await this.listMonthlyExpenseFiles();
+
+    return Promise.all(
+      files
+        .filter((file): file is NonNullable<typeof file> & { id: string } =>
+          Boolean(file?.id),
+        )
+        .map(async (file) => {
+          try {
+            const response = await this.driveClient.files.get({
+              alt: "media",
+              fileId: file.id,
+            });
+
+            return parseGoogleDriveMonthlyExpensesContent(
+              response.data,
+              "Loading monthly expenses report",
+            );
+          } catch (error) {
+            throw mapGoogleDriveStorageError(error, {
+              endpoint: DRIVE_FILES_GET_ENDPOINT,
+              operation: "google-drive-monthly-expenses-repository:listAll",
+            });
+          }
+        }),
+    );
+  }
+
   private async findFileByMonth(month: string) {
     try {
       const response = await this.driveClient.files.list({
@@ -118,6 +147,33 @@ export class GoogleDriveMonthlyExpensesRepository
       throw mapGoogleDriveStorageError(error, {
         endpoint: DRIVE_FILES_LIST_ENDPOINT,
         operation: "google-drive-monthly-expenses-repository:findFileByMonth",
+      });
+    }
+  }
+
+  private async listMonthlyExpenseFiles() {
+    const files: drive_v3.Schema$File[] = [];
+    let pageToken: string | undefined;
+
+    try {
+      do {
+        const response = await this.driveClient.files.list({
+          fields: `files(${DRIVE_FILE_FIELDS}),nextPageToken`,
+          orderBy: "name asc",
+          pageSize: 100,
+          pageToken,
+          q: `name contains '${escapeGoogleDriveQueryValue("monthly-expenses-")}' and trashed = false`,
+        });
+
+        files.push(...(response.data.files ?? []));
+        pageToken = response.data.nextPageToken ?? undefined;
+      } while (pageToken);
+
+      return files;
+    } catch (error) {
+      throw mapGoogleDriveStorageError(error, {
+        endpoint: DRIVE_FILES_LIST_ENDPOINT,
+        operation: "google-drive-monthly-expenses-repository:listMonthlyExpenseFiles",
       });
     }
   }

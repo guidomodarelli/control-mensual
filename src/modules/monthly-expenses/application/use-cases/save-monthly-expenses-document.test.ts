@@ -5,6 +5,7 @@ describe("saveMonthlyExpensesDocument", () => {
   it("delegates a validated monthly document to the repository", async () => {
     const repository: MonthlyExpensesRepository = {
       getByMonth: jest.fn(),
+      listAll: jest.fn(),
       save: jest.fn().mockResolvedValue({
         id: "monthly-expenses-file-id",
         month: "2026-03",

@@ -3,7 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { useSession } from "next-auth/react";
 
 import type { StorageBootstrapResult } from "@/modules/storage/application/results/storage-bootstrap";
-import MonthlyExpensesPage from "@/pages/monthly-expenses";
+import MonthlyExpensesPage, {
+  getReportProviderFilterOptions,
+} from "@/pages/monthly-expenses";
 
 jest.mock("next-auth/react", () => ({
   useSession: jest.fn(),
@@ -40,6 +42,25 @@ const bootstrap: StorageBootstrapResult = {
   ],
 };
 
+const basePageProps = {
+  bootstrap,
+  initialLendersCatalog: {
+    lenders: [],
+  },
+  initialLoansReport: {
+    entries: [],
+    summary: {
+      activeLoanCount: 0,
+      lenderCount: 0,
+      remainingAmount: 0,
+      trackedLoanCount: 0,
+    },
+  },
+  lendersLoadError: null,
+  loadError: null,
+  reportLoadError: null,
+};
+
 describe("MonthlyExpensesPage", () => {
   beforeEach(() => {
     mockedUseSession.mockReturnValue({
@@ -57,7 +78,7 @@ describe("MonthlyExpensesPage", () => {
   it("renders the monthly expenses table with the selected month", () => {
     render(
       <MonthlyExpensesPage
-        bootstrap={bootstrap}
+        {...basePageProps}
         initialDocument={{
           items: [
             {
@@ -71,7 +92,6 @@ describe("MonthlyExpensesPage", () => {
           ],
           month: "2026-03",
         }}
-        loadError={null}
       />,
     );
 
@@ -95,7 +115,7 @@ describe("MonthlyExpensesPage", () => {
 
     render(
       <MonthlyExpensesPage
-        bootstrap={bootstrap}
+        {...basePageProps}
         initialDocument={{
           items: [
             {
@@ -109,7 +129,6 @@ describe("MonthlyExpensesPage", () => {
           ],
           month: "2026-03",
         }}
-        loadError={null}
       />,
     );
 
@@ -136,12 +155,11 @@ describe("MonthlyExpensesPage", () => {
 
     render(
       <MonthlyExpensesPage
-        bootstrap={bootstrap}
+        {...basePageProps}
         initialDocument={{
           items: [],
           month: "2026-03",
         }}
-        loadError={null}
       />,
     );
 
@@ -154,12 +172,11 @@ describe("MonthlyExpensesPage", () => {
 
     render(
       <MonthlyExpensesPage
-        bootstrap={bootstrap}
+        {...basePageProps}
         initialDocument={{
           items: [],
           month: "2026-03",
         }}
-        loadError={null}
       />,
     );
 
@@ -203,7 +220,7 @@ describe("MonthlyExpensesPage", () => {
 
     render(
       <MonthlyExpensesPage
-        bootstrap={bootstrap}
+        {...basePageProps}
         initialDocument={{
           items: [
             {
@@ -217,7 +234,6 @@ describe("MonthlyExpensesPage", () => {
           ],
           month: "2026-03",
         }}
-        loadError={null}
       />,
     );
 
@@ -277,12 +293,11 @@ describe("MonthlyExpensesPage", () => {
 
     render(
       <MonthlyExpensesPage
-        bootstrap={bootstrap}
+        {...basePageProps}
         initialDocument={{
           items: [],
           month: "2026-03",
         }}
-        loadError={null}
       />,
     );
 
@@ -303,16 +318,15 @@ describe("MonthlyExpensesPage", () => {
 
     render(
       <MonthlyExpensesPage
-        bootstrap={bootstrap}
+        {...basePageProps}
         initialDocument={{
           items: [],
           month: "2026-03",
         }}
-        loadError={null}
       />,
     );
 
-    expect(screen.queryByLabelText("Prestador")).not.toBeInTheDocument();
+    expect(screen.queryByText("Seleccioná un prestador")).not.toBeInTheDocument();
     expect(
       screen.getByText(
         "Marcá el check si este gasto representa una deuda con una persona o entidad.",
@@ -321,7 +335,7 @@ describe("MonthlyExpensesPage", () => {
 
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
 
-    expect(screen.getByLabelText("Prestador")).toBeInTheDocument();
+    expect(screen.getByText("Seleccioná un prestador")).toBeInTheDocument();
     expect(screen.getByLabelText("Inicio de la deuda")).toBeInTheDocument();
     expect(
       screen.getByLabelText("Cantidad total de cuotas"),
@@ -330,7 +344,7 @@ describe("MonthlyExpensesPage", () => {
 
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
 
-    expect(screen.queryByLabelText("Prestador")).not.toBeInTheDocument();
+    expect(screen.queryByText("Seleccioná un prestador")).not.toBeInTheDocument();
   });
 
   it("recalculates the loan progress when the selected month changes", async () => {
@@ -338,7 +352,7 @@ describe("MonthlyExpensesPage", () => {
 
     render(
       <MonthlyExpensesPage
-        bootstrap={bootstrap}
+        {...basePageProps}
         initialDocument={{
           items: [
             {
@@ -359,7 +373,6 @@ describe("MonthlyExpensesPage", () => {
           ],
           month: "2026-03",
         }}
-        loadError={null}
       />,
     );
 
@@ -388,7 +401,7 @@ describe("MonthlyExpensesPage", () => {
 
     render(
       <MonthlyExpensesPage
-        bootstrap={bootstrap}
+        {...basePageProps}
         initialDocument={{
           items: [
             {
@@ -402,7 +415,6 @@ describe("MonthlyExpensesPage", () => {
           ],
           month: "2026-03",
         }}
-        loadError={null}
       />,
     );
 
@@ -447,7 +459,7 @@ describe("MonthlyExpensesPage", () => {
 
     render(
       <MonthlyExpensesPage
-        bootstrap={bootstrap}
+        {...basePageProps}
         initialDocument={{
           items: [
             {
@@ -467,7 +479,6 @@ describe("MonthlyExpensesPage", () => {
           ],
           month: "2026-03",
         }}
-        loadError={null}
       />,
     );
 
@@ -500,5 +511,236 @@ describe("MonthlyExpensesPage", () => {
         }),
       );
     });
+  });
+
+  it("adds a lender to the catalog from the page", async () => {
+    const user = userEvent.setup();
+    const fetchMock = jest.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      if (input === "/api/storage/lenders") {
+        return {
+          json: async () => ({
+            data: {
+              id: "lenders-file-id",
+              name: "lenders-catalog.json",
+            },
+          }),
+          ok: true,
+        };
+      }
+
+      return {
+        json: async () => ({
+          data: {
+            entries: [],
+            summary: {
+              activeLoanCount: 0,
+              lenderCount: 0,
+              remainingAmount: 0,
+              trackedLoanCount: 0,
+            },
+          },
+        }),
+        ok: true,
+      };
+    });
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    render(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Nombre"), "Papa");
+    await user.click(screen.getByRole("button", { name: "Agregar prestador" }));
+
+    await waitFor(() => {
+      const [url, options] = fetchMock.mock.calls[0];
+
+      expect(url).toBe("/api/storage/lenders");
+      expect(options).toEqual(
+        expect.objectContaining({
+          headers: {
+            "Content-Type": "application/json",
+          },
+          method: "POST",
+        }),
+      );
+      expect(JSON.parse(String(options?.body))).toEqual({
+        lenders: [
+          {
+            id: expect.any(String),
+            name: "Papa",
+            type: "family",
+          },
+        ],
+      });
+    });
+
+    expect(screen.getAllByText("Papa")[0]).toBeInTheDocument();
+  });
+
+  it("submits a selected lender id and lender name with the loan", async () => {
+    const user = userEvent.setup();
+    const fetchMock = jest.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      if (input === "/api/storage/monthly-expenses") {
+        return {
+          json: async () => ({
+            data: {
+              id: "monthly-expenses-file-id",
+              month: "2026-03",
+              name: "monthly-expenses-2026-03.json",
+              viewUrl: null,
+            },
+          }),
+          ok: true,
+        };
+      }
+
+      return {
+        json: async () => ({
+          data: {
+            entries: [],
+            summary: {
+              activeLoanCount: 0,
+              lenderCount: 0,
+              remainingAmount: 0,
+              trackedLoanCount: 0,
+            },
+          },
+        }),
+        ok: true,
+      };
+    });
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    render(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Prestamo tarjeta",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 50000,
+              total: 50000,
+            },
+          ],
+          month: "2026-03",
+        }}
+        initialLendersCatalog={{
+          lenders: [
+            {
+              id: "lender-1",
+              name: "Papa",
+              type: "family",
+            },
+          ],
+        }}
+      />,
+    );
+
+    await user.click(screen.getByLabelText("Es deuda/préstamo"));
+    await user.click(screen.getByRole("button", { name: "Seleccioná un prestador" }));
+    await user.click(screen.getByRole("button", { name: /Papa/i }));
+    await user.type(screen.getByLabelText("Cantidad total de cuotas"), "12");
+    await user.type(screen.getByLabelText("Inicio de la deuda"), "2026-01");
+    await user.click(screen.getByRole("button", { name: "Guardar gastos" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/storage/monthly-expenses",
+        expect.objectContaining({
+          body: JSON.stringify({
+            items: [
+              {
+                currency: "ARS",
+                description: "Prestamo tarjeta",
+                id: "expense-1",
+                loan: {
+                  installmentCount: 12,
+                  lenderId: "lender-1",
+                  lenderName: "Papa",
+                  startMonth: "2026-01",
+                },
+                occurrencesPerMonth: 1,
+                subtotal: 50000,
+              },
+            ],
+            month: "2026-03",
+          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+          method: "POST",
+        }),
+      );
+    });
+  });
+
+  it("builds report lender filter options from catalog lenders and legacy report entries", () => {
+    expect(
+      getReportProviderFilterOptions(
+        [
+          {
+            activeLoanCount: 1,
+            expenseDescriptions: ["Tarjeta"],
+            firstDebtMonth: "2026-01",
+            lenderId: null,
+            lenderName: "Prestador manual",
+            lenderType: "other",
+            latestRecordedMonth: "2026-03",
+            remainingAmount: 1000,
+            trackedLoanCount: 1,
+          },
+        ],
+        [
+          {
+            id: "lender-1",
+            name: "Papa",
+            type: "family",
+          },
+        ],
+      ),
+    ).toEqual([
+      {
+        id: "lender-1",
+        label: "Papa",
+      },
+      {
+        id: "legacy:Prestador manual",
+        label: "Prestador manual",
+      },
+    ]);
   });
 });
