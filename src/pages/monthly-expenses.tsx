@@ -16,6 +16,7 @@ import {
   MonthlyExpensesTable,
   type MonthlyExpensesEditableRow,
 } from "@/components/monthly-expenses/monthly-expenses-table";
+import type { ExpenseEditableFieldName } from "@/components/monthly-expenses/expense-sheet";
 import { isGoogleOAuthConfigured } from "@/modules/auth/infrastructure/oauth/google-oauth-config";
 import { GOOGLE_OAUTH_SCOPES } from "@/modules/auth/infrastructure/oauth/google-oauth-scopes";
 import {
@@ -102,6 +103,14 @@ interface LoansReportState {
   summary: MonthlyExpensesLoansReportResult["summary"];
 }
 
+interface ExpenseSheetState {
+  draft: MonthlyExpensesEditableRow | null;
+  isOpen: boolean;
+  mode: "create" | "edit";
+  originalRow: MonthlyExpensesEditableRow | null;
+  showUnsavedChangesDialog: boolean;
+}
+
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 type MonthlyExpenseCurrency = "ARS" | "USD";
 
@@ -166,34 +175,28 @@ function createEmptyRow(): MonthlyExpensesEditableRow {
   };
 }
 
-function ensureRows(rows: MonthlyExpensesEditableRow[]): MonthlyExpensesEditableRow[] {
-  return rows.length > 0 ? rows : [createEmptyRow()];
-}
-
 function toEditableRows(
   document: MonthlyExpensesDocumentResult,
 ): MonthlyExpensesEditableRow[] {
-  return ensureRows(
-    document.items.map((item) => ({
-      currency: item.currency,
-      description: item.description,
-      id: item.id,
-      installmentCount: item.loan
-        ? formatEditableNumber(item.loan.installmentCount)
-        : "",
-      isLoan: Boolean(item.loan),
-      lenderId: item.loan?.lenderId ?? "",
-      lenderName: item.loan?.lenderName ?? "",
-      loanEndMonth: item.loan?.endMonth ?? "",
-      loanProgress: item.loan
-        ? `${item.loan.paidInstallments} de ${item.loan.installmentCount} cuotas pagadas`
-        : "",
-      occurrencesPerMonth: formatEditableNumber(item.occurrencesPerMonth),
-      startMonth: item.loan?.startMonth ?? "",
-      subtotal: formatEditableNumber(item.subtotal),
-      total: item.total.toFixed(2),
-    })),
-  );
+  return document.items.map((item) => ({
+    currency: item.currency,
+    description: item.description,
+    id: item.id,
+    installmentCount: item.loan
+      ? formatEditableNumber(item.loan.installmentCount)
+      : "",
+    isLoan: Boolean(item.loan),
+    lenderId: item.loan?.lenderId ?? "",
+    lenderName: item.loan?.lenderName ?? "",
+    loanEndMonth: item.loan?.endMonth ?? "",
+    loanProgress: item.loan
+      ? `${item.loan.paidInstallments} de ${item.loan.installmentCount} cuotas pagadas`
+      : "",
+    occurrencesPerMonth: formatEditableNumber(item.occurrencesPerMonth),
+    startMonth: item.loan?.startMonth ?? "",
+    subtotal: formatEditableNumber(item.subtotal),
+    total: item.total.toFixed(2),
+  }));
 }
 
 function createMonthlyExpensesFormState(
@@ -301,47 +304,101 @@ function normalizeEditableRows(
   }));
 }
 
-function getValidationMessage(
+function createClosedExpenseSheetState(): ExpenseSheetState {
+  return {
+    draft: null,
+    isOpen: false,
+    mode: "create",
+    originalRow: null,
+    showUnsavedChangesDialog: false,
+  };
+}
+
+function getExpenseValidationMessage(
   month: string,
-  rows: MonthlyExpensesEditableRow[],
+  row: MonthlyExpensesEditableRow | null,
 ): string | null {
+  if (!row) {
+    return null;
+  }
+
   if (!MONTH_PATTERN.test(month.trim())) {
     return "Seleccioná un mes válido antes de guardar.";
   }
 
-  const hasInvalidRow = rows.some((row) => {
-    const subtotal = Number(row.subtotal);
-    const occurrencesPerMonth = Number(row.occurrencesPerMonth);
+  const subtotal = Number(row.subtotal);
+  const occurrencesPerMonth = Number(row.occurrencesPerMonth);
 
-    return (
-      !row.description.trim() ||
-      !Number.isFinite(subtotal) ||
-      subtotal <= 0 ||
-      !Number.isInteger(occurrencesPerMonth) ||
-      occurrencesPerMonth <= 0
-    );
-  });
-
-  if (hasInvalidRow) {
-    return "Completá descripción, subtotal y cantidad de veces por mes en cada gasto antes de guardar.";
+  if (
+    !row.description.trim() ||
+    !Number.isFinite(subtotal) ||
+    subtotal <= 0 ||
+    !Number.isInteger(occurrencesPerMonth) ||
+    occurrencesPerMonth <= 0
+  ) {
+    return "Completá descripción, subtotal y cantidad de veces por mes antes de guardar.";
   }
 
-  const hasInvalidLoanRow = rows.some((row) => {
-    const installmentCount = Number(row.installmentCount);
+  const installmentCount = Number(row.installmentCount);
 
-    return (
-      row.isLoan &&
-      (!MONTH_PATTERN.test(row.startMonth.trim()) ||
-        !Number.isInteger(installmentCount) ||
-        installmentCount <= 0)
-    );
-  });
-
-  if (hasInvalidLoanRow) {
-    return "Completá fecha de inicio y cantidad total de cuotas en cada deuda antes de guardar.";
+  if (
+    row.isLoan &&
+    (!MONTH_PATTERN.test(row.startMonth.trim()) ||
+      !Number.isInteger(installmentCount) ||
+      installmentCount <= 0)
+  ) {
+    return "Completá fecha de inicio y cantidad total de cuotas antes de guardar.";
   }
 
   return null;
+}
+
+function getChangedExpenseFields(
+  originalRow: MonthlyExpensesEditableRow | null,
+  draft: MonthlyExpensesEditableRow | null,
+): Set<string> {
+  if (!originalRow || !draft) {
+    return new Set();
+  }
+
+  const changedFields = new Set<string>();
+
+  if (originalRow.description !== draft.description) {
+    changedFields.add("description");
+  }
+
+  if (originalRow.currency !== draft.currency) {
+    changedFields.add("currency");
+  }
+
+  if (originalRow.subtotal !== draft.subtotal) {
+    changedFields.add("subtotal");
+  }
+
+  if (originalRow.occurrencesPerMonth !== draft.occurrencesPerMonth) {
+    changedFields.add("occurrencesPerMonth");
+  }
+
+  if (originalRow.isLoan !== draft.isLoan) {
+    changedFields.add("isLoan");
+  }
+
+  if (
+    originalRow.lenderId !== draft.lenderId ||
+    originalRow.lenderName !== draft.lenderName
+  ) {
+    changedFields.add("lender");
+  }
+
+  if (originalRow.startMonth !== draft.startMonth) {
+    changedFields.add("startMonth");
+  }
+
+  if (originalRow.installmentCount !== draft.installmentCount) {
+    changedFields.add("installmentCount");
+  }
+
+  return changedFields;
 }
 
 function toSaveMonthlyExpensesCommand(
@@ -456,6 +513,9 @@ export default function MonthlyExpensesPage({
   const [reportState, setReportState] = useState<LoansReportState>(
     createLoansReportState(initialLoansReport, reportLoadError),
   );
+  const [expenseSheetState, setExpenseSheetState] = useState<ExpenseSheetState>(
+    createClosedExpenseSheetState(),
+  );
 
   const isAuthenticated = status === "authenticated";
   const isSessionLoading = status === "loading";
@@ -466,7 +526,19 @@ export default function MonthlyExpensesPage({
       : isAuthenticated
         ? "Sesión Google activa. Ya podés guardar tus gastos mensuales."
         : "Conectate con Google para cargar y guardar tus gastos mensuales.";
-  const validationMessage = getValidationMessage(formState.month, formState.rows);
+  const expenseValidationMessage = getExpenseValidationMessage(
+    formState.month,
+    expenseSheetState.draft,
+  );
+  const dirtyExpenseFields = getChangedExpenseFields(
+    expenseSheetState.originalRow,
+    expenseSheetState.draft,
+  );
+  const changedExpenseFields =
+    expenseSheetState.mode === "edit"
+      ? dirtyExpenseFields
+      : new Set<string>();
+  const isExpenseSheetDirty = dirtyExpenseFields.size > 0;
   const filteredReportEntries = getFilteredLoansReportEntries(reportState);
   const reportProviderFilterOptions = getReportProviderFilterOptions(
     reportState.entries,
@@ -476,9 +548,8 @@ export default function MonthlyExpensesPage({
   const feedbackMessage =
     formState.error ??
     formState.successMessage ??
-    validationMessage ??
-    "Completá la tabla y guardá el mes actual en Drive.";
-  const feedbackTone = formState.error || validationMessage
+    "Usá Agregar gasto o el menú de cada fila para gestionar el mes actual.";
+  const feedbackTone = formState.error
     ? "error"
     : formState.successMessage
       ? "success"
@@ -488,8 +559,7 @@ export default function MonthlyExpensesPage({
     !isOAuthConfigured ||
     !isAuthenticated ||
     isSessionLoading ||
-    formState.isSubmitting ||
-    Boolean(validationMessage);
+    formState.isSubmitting;
   const lendersFeedbackMessage =
     lendersState.error ??
     lendersState.successMessage ??
@@ -515,6 +585,11 @@ export default function MonthlyExpensesPage({
     updater: (currentState: LoansReportState) => LoansReportState,
   ) => {
     setReportState((currentState) => updater(currentState));
+  };
+  const updateExpenseSheetState = (
+    updater: (currentState: ExpenseSheetState) => ExpenseSheetState,
+  ) => {
+    setExpenseSheetState((currentState) => updater(currentState));
   };
 
   const refreshLoansReport = async (lenders: LenderOption[] = lendersState.lenders) => {
@@ -544,117 +619,215 @@ export default function MonthlyExpensesPage({
       rows: normalizeEditableRows(value, currentState.rows),
       successMessage: null,
     }));
-  };
-
-  const handleExpenseFieldChange = (
-    expenseId: string,
-    fieldName:
-      | "currency"
-      | "description"
-      | "installmentCount"
-      | "occurrencesPerMonth"
-      | "startMonth"
-      | "subtotal",
-    value: string,
-  ) => {
-    updateFormState((currentState) => ({
+    updateExpenseSheetState((currentState) => ({
       ...currentState,
-      error: null,
-      result: null,
-      rows: normalizeEditableRows(
-        currentState.month,
-        currentState.rows.map((row) =>
-          row.id === expenseId
-            ? {
-                ...row,
-                [fieldName]:
-                  fieldName === "currency"
-                    ? (value as MonthlyExpenseCurrency)
-                    : value,
-              }
-            : row,
-        ),
-      ),
-      successMessage: null,
+      draft: currentState.draft
+        ? normalizeEditableRows(value, [currentState.draft])[0]
+        : null,
+      originalRow: currentState.originalRow
+        ? normalizeEditableRows(value, [currentState.originalRow])[0]
+        : null,
     }));
   };
 
-  const handleExpenseLenderSelect = (expenseId: string, lenderId: string | null) => {
+  const persistMonthlyExpensesRows = async (rows: MonthlyExpensesEditableRow[]) => {
+    if (!isOAuthConfigured || !isAuthenticated) {
+      return false;
+    }
+
+    updateFormState((currentState) => ({
+      ...currentState,
+      error: null,
+      isSubmitting: true,
+      result: null,
+      successMessage: null,
+    }));
+
+    try {
+      const result = await saveMonthlyExpensesDocumentViaApi(
+        toSaveMonthlyExpensesCommand({
+          ...formState,
+          rows,
+        }),
+      );
+
+      updateFormState((currentState) => ({
+        ...currentState,
+        error: null,
+        isSubmitting: false,
+        result,
+        rows,
+        successMessage: `Gastos mensuales guardados en Drive con id ${result.id}.`,
+      }));
+      await refreshLoansReport();
+      return true;
+    } catch (error) {
+      updateFormState((currentState) => ({
+        ...currentState,
+        error: getSafeMonthlyExpensesErrorMessage(error),
+        isSubmitting: false,
+      }));
+      return false;
+    }
+  };
+
+  const handleExpenseFieldChange = (
+    fieldName: ExpenseEditableFieldName,
+    value: string,
+  ) => {
+    updateExpenseSheetState((currentState) => {
+      if (!currentState.draft) {
+        return currentState;
+      }
+
+      return {
+        ...currentState,
+        draft: normalizeEditableRows(formState.month, [
+          {
+            ...currentState.draft,
+            [fieldName]:
+              fieldName === "currency"
+                ? (value as MonthlyExpenseCurrency)
+                : value,
+          },
+        ])[0],
+      };
+    });
+  };
+
+  const handleExpenseLenderSelect = (lenderId: string | null) => {
     const selectedLender = lenderId
       ? lendersState.lenders.find((lender) => lender.id === lenderId)
       : null;
 
-    updateFormState((currentState) => ({
-      ...currentState,
-      error: null,
-      result: null,
-      rows: normalizeEditableRows(
-        currentState.month,
-        currentState.rows.map((row) =>
-          row.id === expenseId
-            ? {
-                ...row,
-                lenderId: selectedLender?.id ?? "",
-                lenderName: selectedLender?.name ?? "",
-              }
-            : row,
-        ),
-      ),
-      successMessage: null,
-    }));
+    updateExpenseSheetState((currentState) => {
+      if (!currentState.draft) {
+        return currentState;
+      }
+
+      return {
+        ...currentState,
+        draft: normalizeEditableRows(formState.month, [
+          {
+            ...currentState.draft,
+            lenderId: selectedLender?.id ?? "",
+            lenderName: selectedLender?.name ?? "",
+          },
+        ])[0],
+      };
+    });
   };
 
-  const handleExpenseLoanToggle = (expenseId: string, checked: boolean) => {
-    updateFormState((currentState) => ({
-      ...currentState,
-      error: null,
-      result: null,
-      rows: normalizeEditableRows(
-        currentState.month,
-        currentState.rows.map((row) =>
-          row.id === expenseId
-            ? checked
-              ? { ...row, isLoan: true }
-              : {
-                  ...row,
-                  installmentCount: "",
-                  isLoan: false,
-                  lenderId: "",
-                  lenderName: "",
-                  loanEndMonth: "",
-                  loanProgress: "",
-                  startMonth: "",
-                }
-            : row,
-        ),
-      ),
-      successMessage: null,
-    }));
+  const handleExpenseLoanToggle = (checked: boolean) => {
+    updateExpenseSheetState((currentState) => {
+      if (!currentState.draft) {
+        return currentState;
+      }
+
+      return {
+        ...currentState,
+        draft: normalizeEditableRows(formState.month, [
+          checked
+            ? { ...currentState.draft, isLoan: true }
+            : {
+                ...currentState.draft,
+                installmentCount: "",
+                isLoan: false,
+                lenderId: "",
+                lenderName: "",
+                loanEndMonth: "",
+                loanProgress: "",
+                startMonth: "",
+              },
+        ])[0],
+      };
+    });
   };
 
   const handleAddExpense = () => {
-    updateFormState((currentState) => ({
-      ...currentState,
-      error: null,
-      result: null,
-      rows: [...currentState.rows, createEmptyRow()],
-      successMessage: null,
+    const draft = createEmptyRow();
+
+    updateExpenseSheetState(() => ({
+      draft,
+      isOpen: true,
+      mode: "create",
+      originalRow: { ...draft },
+      showUnsavedChangesDialog: false,
     }));
   };
 
-  const handleRemoveExpense = (expenseId: string) => {
-    updateFormState((currentState) => ({
-      ...currentState,
-      error: null,
-      result: null,
-      rows: ensureRows(
-        normalizeEditableRows(
-          currentState.month,
-          currentState.rows.filter((row) => row.id !== expenseId),
-        ),
-      ),
-      successMessage: null,
+  const handleEditExpense = (expenseId: string) => {
+    const row = formState.rows.find((currentRow) => currentRow.id === expenseId);
+
+    if (!row) {
+      return;
+    }
+
+    updateExpenseSheetState(() => ({
+      draft: { ...row },
+      isOpen: true,
+      mode: "edit",
+      originalRow: { ...row },
+      showUnsavedChangesDialog: false,
     }));
+  };
+
+  const handleRequestCloseExpenseSheet = () => {
+    if (isExpenseSheetDirty) {
+      updateExpenseSheetState((currentState) => ({
+        ...currentState,
+        showUnsavedChangesDialog: true,
+      }));
+      return;
+    }
+
+    setExpenseSheetState(createClosedExpenseSheetState());
+  };
+
+  const handleUnsavedChangesDiscard = () => {
+    setExpenseSheetState(createClosedExpenseSheetState());
+  };
+
+  const handleSaveExpense = async () => {
+    if (
+      !expenseSheetState.draft ||
+      expenseValidationMessage ||
+      !isOAuthConfigured ||
+      !isAuthenticated
+    ) {
+      return;
+    }
+
+    const normalizedDraft = normalizeEditableRows(formState.month, [
+      expenseSheetState.draft,
+    ])[0];
+    const nextRows =
+      expenseSheetState.mode === "create"
+        ? [...formState.rows, normalizedDraft]
+        : formState.rows.map((row) =>
+            row.id === normalizedDraft.id ? normalizedDraft : row,
+          );
+    const wasSaved = await persistMonthlyExpensesRows(nextRows);
+
+    if (wasSaved) {
+      setExpenseSheetState(createClosedExpenseSheetState());
+    }
+  };
+
+  const handleSaveUnsavedChanges = async () => {
+    await handleSaveExpense();
+  };
+
+  const handleRemoveExpense = async (expenseId: string) => {
+    const nextRows = normalizeEditableRows(
+      formState.month,
+      formState.rows.filter((row) => row.id !== expenseId),
+    );
+    const wasSaved = await persistMonthlyExpensesRows(nextRows);
+
+    if (wasSaved && expenseSheetState.draft?.id === expenseId) {
+      setExpenseSheetState(createClosedExpenseSheetState());
+    }
   };
 
   const handleLenderFieldChange = (
@@ -817,65 +990,39 @@ export default function MonthlyExpensesPage({
     }));
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (validationMessage || !isOAuthConfigured || !isAuthenticated) {
-      return;
-    }
-
-    updateFormState((currentState) => ({
-      ...currentState,
-      error: null,
-      isSubmitting: true,
-      result: null,
-      successMessage: null,
-    }));
-
-    try {
-      const result = await saveMonthlyExpensesDocumentViaApi(
-        toSaveMonthlyExpensesCommand(formState),
-      );
-
-      updateFormState((currentState) => ({
-        ...currentState,
-        isSubmitting: false,
-        result,
-        successMessage: `Gastos mensuales guardados en Drive con id ${result.id}.`,
-      }));
-      await refreshLoansReport();
-    } catch (error) {
-      updateFormState((currentState) => ({
-        ...currentState,
-        error: getSafeMonthlyExpensesErrorMessage(error),
-        isSubmitting: false,
-      }));
-    }
-  };
-
   return (
     <main className={styles.page}>
       <div className={styles.layout}>
         <MonthlyExpensesTable
           actionDisabled={actionDisabled}
+          changedFields={changedExpenseFields}
+          draft={expenseSheetState.draft}
           feedbackMessage={feedbackMessage}
           feedbackTone={feedbackTone}
           isAuthenticated={isAuthenticated}
+          isExpenseSheetOpen={expenseSheetState.isOpen}
           isSessionLoading={isSessionLoading}
           isSubmitting={formState.isSubmitting}
           lenders={lendersState.lenders}
           loadError={loadError}
           month={formState.month}
           onAddExpense={handleAddExpense}
+          onDeleteExpense={handleRemoveExpense}
+          onEditExpense={handleEditExpense}
           onExpenseFieldChange={handleExpenseFieldChange}
           onExpenseLenderSelect={handleExpenseLenderSelect}
           onExpenseLoanToggle={handleExpenseLoanToggle}
           onMonthChange={handleMonthChange}
-          onRemoveExpense={handleRemoveExpense}
-          onSubmit={handleSubmit}
+          onRequestCloseExpenseSheet={handleRequestCloseExpenseSheet}
+          onSaveExpense={handleSaveExpense}
+          onSaveUnsavedChanges={handleSaveUnsavedChanges}
+          onUnsavedChangesDiscard={handleUnsavedChangesDiscard}
           result={formState.result}
           rows={formState.rows}
           sessionMessage={sessionMessage}
+          sheetMode={expenseSheetState.mode}
+          showUnsavedChangesDialog={expenseSheetState.showUnsavedChangesDialog}
+          validationMessage={expenseValidationMessage}
         />
         <LendersPanel
           feedbackMessage={lendersFeedbackMessage}

@@ -66,6 +66,67 @@ const basePageProps = {
   reportLoadError: null,
 };
 
+function createMonthlyExpensesFetchMock(overrides?: {
+  monthlyExpensesViewUrl?: string | null;
+  reportEntries?: Array<Record<string, unknown>>;
+}) {
+  return jest.fn().mockImplementation(async (input: RequestInfo | URL) => {
+    if (input === "/api/storage/monthly-expenses") {
+      return {
+        json: async () => ({
+          data: {
+            id: "monthly-expenses-file-id",
+            month: "2026-03",
+            name: "monthly-expenses-2026-03.json",
+            viewUrl: overrides?.monthlyExpensesViewUrl ?? null,
+          },
+        }),
+        ok: true,
+      };
+    }
+
+    if (input === "/api/storage/monthly-expenses-report") {
+      return {
+        json: async () => ({
+          data: {
+            entries: overrides?.reportEntries ?? [],
+            summary: {
+              activeLoanCount: 0,
+              lenderCount: 0,
+              remainingAmount: 0,
+              trackedLoanCount: 0,
+            },
+          },
+        }),
+        ok: true,
+      };
+    }
+
+    throw new Error(`Unexpected fetch input: ${String(input)}`);
+  });
+}
+
+function getMonthlyExpensesSavePayload(fetchMock: jest.Mock) {
+  const saveCall = fetchMock.mock.calls.find(
+    ([url]) => url === "/api/storage/monthly-expenses",
+  );
+
+  expect(saveCall).toBeDefined();
+
+  const [, options] = saveCall as [string, RequestInit];
+
+  expect(options).toEqual(
+    expect.objectContaining({
+      headers: {
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+    }),
+  );
+
+  return JSON.parse(String(options.body));
+}
+
 describe("MonthlyExpensesPage", () => {
   beforeEach(() => {
     mockedUseSession.mockReturnValue({
@@ -80,7 +141,7 @@ describe("MonthlyExpensesPage", () => {
     global.fetch = originalFetch;
   });
 
-  it("renders the monthly expenses table with the selected month", () => {
+  it("renders the monthly expenses data table with the selected month", () => {
     render(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -106,43 +167,92 @@ describe("MonthlyExpensesPage", () => {
     expect(
       screen.getByRole("heading", { name: "Detalle del mes" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Organizá servicios, alquileres, expensas y cualquier gasto recurrente en una tabla mensual con guardado en Google Drive.",
-      ),
-    ).toBeInTheDocument();
     expect(screen.getByLabelText("Mes")).toHaveValue("2026-03");
-    expect(screen.getByDisplayValue("Agua")).toBeInTheDocument();
+    expect(screen.getByText("Agua")).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Filtrar gastos" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Guardar gastos" }),
+    ).not.toBeInTheDocument();
   });
 
-  it("recalculates the row total when subtotal and occurrences change", async () => {
+  it("opens a sheet to create a new expense and only saves on explicit confirmation", async () => {
     const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock({
+      monthlyExpensesViewUrl:
+        "https://drive.google.com/file/d/monthly-expenses-file-id/view",
+    });
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
 
     render(
       <MonthlyExpensesPage
         {...basePageProps}
         initialDocument={{
-          items: [
-            {
-              currency: "ARS",
-              description: "Empleada domestica",
-              id: "expense-1",
-              occurrencesPerMonth: 4,
-              subtotal: 3000,
-              total: 12000,
-            },
-          ],
+          items: [],
           month: "2026-03",
         }}
       />,
     );
 
-    await user.clear(screen.getAllByLabelText("Subtotal")[0]);
-    await user.type(screen.getAllByLabelText("Subtotal")[0], "6000");
-    await user.clear(screen.getAllByLabelText("Cantidad de veces por mes")[0]);
-    await user.type(screen.getAllByLabelText("Cantidad de veces por mes")[0], "8");
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
 
-    expect(screen.getAllByLabelText("Total")[0]).toHaveValue("48000.00");
+    expect(
+      screen.getByRole("heading", { name: "Nuevo gasto" }),
+    ).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await user.type(screen.getByLabelText("Descripción"), "Internet");
+    await user.type(screen.getByLabelText("Subtotal"), "15000");
+    await user.type(screen.getByLabelText("Cantidad de veces por mes"), "1");
+
+    expect(screen.getByLabelText("Total")).toHaveValue("15000.00");
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => {
+      expect(getMonthlyExpensesSavePayload(fetchMock)).toEqual({
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: expect.any(String),
+            occurrencesPerMonth: 1,
+            subtotal: 15000,
+          },
+        ],
+        month: "2026-03",
+      });
+    });
+
+    expect(
+      screen.queryByRole("heading", { name: "Nuevo gasto" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Internet")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Gastos mensuales guardados en Drive con id monthly-expenses-file-id.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Abrir archivo mensual en Drive" }),
+    ).toHaveAttribute(
+      "href",
+      "https://drive.google.com/file/d/monthly-expenses-file-id/view",
+    );
   });
 
   it("does not render the authenticated session identity details", () => {
@@ -221,12 +331,6 @@ describe("MonthlyExpensesPage", () => {
   });
 
   it("renders an inactive Google connection badge when the user is not authenticated", () => {
-    mockedUseSession.mockReturnValue({
-      data: null,
-      status: "unauthenticated",
-      update: jest.fn(),
-    } as ReturnType<typeof useSession>);
-
     render(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -240,81 +344,9 @@ describe("MonthlyExpensesPage", () => {
     expect(screen.getByText("Google desconectado - Inactivo")).toBeInTheDocument();
   });
 
-  it("adds and removes manual expense rows", async () => {
+  it("opens the sheet preloaded for editing and marks pending field changes", async () => {
     const user = userEvent.setup();
-
-    render(
-      <MonthlyExpensesPage
-        {...basePageProps}
-        initialDocument={{
-          items: [],
-          month: "2026-03",
-        }}
-      />,
-    );
-
-    expect(screen.getAllByLabelText("Descripción")).toHaveLength(1);
-
-    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
-
-    expect(screen.getAllByLabelText("Descripción")).toHaveLength(2);
-
-    await user.click(screen.getByRole("button", { name: "Abrir acciones del gasto 2" }));
-    await user.click(screen.getByRole("menuitem", { name: "Eliminar" }));
-
-    expect(screen.getAllByLabelText("Descripción")).toHaveLength(2);
-    expect(
-      screen.getByText("¿Querés eliminar este gasto?"),
-    ).toBeInTheDocument();
-
-    await user.click(
-      screen.getByRole("button", { name: "Confirmar" }),
-    );
-
-    expect(screen.getAllByLabelText("Descripción")).toHaveLength(1);
-  });
-
-  it("closes the delete confirmation when clicking outside the popover", async () => {
-    const user = userEvent.setup();
-
-    render(
-      <MonthlyExpensesPage
-        {...basePageProps}
-        initialDocument={{
-          items: [],
-          month: "2026-03",
-        }}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
-    await user.click(screen.getByRole("button", { name: "Abrir acciones del gasto 2" }));
-    await user.click(screen.getByRole("menuitem", { name: "Eliminar" }));
-
-    expect(
-      screen.getByText("¿Querés eliminar este gasto?"),
-    ).toBeInTheDocument();
-
-    await user.click(document.body);
-
-    expect(
-      screen.queryByText("¿Querés eliminar este gasto?"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("submits the current month document through the page container", async () => {
-    const user = userEvent.setup();
-    const fetchMock = jest.fn().mockResolvedValue({
-      json: async () => ({
-        data: {
-          id: "monthly-expenses-file-id",
-          month: "2026-03",
-          name: "monthly-expenses-2026-03.json",
-          viewUrl: "https://drive.google.com/file/d/monthly-expenses-file-id/view",
-        },
-      }),
-      ok: true,
-    });
+    const fetchMock = createMonthlyExpensesFetchMock();
 
     mockedUseSession.mockReturnValue({
       data: {
@@ -336,11 +368,11 @@ describe("MonthlyExpensesPage", () => {
           items: [
             {
               currency: "ARS",
-              description: "Expensas",
+              description: "Agua",
               id: "expense-1",
               occurrencesPerMonth: 1,
-              subtotal: 55032.07,
-              total: 55032.07,
+              subtotal: 10774.53,
+              total: 10774.53,
             },
           ],
           month: "2026-03",
@@ -348,46 +380,180 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Guardar gastos" }));
+    await user.click(screen.getByRole("button", { name: "Abrir acciones para Agua" }));
+    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
+
+    expect(
+      screen.getByRole("heading", { name: "Editar gasto" }),
+    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Agua")).toBeInTheDocument();
+    expect(screen.getByLabelText("Subtotal")).toHaveValue(10774.53);
+
+    await user.clear(screen.getByLabelText("Subtotal"));
+    await user.type(screen.getByLabelText("Subtotal"), "12000");
+
+    expect(screen.getByLabelText("Subtotal")).toHaveAttribute(
+      "data-changed",
+      "true",
+    );
+    expect(screen.getByText("Cambio pendiente")).toBeInTheDocument();
+    expect(screen.getByLabelText("Total")).toHaveValue("12000.00");
+
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        "/api/storage/monthly-expenses",
-        expect.objectContaining({
-          body: JSON.stringify({
-            items: [
-              {
-                currency: "ARS",
-                description: "Expensas",
-                id: "expense-1",
-                occurrencesPerMonth: 1,
-                subtotal: 55032.07,
-              },
-            ],
-            month: "2026-03",
-          }),
-          headers: {
-            "Content-Type": "application/json",
+      expect(getMonthlyExpensesSavePayload(fetchMock)).toEqual({
+        items: [
+          {
+            currency: "ARS",
+            description: "Agua",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            subtotal: 12000,
           },
-          method: "POST",
-        }),
-      );
+        ],
+        month: "2026-03",
+      });
     });
 
     expect(
-      screen.getByText(
-        "Gastos mensuales guardados en Drive con id monthly-expenses-file-id.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Abrir archivo mensual en Drive" }),
-    ).toHaveAttribute(
-      "href",
-      "https://drive.google.com/file/d/monthly-expenses-file-id/view",
-    );
+      screen.queryByRole("heading", { name: "Editar gasto" }),
+    ).not.toBeInTheDocument();
   });
 
-  it("shows inline validation and blocks save when a row is incomplete", async () => {
+  it("blocks sheet close on outside click when there are unsaved changes and can save from the warning dialog", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock();
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    render(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 10774.53,
+              total: 10774.53,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Abrir acciones para Agua" }));
+    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
+    await user.clear(screen.getByLabelText("Descripción"));
+    await user.type(screen.getByLabelText("Descripción"), "Agua filtrada");
+
+    const overlay = document.querySelector("[data-slot='sheet-overlay']");
+    expect(overlay).not.toBeNull();
+    await user.click(overlay as HTMLElement);
+
+    expect(
+      screen.getByText("Tenés cambios sin guardar en este gasto."),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Guardar los cambios" }),
+    );
+
+    await waitFor(() => {
+      expect(getMonthlyExpensesSavePayload(fetchMock)).toEqual({
+        items: [
+          {
+            currency: "ARS",
+            description: "Agua filtrada",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            subtotal: 10774.53,
+          },
+        ],
+        month: "2026-03",
+      });
+    });
+
+    expect(
+      screen.queryByText("Tenés cambios sin guardar en este gasto."),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Editar gasto" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("blocks sheet close on outside click when there are unsaved changes and can discard them", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock();
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    render(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 10774.53,
+              total: 10774.53,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Abrir acciones para Agua" }));
+    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
+    await user.clear(screen.getByLabelText("Descripción"));
+    await user.type(screen.getByLabelText("Descripción"), "Agua descartada");
+
+    const overlay = document.querySelector("[data-slot='sheet-overlay']");
+    expect(overlay).not.toBeNull();
+    await user.click(overlay as HTMLElement);
+    await user.click(
+      screen.getByRole("button", { name: "Descartar los cambios" }),
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("heading", { name: "Editar gasto" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Agua")).toBeInTheDocument();
+    expect(screen.queryByText("Agua descartada")).not.toBeInTheDocument();
+  });
+
+  it("shows validation inside the sheet and blocks save when an expense is incomplete", async () => {
     const user = userEvent.setup();
 
     mockedUseSession.mockReturnValue({
@@ -412,20 +578,31 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    await user.type(screen.getAllByLabelText("Subtotal")[0], "1000");
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
+    await user.type(screen.getByLabelText("Subtotal"), "1000");
 
     expect(
       screen.getByText(
-        "Completá descripción, subtotal y cantidad de veces por mes en cada gasto antes de guardar.",
+        "Completá descripción, subtotal y cantidad de veces por mes antes de guardar.",
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Guardar gastos" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
   });
 
-  it("shows and hides the debt fields when the loan checkbox changes", async () => {
+  it("shows and hides the debt fields inside the sheet when the loan checkbox changes", async () => {
     const user = userEvent.setup();
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
 
     render(
       <MonthlyExpensesPage
@@ -437,12 +614,9 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
+
     expect(screen.queryByText("Seleccioná un prestador")).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        "Marcá el check si este gasto representa una deuda con una persona o entidad.",
-      ),
-    ).not.toBeInTheDocument();
 
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
 
@@ -461,6 +635,18 @@ describe("MonthlyExpensesPage", () => {
   it("shows the debt info popover and closes it from the close button or outside click", async () => {
     const user = userEvent.setup();
 
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+
     render(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -470,6 +656,8 @@ describe("MonthlyExpensesPage", () => {
         }}
       />,
     );
+
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
 
     expect(
       screen.queryByText(
@@ -500,29 +688,9 @@ describe("MonthlyExpensesPage", () => {
         "Marcá el check si este gasto representa una deuda con una persona o entidad.",
       ),
     ).not.toBeInTheDocument();
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Más información sobre deuda o préstamo",
-      }),
-    );
-
-    expect(
-      screen.getByText(
-        "Marcá el check si este gasto representa una deuda con una persona o entidad.",
-      ),
-    ).toBeInTheDocument();
-
-    await user.click(document.body);
-
-    expect(
-      screen.queryByText(
-        "Marcá el check si este gasto representa una deuda con una persona o entidad.",
-      ),
-    ).not.toBeInTheDocument();
   });
 
-  it("recalculates the loan progress when the selected month changes", async () => {
+  it("filters expenses from the data table by description", async () => {
     const user = userEvent.setup();
 
     render(
@@ -534,16 +702,17 @@ describe("MonthlyExpensesPage", () => {
               currency: "ARS",
               description: "Prestamo tarjeta",
               id: "expense-1",
-              loan: {
-                endMonth: "2026-12",
-                installmentCount: 12,
-                lenderName: "Papa",
-                paidInstallments: 3,
-                startMonth: "2026-01",
-              },
               occurrencesPerMonth: 1,
               subtotal: 50000,
               total: 50000,
+            },
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-2",
+              occurrencesPerMonth: 1,
+              subtotal: 10000,
+              total: 10000,
             },
           ],
           month: "2026-03",
@@ -551,15 +720,13 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    expect(screen.getByText("3 de 12 cuotas pagadas")).toBeInTheDocument();
+    await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "agua");
 
-    await user.clear(screen.getByLabelText("Mes"));
-    await user.type(screen.getByLabelText("Mes"), "2026-02");
-
-    expect(screen.getByText("2 de 12 cuotas pagadas")).toBeInTheDocument();
+    expect(screen.getByText("Agua")).toBeInTheDocument();
+    expect(screen.queryByText("Prestamo tarjeta")).not.toBeInTheDocument();
   });
 
-  it("shows inline validation when a debt is missing start month or installments", async () => {
+  it("shows validation when a debt is missing start month or installments", async () => {
     const user = userEvent.setup();
 
     mockedUseSession.mockReturnValue({
@@ -593,31 +760,23 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
+    await user.click(
+      screen.getByRole("button", { name: "Abrir acciones para Prestamo tarjeta" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
 
     expect(
       screen.getByText(
-        "Completá fecha de inicio y cantidad total de cuotas en cada deuda antes de guardar.",
+        "Completá fecha de inicio y cantidad total de cuotas antes de guardar.",
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Guardar gastos" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
   });
 
-  it("submits loan metadata and keeps lender optional", async () => {
+  it("saves loan metadata from the sheet and keeps lender optional", async () => {
     const user = userEvent.setup();
-    const fetchMock = jest.fn().mockResolvedValue({
-      json: async () => ({
-        data: {
-          id: "monthly-expenses-file-id",
-          month: "2026-03",
-          name: "monthly-expenses-2026-03.json",
-          viewUrl: null,
-        },
-      }),
-      ok: true,
-    });
+    const fetchMock = createMonthlyExpensesFetchMock();
 
     mockedUseSession.mockReturnValue({
       data: {
@@ -657,35 +816,103 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Guardar gastos" }));
+    await user.click(
+      screen.getByRole("button", { name: "Abrir acciones para Prestamo tarjeta" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        "/api/storage/monthly-expenses",
-        expect.objectContaining({
-          body: JSON.stringify({
-            items: [
-              {
-                currency: "ARS",
-                description: "Prestamo tarjeta",
-                id: "expense-1",
-                loan: {
-                  installmentCount: 12,
-                  startMonth: "2026-01",
-                },
-                occurrencesPerMonth: 1,
-                subtotal: 50000,
-              },
-            ],
-            month: "2026-03",
-          }),
-          headers: {
-            "Content-Type": "application/json",
+      expect(getMonthlyExpensesSavePayload(fetchMock)).toEqual({
+        items: [
+          {
+            currency: "ARS",
+            description: "Prestamo tarjeta",
+            id: "expense-1",
+            loan: {
+              installmentCount: 12,
+              startMonth: "2026-01",
+            },
+            occurrencesPerMonth: 1,
+            subtotal: 50000,
           },
-          method: "POST",
-        }),
-      );
+        ],
+        month: "2026-03",
+      });
     });
+  });
+
+  it("confirms row deletion and persists immediately", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock();
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    render(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 10000,
+              total: 10000,
+            },
+            {
+              currency: "ARS",
+              description: "Internet",
+              id: "expense-2",
+              occurrencesPerMonth: 1,
+              subtotal: 20000,
+              total: 20000,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Abrir acciones para Internet" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Eliminar" }));
+
+    expect(
+      screen.getByText("¿Querés eliminar este gasto?"),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() => {
+      expect(getMonthlyExpensesSavePayload(fetchMock)).toEqual({
+        items: [
+          {
+            currency: "ARS",
+            description: "Agua",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            subtotal: 10000,
+          },
+        ],
+        month: "2026-03",
+      });
+    });
+
+    expect(screen.queryByText("Internet")).not.toBeInTheDocument();
   });
 
   it("adds a lender to the catalog from the page", async () => {
@@ -746,7 +973,7 @@ describe("MonthlyExpensesPage", () => {
     await user.click(screen.getByRole("button", { name: "Agregar prestador" }));
 
     await waitFor(() => {
-      const [url, options] = fetchMock.mock.calls[0];
+      const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
 
       expect(url).toBe("/api/storage/lenders");
       expect(options).toEqual(
@@ -757,7 +984,7 @@ describe("MonthlyExpensesPage", () => {
           method: "POST",
         }),
       );
-      expect(JSON.parse(String(options?.body))).toEqual({
+      expect(JSON.parse(String(options.body))).toEqual({
         lenders: [
           {
             id: expect.any(String),
@@ -831,22 +1058,19 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    expect(screen.getAllByText("Papa")[0]).toBeInTheDocument();
-
     await user.click(screen.getByRole("button", { name: "Abrir acciones para Papa" }));
     await user.click(screen.getByRole("menuitem", { name: "Eliminar" }));
 
-    expect(screen.getAllByText("Papa")[0]).toBeInTheDocument();
     expect(
       screen.getByText("¿Querés eliminar a Papa del catálogo?"),
     ).toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole("button", { name: "Confirmar" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
 
     await waitFor(() => {
-      expect(screen.queryByText("¿Querés eliminar a Papa del catálogo?")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("¿Querés eliminar a Papa del catálogo?"),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -924,41 +1148,36 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
+    await user.click(
+      screen.getByRole("button", { name: "Abrir acciones para Prestamo tarjeta" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
     await user.click(screen.getByRole("button", { name: "Seleccioná un prestador" }));
     await user.click(screen.getByRole("button", { name: "Papa Familiar" }));
     await user.type(screen.getByLabelText("Cantidad total de cuotas"), "12");
     await user.type(screen.getByLabelText("Inicio de la deuda"), "2026-01");
-    await user.click(screen.getByRole("button", { name: "Guardar gastos" }));
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        "/api/storage/monthly-expenses",
-        expect.objectContaining({
-          body: JSON.stringify({
-            items: [
-              {
-                currency: "ARS",
-                description: "Prestamo tarjeta",
-                id: "expense-1",
-                loan: {
-                  installmentCount: 12,
-                  lenderId: "lender-1",
-                  lenderName: "Papa",
-                  startMonth: "2026-01",
-                },
-                occurrencesPerMonth: 1,
-                subtotal: 50000,
-              },
-            ],
-            month: "2026-03",
-          }),
-          headers: {
-            "Content-Type": "application/json",
+      expect(getMonthlyExpensesSavePayload(fetchMock)).toEqual({
+        items: [
+          {
+            currency: "ARS",
+            description: "Prestamo tarjeta",
+            id: "expense-1",
+            loan: {
+              installmentCount: 12,
+              lenderId: "lender-1",
+              lenderName: "Papa",
+              startMonth: "2026-01",
+            },
+            occurrencesPerMonth: 1,
+            subtotal: 50000,
           },
-          method: "POST",
-        }),
-      );
+        ],
+        month: "2026-03",
+      });
     });
   });
 
@@ -1088,7 +1307,11 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Guardar gastos" }));
+    await user.click(
+      screen.getByRole("button", { name: "Abrir acciones para Expensas" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
 
     expect(
       await screen.findByText(

@@ -125,6 +125,22 @@
   letter-spacing: 0.04em;
 }
 
+.headButton {
+  justify-content: flex-start;
+  padding-inline: 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-foreground);
+}
+
+.headLabel {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-foreground);
+}
+
 .cellField {
   min-width: 10rem;
 }

@@ -1,35 +1,20 @@
-import type { FormEvent } from "react";
-import { LoaderCircle } from "lucide-react";
+import { useMemo } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { ArrowUpDown, LoaderCircle } from "lucide-react";
 
+import { ExpenseRowActions } from "@/components/monthly-expenses/expense-row-actions";
+import {
+  ExpenseSheet,
+  type ExpenseEditableFieldName,
+} from "@/components/monthly-expenses/expense-sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
-import {
-  ConfirmDeleteButton,
-} from "./confirm-delete-button";
-import {
-  LenderPicker,
-  type LenderOption,
-} from "./lender-picker";
-import { LoanInfoPopover } from "./loan-info-popover";
+import type { LenderOption } from "./lender-picker";
 import styles from "./monthly-expenses-table.module.scss";
 
 type MonthlyExpenseCurrency = "ARS" | "USD";
@@ -57,68 +42,154 @@ export interface MonthlyExpensesEditableRow {
   total: string;
 }
 
-type EditableFieldName =
-  | "currency"
-  | "description"
-  | "installmentCount"
-  | "occurrencesPerMonth"
-  | "startMonth"
-  | "subtotal";
-
 interface MonthlyExpensesTableProps {
   actionDisabled: boolean;
+  changedFields: Set<string>;
+  draft: MonthlyExpensesEditableRow | null;
   feedbackMessage: string;
   feedbackTone: "default" | "error" | "success";
   isAuthenticated: boolean;
+  isExpenseSheetOpen: boolean;
   isSessionLoading: boolean;
   isSubmitting: boolean;
   lenders: LenderOption[];
   loadError: string | null;
   month: string;
   onAddExpense: () => void;
+  onDeleteExpense: (expenseId: string) => void;
+  onEditExpense: (expenseId: string) => void;
   onExpenseFieldChange: (
-    expenseId: string,
-    fieldName: EditableFieldName,
+    fieldName: ExpenseEditableFieldName,
     value: string,
   ) => void;
-  onExpenseLenderSelect: (expenseId: string, lenderId: string | null) => void;
-  onExpenseLoanToggle: (expenseId: string, checked: boolean) => void;
+  onExpenseLenderSelect: (lenderId: string | null) => void;
+  onExpenseLoanToggle: (checked: boolean) => void;
   onMonthChange: (value: string) => void;
-  onRemoveExpense: (expenseId: string) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onRequestCloseExpenseSheet: () => void;
+  onSaveExpense: () => void;
+  onSaveUnsavedChanges: () => void;
+  onUnsavedChangesDiscard: () => void;
   result: StoredMonthlyExpensesDocumentView | null;
   rows: MonthlyExpensesEditableRow[];
   sessionMessage: string;
+  sheetMode: "create" | "edit";
+  showUnsavedChangesDialog: boolean;
+  validationMessage: string | null;
+}
+
+function getSortableHeader(label: string) {
+  return function SortableHeader({
+    column,
+  }: {
+    column: {
+      getCanSort: () => boolean;
+      getIsSorted: () => false | "asc" | "desc";
+      toggleSorting: (desc?: boolean) => void;
+    };
+  }) {
+    if (!column.getCanSort()) {
+      return <span className={styles.headLabel}>{label}</span>;
+    }
+
+    return (
+      <Button
+        className={styles.headButton}
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        size="sm"
+        type="button"
+        variant="ghost"
+      >
+        {label}
+        <ArrowUpDown aria-hidden="true" />
+      </Button>
+    );
+  };
 }
 
 export function MonthlyExpensesTable({
   actionDisabled,
+  changedFields,
+  draft,
   feedbackMessage,
   feedbackTone,
   isAuthenticated,
+  isExpenseSheetOpen,
   isSessionLoading,
   isSubmitting,
   lenders,
   loadError,
   month,
   onAddExpense,
+  onDeleteExpense,
+  onEditExpense,
   onExpenseFieldChange,
   onExpenseLenderSelect,
   onExpenseLoanToggle,
   onMonthChange,
-  onRemoveExpense,
-  onSubmit,
+  onRequestCloseExpenseSheet,
+  onSaveExpense,
+  onSaveUnsavedChanges,
+  onUnsavedChangesDiscard,
   result,
   rows,
   sessionMessage,
+  sheetMode,
+  showUnsavedChangesDialog,
+  validationMessage,
 }: MonthlyExpensesTableProps) {
   const sessionStatus = isSessionLoading
     ? "loading"
     : isAuthenticated
       ? "active"
       : "inactive";
-  const loanHelpMessage =
-    "Marcá el check si este gasto representa una deuda con una persona o entidad.";
+
+  const columns = useMemo<ColumnDef<MonthlyExpensesEditableRow>[]>(
+    () => [
+      {
+        accessorKey: "description",
+        cell: ({ row }) => row.original.description || "Sin descripción",
+        header: getSortableHeader("Descripción"),
+      },
+      {
+        accessorKey: "currency",
+        header: getSortableHeader("Moneda"),
+      },
+      {
+        accessorKey: "subtotal",
+        header: getSortableHeader("Subtotal"),
+      },
+      {
+        accessorKey: "occurrencesPerMonth",
+        header: getSortableHeader("Cantidad de veces por mes"),
+      },
+      {
+        accessorKey: "total",
+        header: getSortableHeader("Total"),
+      },
+      {
+        accessorKey: "loanProgress",
+        cell: ({ row }) =>
+          row.original.isLoan
+            ? row.original.loanProgress || "Completá datos de la deuda"
+            : "No aplica",
+        header: "Deuda / cuotas",
+      },
+      {
+        cell: ({ row }) => (
+          <ExpenseRowActions
+            actionDisabled={actionDisabled}
+            description={row.original.description}
+            onDelete={() => onDeleteExpense(row.original.id)}
+            onEdit={() => onEditExpense(row.original.id)}
+          />
+        ),
+        enableSorting: false,
+        header: "Acciones",
+        id: "actions",
+      },
+    ],
+    [actionDisabled, onDeleteExpense, onEditExpense],
+  );
 
   return (
     <section
@@ -165,345 +236,102 @@ export function MonthlyExpensesTable({
           </Badge>
         </div>
 
-          {loadError ? (
-            <p className={cn(styles.feedback, styles.errorText)} role="alert">
-              {loadError}
-            </p>
-          ) : null}
+        {loadError ? (
+          <p className={cn(styles.feedback, styles.errorText)} role="alert">
+            {loadError}
+          </p>
+        ) : null}
 
-          <form onSubmit={onSubmit}>
-            <div className={styles.tableContent}>
-              <div className={styles.toolbar}>
-                <div className={styles.monthField}>
-                  <Label htmlFor="monthly-expenses-month">Mes</Label>
-                  <Input
-                    id="monthly-expenses-month"
-                    onChange={(event) => onMonthChange(event.target.value)}
-                    type="month"
-                    value={month}
-                  />
-                  <p className={styles.monthHint}>
-                    Cambiá el mes para guardar otra planilla mensual.
-                  </p>
-                </div>
-
-                <Button onClick={onAddExpense} type="button" variant="outline">
-                  Agregar gasto
-                </Button>
-              </div>
-
-              <div className={styles.tableHeader}>
-                <h2 className={styles.tableTitle}>Detalle del mes</h2>
-                <p className={styles.tableDescription}>
-                  El total de cada fila se calcula automáticamente como subtotal
-                  por cantidad de veces al mes.
-                </p>
-              </div>
-
-              <div className={styles.tableWrapper}>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className={styles.headCell}>
-                        Descripción
-                      </TableHead>
-                      <TableHead className={styles.headCell}>Moneda</TableHead>
-                      <TableHead className={styles.headCell}>Subtotal</TableHead>
-                      <TableHead className={styles.headCell}>
-                        Cantidad de veces por mes
-                      </TableHead>
-                      <TableHead className={styles.headCell}>Total</TableHead>
-                      <TableHead className={styles.headCell}>
-                        Deuda / cuotas
-                      </TableHead>
-                      <TableHead className={styles.headCell}>Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.map((row, index) => {
-                      const descriptionFieldId = `expense-description-${row.id}`;
-                      const subtotalFieldId = `expense-subtotal-${row.id}`;
-                      const occurrencesFieldId = `expense-occurrences-${row.id}`;
-                      const totalFieldId = `expense-total-${row.id}`;
-                      const loanToggleFieldId = `expense-loan-toggle-${row.id}`;
-                      const loanStartFieldId = `expense-loan-start-${row.id}`;
-                      const installmentCountFieldId =
-                        `expense-installment-count-${row.id}`;
-                      const loanEndFieldId = `expense-loan-end-${row.id}`;
-
-                      return (
-                        <TableRow key={row.id}>
-                          <TableCell>
-                            <Label
-                              className={styles.srOnly}
-                              htmlFor={descriptionFieldId}
-                            >
-                              Descripción
-                            </Label>
-                            <Input
-                              aria-label="Descripción"
-                              className={cn(
-                                styles.cellField,
-                                styles.descriptionField,
-                              )}
-                              id={descriptionFieldId}
-                              onChange={(event) =>
-                                onExpenseFieldChange(
-                                  row.id,
-                                  "description",
-                                  event.target.value,
-                                )
-                              }
-                              placeholder="Ej. agua, expensas, alquiler"
-                              type="text"
-                              value={row.description}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Select
-                              onValueChange={(value) =>
-                                onExpenseFieldChange(row.id, "currency", value)
-                              }
-                              value={row.currency}
-                            >
-                              <SelectTrigger
-                                aria-label="Moneda"
-                                className={styles.currencyField}
-                              >
-                                <SelectValue placeholder="Moneda" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="ARS">ARS</SelectItem>
-                                <SelectItem value="USD">USD</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <Label
-                              className={styles.srOnly}
-                              htmlFor={subtotalFieldId}
-                            >
-                              Subtotal
-                            </Label>
-                            <Input
-                              aria-label="Subtotal"
-                              className={cn(
-                                styles.cellField,
-                                styles.numericField,
-                              )}
-                              id={subtotalFieldId}
-                              inputMode="decimal"
-                              min="0"
-                              onChange={(event) =>
-                                onExpenseFieldChange(
-                                  row.id,
-                                  "subtotal",
-                                  event.target.value,
-                                )
-                              }
-                              step="0.01"
-                              type="number"
-                              value={row.subtotal}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Label
-                              className={styles.srOnly}
-                              htmlFor={occurrencesFieldId}
-                            >
-                              Cantidad de veces por mes
-                            </Label>
-                            <Input
-                              aria-label="Cantidad de veces por mes"
-                              className={cn(
-                                styles.cellField,
-                                styles.numericField,
-                              )}
-                              id={occurrencesFieldId}
-                              inputMode="numeric"
-                              min="0"
-                              onChange={(event) =>
-                                onExpenseFieldChange(
-                                  row.id,
-                                  "occurrencesPerMonth",
-                                  event.target.value,
-                                )
-                              }
-                              step="1"
-                              type="number"
-                              value={row.occurrencesPerMonth}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Label className={styles.srOnly} htmlFor={totalFieldId}>
-                              Total
-                            </Label>
-                            <Input
-                              aria-label="Total"
-                              className={cn(
-                                styles.cellField,
-                                styles.totalField,
-                              )}
-                              id={totalFieldId}
-                              readOnly
-                              type="text"
-                              value={row.total}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <div className={styles.loanCell}>
-                              <div className={styles.loanToggleRow}>
-                                <input
-                                  checked={row.isLoan}
-                                  className={styles.loanToggle}
-                                  id={loanToggleFieldId}
-                                  onChange={(event) =>
-                                    onExpenseLoanToggle(row.id, event.target.checked)
-                                  }
-                                  type="checkbox"
-                                />
-                                <div className={styles.loanToggleLabelGroup}>
-                                  <Label htmlFor={loanToggleFieldId}>
-                                    Es deuda/préstamo
-                                  </Label>
-                                  <LoanInfoPopover message={loanHelpMessage} />
-                                </div>
-                              </div>
-
-                              {row.isLoan ? (
-                                <div className={styles.loanDetails}>
-                                  <div className={styles.loanFieldGroup}>
-                                    <Label>Prestador (opcional)</Label>
-                                    <LenderPicker
-                                      options={lenders}
-                                      onSelect={(lenderId) =>
-                                        onExpenseLenderSelect(row.id, lenderId)
-                                      }
-                                      selectedLenderId={row.lenderId}
-                                      selectedLenderName={row.lenderName}
-                                    />
-                                  </div>
-
-                                  <div className={styles.loanFieldGrid}>
-                                    <div className={styles.loanFieldGroup}>
-                                      <Label htmlFor={loanStartFieldId}>
-                                        Inicio de la deuda
-                                      </Label>
-                                      <Input
-                                        aria-label="Inicio de la deuda"
-                                        className={styles.cellField}
-                                        id={loanStartFieldId}
-                                        onChange={(event) =>
-                                          onExpenseFieldChange(
-                                            row.id,
-                                            "startMonth",
-                                            event.target.value,
-                                          )
-                                        }
-                                        type="month"
-                                        value={row.startMonth}
-                                      />
-                                    </div>
-
-                                    <div className={styles.loanFieldGroup}>
-                                      <Label htmlFor={installmentCountFieldId}>
-                                        Cantidad total de cuotas
-                                      </Label>
-                                      <Input
-                                        aria-label="Cantidad total de cuotas"
-                                        className={styles.cellField}
-                                        id={installmentCountFieldId}
-                                        inputMode="numeric"
-                                        min="1"
-                                        onChange={(event) =>
-                                          onExpenseFieldChange(
-                                            row.id,
-                                            "installmentCount",
-                                            event.target.value,
-                                          )
-                                        }
-                                        step="1"
-                                        type="number"
-                                        value={row.installmentCount}
-                                      />
-                                    </div>
-
-                                    <div className={styles.loanFieldGroup}>
-                                      <Label htmlFor={loanEndFieldId}>
-                                        Fin de la deuda
-                                      </Label>
-                                      <Input
-                                        aria-label="Fin de la deuda"
-                                        className={styles.cellField}
-                                        id={loanEndFieldId}
-                                        readOnly
-                                        type="month"
-                                        value={row.loanEndMonth}
-                                      />
-                                    </div>
-                                  </div>
-
-                                  <p className={styles.loanStatus} role="status">
-                                    {row.loanProgress ||
-                                      "Completá inicio y cuotas para ver el avance."}
-                                  </p>
-                                </div>
-                              ) : null}
-                            </div>
-                          </TableCell>
-                          <TableCell className={styles.actionsCell}>
-                            <ConfirmDeleteButton
-                              message="¿Querés eliminar este gasto?"
-                              menuAriaLabel={`Abrir acciones del gasto ${index + 1}`}
-                              onConfirm={() => onRemoveExpense(row.id)}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-
-              <p
-                aria-live="polite"
-                className={cn(
-                  styles.feedback,
-                  feedbackTone === "error" && styles.errorText,
-                  feedbackTone === "success" && styles.successText,
-                )}
-                role={feedbackTone === "error" ? "alert" : undefined}
-              >
-                {feedbackMessage}
+        <div className={styles.tableContent}>
+          <div className={styles.toolbar}>
+            <div className={styles.monthField}>
+              <Label htmlFor="monthly-expenses-month">Mes</Label>
+              <Input
+                id="monthly-expenses-month"
+                onChange={(event) => onMonthChange(event.target.value)}
+                type="month"
+                value={month}
+              />
+              <p className={styles.monthHint}>
+                Cambiá el mes para guardar otra planilla mensual.
               </p>
+            </div>
 
-              <div className={styles.actions}>
-                <div className={styles.primaryActions}>
-                  <Button disabled={actionDisabled} type="submit">
-                    {isSubmitting ? "Guardando gastos..." : "Guardar gastos"}
-                  </Button>
-                  <Button onClick={onAddExpense} type="button" variant="outline">
-                    Agregar otra fila
-                  </Button>
-                </div>
-              </div>
+            <Button
+              disabled={actionDisabled}
+              onClick={onAddExpense}
+              type="button"
+              variant="outline"
+            >
+              Agregar gasto
+            </Button>
+          </div>
 
-              {result ? (
-                <div className={styles.result}>
-                  <p className={styles.resultLine}>Archivo: {result.name}</p>
-                  <p className={styles.resultLine}>Mes: {result.month}</p>
-                  <p className={styles.resultLine}>Id: {result.id}</p>
-                  {result.viewUrl ? (
-                    <Button asChild className={styles.resultLink} variant="link">
-                      <a href={result.viewUrl} rel="noreferrer" target="_blank">
-                        Abrir archivo mensual en Drive
-                      </a>
-                    </Button>
-                  ) : null}
-                </div>
+          <div className={styles.tableHeader}>
+            <h2 className={styles.tableTitle}>Detalle del mes</h2>
+            <p className={styles.tableDescription}>
+              Gestioná cada gasto desde su menú de acciones y guardalo en un
+              Sheet dedicado.
+            </p>
+          </div>
+
+          <div className={styles.tableWrapper}>
+            <DataTable
+              columns={columns}
+              data={rows}
+              emptyMessage="No hay gastos cargados para este mes."
+              filterColumnId="description"
+              filterLabel="Filtrar gastos"
+              filterPlaceholder="Filtrar gastos por descripción"
+            />
+          </div>
+
+          <p
+            aria-live="polite"
+            className={cn(
+              styles.feedback,
+              feedbackTone === "error" && styles.errorText,
+              feedbackTone === "success" && styles.successText,
+            )}
+            role={feedbackTone === "error" ? "alert" : undefined}
+          >
+            {feedbackMessage}
+          </p>
+
+          {result ? (
+            <div className={styles.result}>
+              <p className={styles.resultLine}>Archivo: {result.name}</p>
+              <p className={styles.resultLine}>Mes: {result.month}</p>
+              <p className={styles.resultLine}>Id: {result.id}</p>
+              {result.viewUrl ? (
+                <Button asChild className={styles.resultLink} variant="link">
+                  <a href={result.viewUrl} rel="noreferrer" target="_blank">
+                    Abrir archivo mensual en Drive
+                  </a>
+                </Button>
               ) : null}
             </div>
-          </form>
+          ) : null}
+        </div>
+
+        <ExpenseSheet
+          actionDisabled={actionDisabled || isSubmitting}
+          changedFields={changedFields}
+          draft={draft}
+          isOpen={isExpenseSheetOpen}
+          isSubmitting={isSubmitting}
+          lenders={lenders}
+          mode={sheetMode}
+          onFieldChange={onExpenseFieldChange}
+          onLenderSelect={onExpenseLenderSelect}
+          onLoanToggle={onExpenseLoanToggle}
+          onRequestClose={onRequestCloseExpenseSheet}
+          onSave={onSaveExpense}
+          onUnsavedChangesDiscard={onUnsavedChangesDiscard}
+          onUnsavedChangesSave={onSaveUnsavedChanges}
+          showUnsavedChangesDialog={showUnsavedChangesDialog}
+          validationMessage={validationMessage}
+        />
       </div>
     </section>
   );

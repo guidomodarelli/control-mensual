@@ -3,14 +3,19 @@ import { Info, X } from "lucide-react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 import styles from "./loan-info-popover.module.scss";
 
 interface LoanInfoPopoverProps {
   message: string;
+  usePortal?: boolean;
 }
 
-export function LoanInfoPopover({ message }: LoanInfoPopoverProps) {
+export function LoanInfoPopover({
+  message,
+  usePortal = true,
+}: LoanInfoPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [popoverStyle, setPopoverStyle] = useState<{
     left: number;
@@ -113,7 +118,26 @@ export function LoanInfoPopover({ message }: LoanInfoPopoverProps) {
         <Info aria-hidden="true" className={styles.triggerIcon} />
       </Button>
 
-      {isOpen && popoverStyle && typeof document !== "undefined"
+      {isOpen && !usePortal ? (
+        <div
+          aria-label="Ayuda sobre deuda o préstamo"
+          className={cn(styles.popover, styles.inlinePopover)}
+          ref={popoverRef}
+          role="dialog"
+        >
+          <Button
+            aria-label="Cerrar ayuda sobre deuda o préstamo"
+            className={styles.closeButton}
+            onClick={() => setIsOpen(false)}
+            size="icon-xs"
+            type="button"
+            variant="ghost"
+          >
+            <X aria-hidden="true" className={styles.closeIcon} />
+          </Button>
+          <p className={styles.message}>{message}</p>
+        </div>
+      ) : isOpen && popoverStyle && typeof document !== "undefined"
         ? createPortal(
             <div className={styles.portalLayer}>
               <div
