@@ -437,10 +437,10 @@ describe("MonthlyExpensesPage", () => {
 
     expect(screen.queryByText("Seleccioná un prestador")).not.toBeInTheDocument();
     expect(
-      screen.getByText(
+      screen.queryByText(
         "Marcá el check si este gasto representa una deuda con una persona o entidad.",
       ),
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
 
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
 
@@ -454,6 +454,70 @@ describe("MonthlyExpensesPage", () => {
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
 
     expect(screen.queryByText("Seleccioná un prestador")).not.toBeInTheDocument();
+  });
+
+  it("shows the debt info popover and closes it from the close button or outside click", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    expect(
+      screen.queryByText(
+        "Marcá el check si este gasto representa una deuda con una persona o entidad.",
+      ),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Más información sobre deuda o préstamo",
+      }),
+    );
+
+    expect(
+      screen.getByText(
+        "Marcá el check si este gasto representa una deuda con una persona o entidad.",
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Cerrar ayuda sobre deuda o préstamo",
+      }),
+    );
+
+    expect(
+      screen.queryByText(
+        "Marcá el check si este gasto representa una deuda con una persona o entidad.",
+      ),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Más información sobre deuda o préstamo",
+      }),
+    );
+
+    expect(
+      screen.getByText(
+        "Marcá el check si este gasto representa una deuda con una persona o entidad.",
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(document.body);
+
+    expect(
+      screen.queryByText(
+        "Marcá el check si este gasto representa una deuda con una persona o entidad.",
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it("recalculates the loan progress when the selected month changes", async () => {

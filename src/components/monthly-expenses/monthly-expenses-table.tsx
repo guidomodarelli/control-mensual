@@ -29,6 +29,7 @@ import {
   LenderPicker,
   type LenderOption,
 } from "./lender-picker";
+import { LoanInfoPopover } from "./loan-info-popover";
 import styles from "./monthly-expenses-table.module.scss";
 
 type MonthlyExpenseCurrency = "ARS" | "USD";
@@ -116,6 +117,8 @@ export function MonthlyExpensesTable({
     : isAuthenticated
       ? "active"
       : "inactive";
+  const loanHelpMessage =
+    "Marcá el check si este gasto representa una deuda con una persona o entidad.";
 
   return (
     <section
@@ -359,9 +362,12 @@ export function MonthlyExpensesTable({
                                   }
                                   type="checkbox"
                                 />
-                                <Label htmlFor={loanToggleFieldId}>
-                                  Es deuda/préstamo
-                                </Label>
+                                <div className={styles.loanToggleLabelGroup}>
+                                  <Label htmlFor={loanToggleFieldId}>
+                                    Es deuda/préstamo
+                                  </Label>
+                                  <LoanInfoPopover message={loanHelpMessage} />
+                                </div>
                               </div>
 
                               {row.isLoan ? (
@@ -442,12 +448,7 @@ export function MonthlyExpensesTable({
                                       "Completá inicio y cuotas para ver el avance."}
                                   </p>
                                 </div>
-                              ) : (
-                                <p className={styles.loanHint}>
-                                  Marcá el check si este gasto representa una deuda
-                                  con una persona o entidad.
-                                </p>
-                              )}
+                              ) : null}
                             </div>
                           </TableCell>
                           <TableCell className={styles.actionsCell}>
