@@ -20,6 +20,7 @@ const eslintConfig = defineConfig([
             {
               disallow: [
                 "application",
+                "client-adapters",
                 "components",
                 "infrastructure",
                 "lib",
@@ -28,11 +29,23 @@ const eslintConfig = defineConfig([
               from: "domain",
             },
             {
-              disallow: ["components", "infrastructure", "lib", "pages"],
+              disallow: [
+                "client-adapters",
+                "components",
+                "infrastructure",
+                "lib",
+                "pages",
+              ],
               from: "application",
             },
             {
-              disallow: ["application", "domain", "infrastructure", "pages"],
+              disallow: [
+                "application",
+                "client-adapters",
+                "domain",
+                "infrastructure",
+                "pages",
+              ],
               from: "components",
             },
             {
@@ -40,7 +53,7 @@ const eslintConfig = defineConfig([
               from: "pages",
             },
             {
-              disallow: ["components", "lib", "pages"],
+              disallow: ["client-adapters", "components", "lib", "pages"],
               from: "infrastructure",
             },
           ],
@@ -55,6 +68,17 @@ const eslintConfig = defineConfig([
         { mode: "full", pattern: "src/pages/**/*", type: "pages" },
         { mode: "full", pattern: "src/components/*", type: "components" },
         { mode: "full", pattern: "src/components/**/*", type: "components" },
+        { mode: "full", pattern: "src/lib/**/*api*", type: "client-adapters" },
+        {
+          mode: "full",
+          pattern: "src/lib/**/*client*",
+          type: "client-adapters",
+        },
+        {
+          mode: "full",
+          pattern: "src/lib/**/*adapter*",
+          type: "client-adapters",
+        },
         { mode: "full", pattern: "src/lib/*", type: "lib" },
         { mode: "full", pattern: "src/lib/**/*", type: "lib" },
         {

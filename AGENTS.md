@@ -97,6 +97,7 @@ src/
   - Presentational components by default.
   - Receive state, derived messages, results, and callbacks through props when an interaction depends on auth session state, HTTP requests, or multi-step UI workflows.
   - Do not call module infrastructure adapters directly from presentational components.
+  - Do not import client adapters from `lib` either. Files named like `*api*`, `*client*`, or `*adapter*` under `src/lib` must be treated as adapter code and kept out of presentational components.
 - `domain`
   - Pure business rules, entities, value objects, and ports.
   - No framework, HTTP, Google SDK, or persistence details.
@@ -111,6 +112,7 @@ src/
 - `lib`
   - Reserved for framework-safe helpers, UI utilities, and client-only adapters that are not business rules.
   - `application` and `domain` must never import from `lib`.
+  - If a file under `lib` wraps endpoint calls or transport concerns, name it clearly (`*api*`, `*client*`, `*adapter*`) so lint can classify it as adapter code.
   - If a helper starts encoding use-case rules, provider details, or DTO mapping, move it into the owning module.
 
 ## 3. Bootstrap Standards
