@@ -229,12 +229,11 @@ export function MonthlyExpensesTable({
         <div className={styles.headerTopRow}>
           <div className={styles.header}>
             <h1 className={styles.pageTitle} id="monthly-expenses-title">
-              Registro mensual de gastos
+              Gastos del mes
             </h1>
             <p className={styles.pageDescription}>
-              Organizá servicios, alquileres, expensas y cualquier gasto
-              recurrente en una tabla mensual con guardado en Google Drive dentro
-              de la carpeta `{VISIBLE_DRIVE_FOLDER_NAME}`.
+              Cargá, editá y guardá tus gastos mensuales en Google Drive dentro de
+              la carpeta `{VISIBLE_DRIVE_FOLDER_NAME}`.
             </p>
           </div>
           <Badge

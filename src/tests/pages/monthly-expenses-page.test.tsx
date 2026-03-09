@@ -163,7 +163,7 @@ describe("MonthlyExpensesPage", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Registro mensual de gastos" }),
+      screen.getByRole("heading", { name: "Gastos del mes" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Detalle del mes" }),
