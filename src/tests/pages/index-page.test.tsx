@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useSession } from "next-auth/react";
 
 import type { StorageBootstrapResult } from "@/modules/storage/application/results/storage-bootstrap";
+import { VISIBLE_DRIVE_FOLDER_NAME } from "@/modules/storage/shared/visible-drive-folder-name";
 import HomePage from "@/pages/index";
 
 jest.mock("next-auth/react", () => ({
@@ -184,7 +185,14 @@ describe("HomePage", () => {
     });
 
     expect(
-      screen.getByText("Archivo guardado en Drive con id user-file-id."),
+      screen.getByText(
+        `Archivo guardado en Drive con id user-file-id dentro de la carpeta ${VISIBLE_DRIVE_FOLDER_NAME}.`,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `Carpeta en Drive: ${VISIBLE_DRIVE_FOLDER_NAME}`,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Abrir archivo en Drive" }),

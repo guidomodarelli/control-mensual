@@ -14,6 +14,7 @@ import {
 } from "@/components/storage-playground/storage-playground";
 import { getStorageBootstrap } from "@/modules/storage/application/queries/get-storage-bootstrap";
 import type { StorageBootstrapResult } from "@/modules/storage/application/results/storage-bootstrap";
+import { VISIBLE_DRIVE_FOLDER_NAME } from "@/modules/storage/shared/visible-drive-folder-name";
 import {
   saveApplicationSettingsViaApi,
   saveUserFileViaApi,
@@ -210,7 +211,7 @@ export default function HomePage({
         ...currentState,
         isSubmitting: false,
         result,
-        successMessage: `Archivo guardado en Drive con id ${result.id}.`,
+        successMessage: `Archivo guardado en Drive con id ${result.id} dentro de la carpeta ${VISIBLE_DRIVE_FOLDER_NAME}.`,
       }));
     } catch (error) {
       setUserFilesForm((currentState) => ({
@@ -258,7 +259,7 @@ export default function HomePage({
           userFilesForm={userFilesForm}
           userFilesHint={
             userFilesValidationMessage ??
-            "Usá este guardado para probar archivos visibles del usuario."
+            `Usá este guardado para probar archivos visibles del usuario dentro de la carpeta ${VISIBLE_DRIVE_FOLDER_NAME}.`
           }
         />
       </div>

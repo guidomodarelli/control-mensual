@@ -1,5 +1,7 @@
 import { render, screen } from "@testing-library/react";
 
+import { VISIBLE_DRIVE_FOLDER_NAME } from "@/modules/storage/shared/visible-drive-folder-name";
+
 import {
   StoragePlayground,
   type StoragePlaygroundFormState,
@@ -84,6 +86,11 @@ describe("StoragePlayground", () => {
     expect(
       screen.getByText("Sesión Google activa. Ya podés guardar en Drive."),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `Este formulario crea un archivo visible en My Drive dentro de la carpeta \`${VISIBLE_DRIVE_FOLDER_NAME}\` con el alcance mínimo \`drive.file\`.`,
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText("Cuenta activa: Gus")).toBeInTheDocument();
     expect(screen.getByText("Email: gus@example.com")).toBeInTheDocument();
   });
@@ -109,7 +116,8 @@ describe("StoragePlayground", () => {
             name: "expenses.csv",
             viewUrl: "https://drive.google.com/file/d/user-file-id/view",
           },
-          successMessage: "Archivo guardado en Drive con id user-file-id.",
+          successMessage:
+            `Archivo guardado en Drive con id user-file-id dentro de la carpeta ${VISIBLE_DRIVE_FOLDER_NAME}.`,
         }}
       />,
     );
@@ -118,7 +126,14 @@ describe("StoragePlayground", () => {
       screen.getByText("Configuración guardada en Drive con id settings-file-id."),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Archivo guardado en Drive con id user-file-id."),
+      screen.getByText(
+        `Archivo guardado en Drive con id user-file-id dentro de la carpeta ${VISIBLE_DRIVE_FOLDER_NAME}.`,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `Carpeta en Drive: ${VISIBLE_DRIVE_FOLDER_NAME}`,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Abrir archivo en Drive" }),

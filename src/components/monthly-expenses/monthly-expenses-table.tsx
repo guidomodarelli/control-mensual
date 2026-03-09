@@ -13,12 +13,10 @@ import { DataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { VISIBLE_DRIVE_FOLDER_NAME } from "@/modules/storage/shared/visible-drive-folder-name";
 
 import type { LenderOption } from "./lender-picker";
 import styles from "./monthly-expenses-table.module.scss";
-
-const VISIBLE_DRIVE_FOLDER_LABEL =
-  "Mis finanzas (no borrar: pertenece a la app)";
 
 type MonthlyExpenseCurrency = "ARS" | "USD";
 
@@ -236,7 +234,7 @@ export function MonthlyExpensesTable({
             <p className={styles.pageDescription}>
               Organizá servicios, alquileres, expensas y cualquier gasto
               recurrente en una tabla mensual con guardado en Google Drive dentro
-              de la carpeta `{VISIBLE_DRIVE_FOLDER_LABEL}`.
+              de la carpeta `{VISIBLE_DRIVE_FOLDER_NAME}`.
             </p>
           </div>
           <Badge
@@ -334,7 +332,7 @@ export function MonthlyExpensesTable({
             <div className={styles.result}>
               <p className={styles.resultLine}>Archivo: {result.name}</p>
               <p className={styles.resultLine}>
-                Carpeta en Drive: {VISIBLE_DRIVE_FOLDER_LABEL}
+                Carpeta en Drive: {VISIBLE_DRIVE_FOLDER_NAME}
               </p>
               <p className={styles.resultLine}>Mes: {result.month}</p>
               <p className={styles.resultLine}>Id: {result.id}</p>

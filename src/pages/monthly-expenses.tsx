@@ -58,6 +58,7 @@ import {
 } from "@/modules/monthly-expenses/infrastructure/api/monthly-expenses-api";
 import { getStorageBootstrap } from "@/modules/storage/application/queries/get-storage-bootstrap";
 import type { StorageBootstrapResult } from "@/modules/storage/application/results/storage-bootstrap";
+import { VISIBLE_DRIVE_FOLDER_NAME } from "@/modules/storage/shared/visible-drive-folder-name";
 
 import styles from "./monthly-expenses.module.scss";
 
@@ -657,7 +658,7 @@ export default function MonthlyExpensesPage({
         isSubmitting: false,
         result,
         rows,
-        successMessage: `Gastos mensuales guardados en Drive con id ${result.id}.`,
+        successMessage: `Gastos mensuales guardados en Drive con id ${result.id} dentro de la carpeta ${VISIBLE_DRIVE_FOLDER_NAME}.`,
       }));
       await refreshLoansReport();
       return true;

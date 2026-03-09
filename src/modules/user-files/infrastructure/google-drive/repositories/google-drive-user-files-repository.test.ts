@@ -1,5 +1,7 @@
 import type { drive_v3 } from "googleapis";
 
+import { VISIBLE_DRIVE_FOLDER_NAME } from "@/modules/storage/shared/visible-drive-folder-name";
+
 import { GoogleDriveUserFilesRepository } from "./google-drive-user-files-repository";
 
 function createDriveClientMock() {
@@ -30,7 +32,7 @@ describe("GoogleDriveUserFilesRepository", () => {
         data: {
           id: "visible-folder-id",
           mimeType: "application/vnd.google-apps.folder",
-          name: "Mis finanzas (no borrar: pertenece a la app)",
+          name: VISIBLE_DRIVE_FOLDER_NAME,
         },
       })
       .mockResolvedValueOnce({
@@ -54,7 +56,7 @@ describe("GoogleDriveUserFilesRepository", () => {
       fields: "id,name,mimeType",
       requestBody: {
         mimeType: "application/vnd.google-apps.folder",
-        name: "Mis finanzas (no borrar: pertenece a la app)",
+        name: VISIBLE_DRIVE_FOLDER_NAME,
       },
     });
     expect(files.create).toHaveBeenNthCalledWith(2, {
@@ -84,7 +86,7 @@ describe("GoogleDriveUserFilesRepository", () => {
         files: [
           {
             id: "visible-folder-id",
-            name: "Mis finanzas (no borrar: pertenece a la app)",
+            name: VISIBLE_DRIVE_FOLDER_NAME,
           },
         ],
       },

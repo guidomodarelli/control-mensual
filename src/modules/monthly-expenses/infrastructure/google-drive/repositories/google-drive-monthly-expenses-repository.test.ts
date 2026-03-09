@@ -1,5 +1,7 @@
 import type { drive_v3 } from "googleapis";
 
+import { VISIBLE_DRIVE_FOLDER_NAME } from "@/modules/storage/shared/visible-drive-folder-name";
+
 import { GoogleDriveMonthlyExpensesRepository } from "./google-drive-monthly-expenses-repository";
 
 function createDriveClientMock() {
@@ -43,7 +45,7 @@ describe("GoogleDriveMonthlyExpensesRepository", () => {
         data: {
           id: "monthly-expenses-folder-id",
           mimeType: "application/vnd.google-apps.folder",
-          name: "Mis finanzas (no borrar: pertenece a la app)",
+          name: VISIBLE_DRIVE_FOLDER_NAME,
         },
       })
       .mockResolvedValueOnce({
@@ -76,7 +78,7 @@ describe("GoogleDriveMonthlyExpensesRepository", () => {
       expect.objectContaining({
         requestBody: {
           mimeType: "application/vnd.google-apps.folder",
-          name: "Mis finanzas (no borrar: pertenece a la app)",
+          name: VISIBLE_DRIVE_FOLDER_NAME,
         },
       }),
     );
@@ -112,7 +114,7 @@ describe("GoogleDriveMonthlyExpensesRepository", () => {
           files: [
             {
               id: "monthly-expenses-folder-id",
-              name: "Mis finanzas (no borrar: pertenece a la app)",
+              name: VISIBLE_DRIVE_FOLDER_NAME,
             },
           ],
         },
@@ -186,7 +188,7 @@ describe("GoogleDriveMonthlyExpensesRepository", () => {
           files: [
             {
               id: "monthly-expenses-folder-id",
-              name: "Mis finanzas (no borrar: pertenece a la app)",
+              name: VISIBLE_DRIVE_FOLDER_NAME,
             },
           ],
         },

@@ -8,6 +8,7 @@ import {
   getSafeMonthlyExpensesErrorMessage,
 } from "@/modules/monthly-expenses/application/queries/get-monthly-expenses-page-feedback";
 import type { StorageBootstrapResult } from "@/modules/storage/application/results/storage-bootstrap";
+import { VISIBLE_DRIVE_FOLDER_NAME } from "@/modules/storage/shared/visible-drive-folder-name";
 import MonthlyExpensesPage, {
   getReportProviderFilterOptions,
 } from "@/pages/monthly-expenses";
@@ -245,7 +246,12 @@ describe("MonthlyExpensesPage", () => {
     expect(screen.getByText("Internet")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Gastos mensuales guardados en Drive con id monthly-expenses-file-id.",
+        `Gastos mensuales guardados en Drive con id monthly-expenses-file-id dentro de la carpeta ${VISIBLE_DRIVE_FOLDER_NAME}.`,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `Carpeta en Drive: ${VISIBLE_DRIVE_FOLDER_NAME}`,
       ),
     ).toBeInTheDocument();
     expect(

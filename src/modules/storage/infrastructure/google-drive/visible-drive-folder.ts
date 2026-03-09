@@ -1,14 +1,13 @@
 import type { drive_v3 } from "googleapis";
 
+import { VISIBLE_DRIVE_FOLDER_NAME } from "@/modules/storage/shared/visible-drive-folder-name";
+
 import { mapGoogleDriveStorageError } from "./google-drive-storage-error";
 
 const DRIVE_FILES_CREATE_ENDPOINT = "drive.files.create";
 const DRIVE_FILES_LIST_ENDPOINT = "drive.files.list";
 const DRIVE_FOLDER_FIELDS = "id,name,mimeType";
 const DRIVE_FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
-
-export const VISIBLE_DRIVE_FOLDER_NAME =
-  "Mis finanzas (no borrar: pertenece a la app)";
 
 function escapeGoogleDriveQueryValue(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");

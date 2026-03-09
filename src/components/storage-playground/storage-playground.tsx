@@ -6,14 +6,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { VISIBLE_DRIVE_FOLDER_NAME } from "@/modules/storage/shared/visible-drive-folder-name";
 import {
   cn,
 } from "@/lib/utils";
 
 import styles from "./storage-playground.module.scss";
-
-const VISIBLE_DRIVE_FOLDER_LABEL =
-  "Mis finanzas (no borrar: pertenece a la app)";
 
 export interface StoragePlaygroundFormValues {
   content: string;
@@ -230,7 +228,7 @@ export function StoragePlayground({
                 <h3 className={styles.formTitle}>Guardar archivo del usuario</h3>
                 <p className={styles.formDescription}>
                   Este formulario crea un archivo visible en My Drive dentro de la
-                  carpeta `{VISIBLE_DRIVE_FOLDER_LABEL}` con el alcance mínimo
+                  carpeta `{VISIBLE_DRIVE_FOLDER_NAME}` con el alcance mínimo
                   `drive.file`.
                 </p>
               </div>
@@ -312,7 +310,7 @@ export function StoragePlayground({
                     Nombre: {userFilesForm.result.name}
                   </p>
                   <p className={styles.resultLine}>
-                    Carpeta en Drive: {VISIBLE_DRIVE_FOLDER_LABEL}
+                    Carpeta en Drive: {VISIBLE_DRIVE_FOLDER_NAME}
                   </p>
                   <p className={styles.resultLine}>
                     MIME type: {userFilesForm.result.mimeType}
