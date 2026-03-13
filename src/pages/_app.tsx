@@ -1,7 +1,7 @@
 import "@/styles/globals.css";
 import "@/styles/globals.scss";
 
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Geist_Mono } from "next/font/google";
 import type { AppProps } from "next/app";
 import { ThemeProvider } from "next-themes";
 import type { Session } from "next-auth";
@@ -10,9 +10,9 @@ import { useEffect } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
 
-const geistSans = Geist({
+const interSans = Inter({
   subsets: ["latin"],
-  variable: "--font-geist-sans",
+  variable: "--font-inter-sans",
 });
 
 const geistMono = Geist_Mono({
@@ -51,7 +51,7 @@ export default function App({
         disableTransitionOnChange
         enableSystem
       >
-        <div className={`${geistSans.variable} ${geistMono.variable}`}>
+        <div className={`${interSans.className} ${interSans.variable} ${geistMono.variable}`}>
           <Component {...restPageProps} />
           <Toaster closeButton position="top-right" richColors />
         </div>
