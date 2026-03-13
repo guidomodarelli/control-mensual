@@ -1,5 +1,10 @@
 .content {
-  width: min(42rem, 100vw);
+  width: min(42rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
   padding: 0;
 }
 

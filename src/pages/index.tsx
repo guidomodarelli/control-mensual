@@ -815,7 +815,6 @@ export default function MonthlyExpensesPage({
       originalRow: { ...draft },
       showUnsavedChangesDialog: false,
     }));
-    toast("Nuevo gasto listo para completar.");
   };
 
   const handleEditExpense = (expenseId: string) => {

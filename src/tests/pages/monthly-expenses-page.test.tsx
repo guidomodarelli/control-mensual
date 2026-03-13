@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useRouter } from "next/router";
 import { signIn, signOut, useSession } from "next-auth/react";
 import type { ReactElement } from "react";
+import { toast } from "sonner";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
@@ -26,10 +27,33 @@ jest.mock("next-auth/react", () => ({
   useSession: jest.fn(),
 }));
 
+jest.mock("sonner", () => {
+  const mockToast = Object.assign(jest.fn(), {
+    error: jest.fn(),
+    info: jest.fn(),
+    promise: jest.fn((promise: Promise<unknown>) => promise),
+    success: jest.fn(),
+    warning: jest.fn(),
+  });
+
+  return {
+    toast: mockToast,
+  };
+});
+
+type MockedToast = jest.Mock & {
+  error: jest.Mock;
+  info: jest.Mock;
+  promise: jest.Mock;
+  success: jest.Mock;
+  warning: jest.Mock;
+};
+
 const mockedUseRouter = jest.mocked(useRouter);
 const mockedUseSession = jest.mocked(useSession);
 const mockedSignIn = jest.mocked(signIn);
 const mockedSignOut = jest.mocked(signOut);
+const mockedToast = toast as unknown as MockedToast;
 const originalFetch = global.fetch;
 
 function renderWithProviders(ui: ReactElement) {
@@ -152,6 +176,12 @@ describe("MonthlyExpensesPage", () => {
   beforeEach(() => {
     mockedSignIn.mockReset();
     mockedSignOut.mockReset();
+    mockedToast.mockReset();
+    mockedToast.error.mockReset();
+    mockedToast.info.mockReset();
+    mockedToast.promise.mockReset();
+    mockedToast.success.mockReset();
+    mockedToast.warning.mockReset();
     mockedUseRouter.mockReturnValue(
       createMockRouter() as unknown as ReturnType<typeof useRouter>,
     );
@@ -269,7 +299,7 @@ describe("MonthlyExpensesPage", () => {
     );
   });
 
-  it("opens a sheet to create a new expense and only saves on explicit confirmation", async () => {
+  it("opens a modal to create a new expense, without showing an opening toast", async () => {
     const user = userEvent.setup();
     const fetchMock = createMonthlyExpensesFetchMock();
 
@@ -298,9 +328,12 @@ describe("MonthlyExpensesPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
 
+    const overlay = document.querySelector("[data-slot='dialog-overlay']");
+    expect(overlay).not.toBeNull();
     expect(
       screen.getByRole("heading", { name: "Nuevo gasto" }),
     ).toBeInTheDocument();
+    expect(mockedToast).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
 
     await user.type(screen.getByLabelText("Descripción"), "Internet");
@@ -646,7 +679,7 @@ describe("MonthlyExpensesPage", () => {
     await user.clear(screen.getByLabelText("Descripción"));
     await user.type(screen.getByLabelText("Descripción"), "Agua filtrada");
 
-    const overlay = document.querySelector("[data-slot='sheet-overlay']");
+    const overlay = document.querySelector("[data-slot='dialog-overlay']");
     expect(overlay).not.toBeNull();
     await user.click(overlay as HTMLElement);
 
@@ -722,7 +755,7 @@ describe("MonthlyExpensesPage", () => {
     await user.clear(screen.getByLabelText("Descripción"));
     await user.type(screen.getByLabelText("Descripción"), "Agua descartada");
 
-    const overlay = document.querySelector("[data-slot='sheet-overlay']");
+    const overlay = document.querySelector("[data-slot='dialog-overlay']");
     expect(overlay).not.toBeNull();
     await user.click(overlay as HTMLElement);
     await user.click(

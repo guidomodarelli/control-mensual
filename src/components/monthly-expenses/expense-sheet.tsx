@@ -46,13 +46,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 import {
@@ -310,7 +310,7 @@ function ExpenseSheetContent({
 
   return (
     <>
-      <Sheet
+      <Dialog
         onOpenChange={(nextOpen) => {
           if (!nextOpen) {
             onRequestClose();
@@ -318,7 +318,7 @@ function ExpenseSheetContent({
         }}
         open={isOpen}
       >
-        <SheetContent
+        <DialogContent
           className={styles.content}
           onEscapeKeyDown={(event) => {
             event.preventDefault();
@@ -329,13 +329,12 @@ function ExpenseSheetContent({
             onRequestClose();
           }}
           showCloseButton={false}
-          side="right"
         >
-          <SheetHeader className={styles.header}>
+          <DialogHeader className={styles.header}>
             <div className={styles.headerTopRow}>
               <div>
-                <SheetTitle>{title}</SheetTitle>
-                <SheetDescription>{description}</SheetDescription>
+                <DialogTitle>{title}</DialogTitle>
+                <DialogDescription>{description}</DialogDescription>
               </div>
               <Button
                 aria-label="Cerrar formulario de gasto"
@@ -348,7 +347,7 @@ function ExpenseSheetContent({
                 <X aria-hidden="true" />
               </Button>
             </div>
-          </SheetHeader>
+          </DialogHeader>
 
           <Form {...form}>
             <form
@@ -764,7 +763,7 @@ function ExpenseSheetContent({
             </form>
           </Form>
 
-          <SheetFooter className={styles.footer}>
+          <DialogFooter className={styles.footer}>
             {hasPendingChanges ? (
               <p className={styles.changesLegend} role="status">
                 Los labels amarillos subrayados marcan cambios sin guardar.
@@ -782,9 +781,9 @@ function ExpenseSheetContent({
                 {isSubmitting ? "Guardando..." : "Guardar"}
               </Button>
             </div>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={showUnsavedChangesDialog}>
         <AlertDialogContent className={styles.unsavedChangesContent}>
