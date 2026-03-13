@@ -40,11 +40,11 @@ async function getDefaultUserSubject(request: NextApiRequest) {
 }
 
 async function getDefaultDatabase(): Promise<TursoDatabase> {
-  const { createTursoDatabase } = await import(
+  const { createMigratedTursoDatabase } = await import(
     "@/modules/shared/infrastructure/database/drizzle/turso-database"
   );
 
-  return createTursoDatabase();
+  return createMigratedTursoDatabase();
 }
 
 export function createMonthlyExpensesApiHandler<TResult>({

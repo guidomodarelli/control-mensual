@@ -1179,7 +1179,7 @@ export const getServerSideProps: GetServerSideProps<MonthlyExpensesPageProps> =
       const { getAuthenticatedUserSubjectFromRequest } = await import(
         "@/modules/auth/infrastructure/next-auth/authenticated-user-subject"
       );
-      const { createTursoDatabase } = await import(
+      const { createMigratedTursoDatabase } = await import(
         "@/modules/shared/infrastructure/database/drizzle/turso-database"
       );
       const { DrizzleMonthlyExpensesRepository } = await import(
@@ -1191,7 +1191,7 @@ export const getServerSideProps: GetServerSideProps<MonthlyExpensesPageProps> =
       const userSubject = await getAuthenticatedUserSubjectFromRequest(
         context.req,
       );
-      const database = createTursoDatabase();
+      const database = await createMigratedTursoDatabase();
       const monthlyExpensesRepository = new DrizzleMonthlyExpensesRepository(
         database,
         userSubject,
