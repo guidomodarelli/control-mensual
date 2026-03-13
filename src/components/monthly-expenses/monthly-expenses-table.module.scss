@@ -25,45 +25,6 @@
   color: var(--muted-foreground);
 }
 
-.sessionStatusBadge {
-  margin-left: auto;
-  align-self: flex-start;
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-.sessionReadyBadge {
-  background: color-mix(in srgb, #16a34a 18%, transparent);
-  color: #15803d;
-  border-color: color-mix(in srgb, #16a34a 35%, transparent);
-}
-
-.sessionLoadingBadge {
-  background: color-mix(in srgb, var(--muted) 80%, transparent);
-  color: var(--muted-foreground);
-  border-color: color-mix(in srgb, var(--border) 90%, transparent);
-}
-
-.sessionLoadingIcon {
-  animation: session-badge-spin 1s linear infinite;
-}
-
-.sessionPendingBadge {
-  background: color-mix(in srgb, #dc2626 12%, transparent);
-  color: #b91c1c;
-  border-color: color-mix(in srgb, #dc2626 28%, transparent);
-}
-
-@keyframes session-badge-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .toolbar {
   display: flex;
   flex-wrap: wrap;

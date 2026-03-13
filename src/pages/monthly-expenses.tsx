@@ -547,13 +547,6 @@ export default function MonthlyExpensesPage({
   const isSessionLoading = status === "loading";
   const sessionUserImage = session?.user?.image?.trim() || null;
   const sessionUserName = session?.user?.name?.trim() || null;
-  const sessionMessage = !isOAuthConfigured
-    ? "Completá la configuración OAuth del servidor para habilitar el guardado mensual."
-    : isSessionLoading
-      ? "Estamos verificando tu sesión de Google."
-      : isAuthenticated
-        ? "Sesión Google activa. Ya podés guardar tus gastos mensuales en la base de datos."
-        : "Conectate con Google para cargar y guardar tus gastos mensuales.";
 
   const handleGoogleAccountConnect = () => {
     if (!isOAuthConfigured) {
@@ -1174,9 +1167,7 @@ export default function MonthlyExpensesPage({
               draft={expenseSheetState.draft}
               feedbackMessage={feedbackMessage}
               feedbackTone={feedbackTone}
-              isAuthenticated={isAuthenticated}
               isExpenseSheetOpen={expenseSheetState.isOpen}
-              isSessionLoading={isSessionLoading}
               isSubmitting={formState.isSubmitting}
               lenders={lendersState.lenders}
               loadError={loadError}
@@ -1193,7 +1184,6 @@ export default function MonthlyExpensesPage({
               onSaveUnsavedChanges={handleSaveUnsavedChanges}
               onUnsavedChangesDiscard={handleUnsavedChangesDiscard}
               rows={formState.rows}
-              sessionMessage={sessionMessage}
               sheetMode={expenseSheetState.mode}
               showUnsavedChangesDialog={expenseSheetState.showUnsavedChangesDialog}
               validationMessage={expenseValidationMessage}

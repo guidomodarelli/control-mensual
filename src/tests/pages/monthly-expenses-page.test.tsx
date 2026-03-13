@@ -373,19 +373,7 @@ describe("MonthlyExpensesPage", () => {
     expect(screen.queryByText("Email: gus@example.com")).not.toBeInTheDocument();
   });
 
-  it("renders an active Google connection badge when the user is authenticated", () => {
-    mockedUseSession.mockReturnValue({
-      data: {
-        expires: "2099-01-01T00:00:00.000Z",
-        user: {
-          email: "gus@example.com",
-          name: "Gus",
-        },
-      },
-      status: "authenticated",
-      update: jest.fn(),
-    } as ReturnType<typeof useSession>);
-
+  it("does not render redundant Google session status badge", () => {
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -396,43 +384,9 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    expect(screen.getByText("Google conectado - Activo")).toBeInTheDocument();
-  });
-
-  it("renders a loading Google connection badge while the session is being verified", () => {
-    mockedUseSession.mockReturnValue({
-      data: null,
-      status: "loading",
-      update: jest.fn(),
-    } as ReturnType<typeof useSession>);
-
-    renderWithProviders(
-      <MonthlyExpensesPage
-        {...basePageProps}
-        initialDocument={{
-          items: [],
-          month: "2026-03",
-        }}
-      />,
-    );
-
-    expect(
-      screen.getByText("Google conectado - Verificando"),
-    ).toBeInTheDocument();
-  });
-
-  it("renders an inactive Google connection badge when the user is not authenticated", () => {
-    renderWithProviders(
-      <MonthlyExpensesPage
-        {...basePageProps}
-        initialDocument={{
-          items: [],
-          month: "2026-03",
-        }}
-      />,
-    );
-
-    expect(screen.getByText("Google desconectado - Inactivo")).toBeInTheDocument();
+    expect(screen.queryByText("Google conectado - Activo")).not.toBeInTheDocument();
+    expect(screen.queryByText("Google conectado - Verificando")).not.toBeInTheDocument();
+    expect(screen.queryByText("Google desconectado - Inactivo")).not.toBeInTheDocument();
   });
 
   it("starts Google sign in when the disconnected avatar is clicked", async () => {

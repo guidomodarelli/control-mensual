@@ -1,13 +1,12 @@
 import { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, LoaderCircle } from "lucide-react";
+import { ArrowUpDown } from "lucide-react";
 
 import { ExpenseRowActions } from "@/components/monthly-expenses/expense-row-actions";
 import {
   ExpenseSheet,
   type ExpenseEditableFieldName,
 } from "@/components/monthly-expenses/expense-sheet";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
@@ -41,9 +40,7 @@ interface MonthlyExpensesTableProps {
   draft: MonthlyExpensesEditableRow | null;
   feedbackMessage: string;
   feedbackTone: "default" | "error" | "success";
-  isAuthenticated: boolean;
   isExpenseSheetOpen: boolean;
-  isSessionLoading: boolean;
   isSubmitting: boolean;
   lenders: LenderOption[];
   loadError: string | null;
@@ -63,7 +60,6 @@ interface MonthlyExpensesTableProps {
   onSaveUnsavedChanges: () => void;
   onUnsavedChangesDiscard: () => void;
   rows: MonthlyExpensesEditableRow[];
-  sessionMessage: string;
   sheetMode: "create" | "edit";
   showUnsavedChangesDialog: boolean;
   validationMessage: string | null;
@@ -128,9 +124,7 @@ export function MonthlyExpensesTable({
   draft,
   feedbackMessage,
   feedbackTone,
-  isAuthenticated,
   isExpenseSheetOpen,
-  isSessionLoading,
   isSubmitting,
   lenders,
   loadError,
@@ -147,17 +141,10 @@ export function MonthlyExpensesTable({
   onSaveUnsavedChanges,
   onUnsavedChangesDiscard,
   rows,
-  sessionMessage,
   sheetMode,
   showUnsavedChangesDialog,
   validationMessage,
 }: MonthlyExpensesTableProps) {
-  const sessionStatus = isSessionLoading
-    ? "loading"
-    : isAuthenticated
-      ? "active"
-      : "inactive";
-
   const columns = useMemo<ColumnDef<MonthlyExpensesEditableRow>[]>(
     () => [
       {
@@ -220,33 +207,6 @@ export function MonthlyExpensesTable({
               la app.
             </p>
           </div>
-          <Badge
-            className={cn(
-              styles.sessionStatusBadge,
-              sessionStatus === "active"
-                ? styles.sessionReadyBadge
-                : sessionStatus === "loading"
-                  ? styles.sessionLoadingBadge
-                  : styles.sessionPendingBadge,
-            )}
-            role="status"
-            title={sessionMessage}
-            variant={sessionStatus === "active" ? "default" : "outline"}
-          >
-            {sessionStatus === "loading" ? (
-              <>
-                <LoaderCircle
-                  aria-hidden="true"
-                  className={styles.sessionLoadingIcon}
-                />
-                Google conectado - Verificando
-              </>
-            ) : sessionStatus === "active" ? (
-              "Google conectado - Activo"
-            ) : (
-              "Google desconectado - Inactivo"
-            )}
-          </Badge>
         </div>
 
         {loadError ? (
