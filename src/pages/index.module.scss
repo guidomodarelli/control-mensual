@@ -1,10 +1,10 @@
 .page {
   min-height: 100vh;
-  padding: 3rem 1.25rem;
+  padding: 1rem 1.25rem 3rem;
 }
 
 .layout {
-  width: min(72rem, 100%);
+  width: min(88rem, 100%);
   margin: 0 auto;
   display: grid;
   gap: 1.5rem;
@@ -15,86 +15,36 @@
   justify-content: flex-end;
 }
 
-.heroCard {
-  overflow: hidden;
-}
-
-.eyebrow {
-  margin: 0;
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted-foreground);
-}
-
-.heroTitle {
-  font-size: clamp(2rem, 4vw, 3.5rem);
-  line-height: 1.05;
-}
-
-.heroContent {
+.tabsRoot {
   display: grid;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
-.meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  align-items: center;
-}
-
-.status {
-  display: inline-flex;
-  align-items: center;
+.tabsList {
+  width: fit-content;
+  max-width: 100%;
   gap: 0.35rem;
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  background: color-mix(in srgb, var(--primary) 12%, transparent);
-  color: var(--primary);
-}
-
-.statusPending {
-  background: color-mix(in srgb, var(--destructive) 12%, transparent);
-  color: var(--destructive);
-}
-
-.error {
-  margin: 0;
-  color: var(--destructive);
-}
-
-.scopeList {
-  margin: 0;
-  padding-left: 1.25rem;
-  display: grid;
-  gap: 0.5rem;
-  color: var(--muted-foreground);
-}
-
-.actions {
-  display: flex;
+  justify-content: flex-start;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  justify-self: start;
 }
 
-.targetsGrid {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+.tabsTrigger {
+  flex: 0 1 auto;
+  padding-inline: 0.9rem;
+  color: color-mix(in srgb, var(--foreground) 72%, var(--muted-foreground) 28%);
+  transition:
+    color 160ms ease,
+    transform 160ms ease;
 }
 
-.targetList {
-  margin: 0;
-  padding-left: 1.25rem;
-  display: grid;
-  gap: 0.75rem;
+.tabsTrigger[data-state="active"] {
+  color: var(--foreground);
+  font-weight: 600;
 }
 
-.targetNote {
-  margin: 0;
-  color: var(--muted-foreground);
+.tabsTrigger[data-state="active"]::after {
+  height: 0.18rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 55%, var(--foreground) 45%);
 }

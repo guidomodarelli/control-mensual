@@ -14,7 +14,7 @@ import type { StorageBootstrapResult } from "@/modules/storage/application/resul
 import MonthlyExpensesPage, {
   getRequestedMonthlyExpensesTab,
   getReportProviderFilterOptions,
-} from "@/pages/monthly-expenses";
+} from "@/pages/index";
 
 jest.mock("next/router", () => ({
   useRouter: jest.fn(),
@@ -88,7 +88,7 @@ function createMockRouter(
 ) {
   return {
     isReady: true,
-    pathname: "/monthly-expenses",
+    pathname: "/",
     query: {},
     replace: jest.fn().mockResolvedValue(true),
     ...overrides,
@@ -255,7 +255,7 @@ describe("MonthlyExpensesPage", () => {
     ).toBeInTheDocument();
     expect(router.replace).toHaveBeenCalledWith(
       {
-        pathname: "/monthly-expenses",
+        pathname: "/",
         query: {
           month: "2026-03",
           tab: "lenders",
@@ -407,7 +407,7 @@ describe("MonthlyExpensesPage", () => {
     );
 
     expect(mockedSignIn).toHaveBeenCalledWith("google", {
-      callbackUrl: "/monthly-expenses",
+      callbackUrl: "/",
     });
   });
 
@@ -442,7 +442,7 @@ describe("MonthlyExpensesPage", () => {
     await user.click(screen.getByRole("menuitem", { name: "Desconectar Google" }));
 
     expect(mockedSignOut).toHaveBeenCalledWith({
-      callbackUrl: "/monthly-expenses",
+      callbackUrl: "/",
     });
   });
 
