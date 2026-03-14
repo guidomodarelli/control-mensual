@@ -551,7 +551,7 @@ function ExpenseSheetContent({
                     <Label htmlFor="expense-is-loan">
                       {getFieldLabel("Es deuda/préstamo", changedFields.has("isLoan"))}
                     </Label>
-                    <LoanInfoPopover message={loanHelpMessage} usePortal={false} />
+                    <LoanInfoPopover message={loanHelpMessage} />
                   </div>
                 </div>
 

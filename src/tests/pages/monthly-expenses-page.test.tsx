@@ -1326,7 +1326,7 @@ describe("MonthlyExpensesPage", () => {
     expect(screen.queryByText("Seleccioná un prestador")).not.toBeInTheDocument();
   });
 
-  it("shows the debt info popover and closes it from the close button or outside click", async () => {
+  it("shows the debt info tooltip and closes it from the close button, outside click, or Escape", async () => {
     const user = userEvent.setup();
 
     mockedUseSession.mockReturnValue({
@@ -1359,29 +1359,55 @@ describe("MonthlyExpensesPage", () => {
       ),
     ).not.toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Más información sobre deuda o préstamo",
-      }),
+    const loanInfoButton = screen.getByRole("button", {
+      name: "Más información sobre deuda o préstamo",
+    });
+
+    await user.click(loanInfoButton);
+
+    const loanInfoTooltip = screen.getByRole("tooltip");
+    const positionedLoanInfoTooltip = document.querySelector(
+      '[data-side="top"]',
+    ) as HTMLElement | null;
+
+    expect(loanInfoTooltip).toBeInTheDocument();
+    expect(positionedLoanInfoTooltip).not.toBeNull();
+    expect(positionedLoanInfoTooltip).toHaveTextContent(
+      "Marcá esta opción si el gasto corresponde a una deuda.",
     );
 
-    expect(
-      screen.getByText(
-        "Marcá esta opción si el gasto corresponde a una deuda.",
-      ),
-    ).toBeInTheDocument();
+    const positionedTooltipCloseButton = (
+      positionedLoanInfoTooltip as HTMLElement
+    ).querySelector(
+      'button[aria-label="Cerrar ayuda sobre deuda o préstamo"]',
+    ) as HTMLButtonElement | null;
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Cerrar ayuda sobre deuda o préstamo",
-      }),
-    );
+    expect(positionedTooltipCloseButton).not.toBeNull();
+
+    await user.click(positionedTooltipCloseButton as HTMLButtonElement);
 
     expect(
       screen.queryByText(
         "Marcá esta opción si el gasto corresponde a una deuda.",
       ),
     ).not.toBeInTheDocument();
+
+    await user.click(loanInfoButton);
+
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("heading", { name: "Nuevo gasto" }));
+
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+
+    await user.click(loanInfoButton);
+
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Descripción")).toBeInTheDocument();
   });
 
   it("filters expenses from the data table by description", async () => {

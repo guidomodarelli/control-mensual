@@ -1,16 +1,10 @@
-.portalLayer {
-  position: fixed;
-  inset: 0;
-  z-index: 80;
-  pointer-events: none;
-}
-
 .trigger {
   color: var(--muted-foreground);
 }
 
 .trigger:hover,
-.trigger:focus-visible {
+.trigger:focus-visible,
+.trigger[aria-expanded="true"] {
   color: var(--foreground);
 }
 
@@ -21,27 +15,30 @@
 }
 
 .popover {
-  position: fixed;
+  z-index: 60;
   width: min(20rem, calc(100vw - 2rem));
-  padding: 0.875rem 0.875rem 0.875rem 2.5rem;
+  padding: 0.875rem 2.5rem 0.875rem 0.875rem;
   border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
   border-radius: 0.875rem;
   background: var(--background);
   box-shadow: 0 16px 40px color-mix(in srgb, var(--foreground) 12%, transparent);
-  pointer-events: auto;
+  outline: none;
+  transform-origin: var(--radix-tooltip-content-transform-origin);
 }
 
-.inlinePopover {
-  position: relative;
-  width: 100%;
-  max-width: 20rem;
-  margin-top: 0.5rem;
+.popover[data-state="instant-open"],
+.popover[data-state="delayed-open"] {
+  animation: loan-info-tooltip-enter 140ms ease-out;
+}
+
+.popover[data-state="closed"] {
+  animation: loan-info-tooltip-exit 110ms ease-in;
 }
 
 .closeButton {
   position: absolute;
   top: 0.5rem;
-  left: 0.5rem;
+  right: 0.5rem;
 }
 
 .message {
@@ -49,4 +46,28 @@
   font-size: 0.875rem;
   line-height: 1.5;
   color: var(--foreground);
+}
+
+@keyframes loan-info-tooltip-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes loan-info-tooltip-exit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
 }
