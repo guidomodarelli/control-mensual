@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRouter } from "next/router";
 import { signIn, signOut, useSession } from "next-auth/react";
@@ -172,6 +172,13 @@ function getMonthlyExpensesSavePayload(fetchMock: jest.Mock) {
   return JSON.parse(String(options.body));
 }
 
+function getMonthlyExpensesDescriptionsOrder(): Array<string | null> {
+  return screen
+    .getAllByRole("row")
+    .slice(1)
+    .map((row) => within(row).getAllByRole("cell")[0].textContent?.trim() ?? null);
+}
+
 describe("MonthlyExpensesPage", () => {
   beforeEach(() => {
     mockedSignIn.mockReset();
@@ -228,6 +235,116 @@ describe("MonthlyExpensesPage", () => {
     expect(
       screen.queryByRole("button", { name: "Guardar gastos" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("sorts subtotal numerically in ascending and descending order", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Luz",
+              id: "expense-2",
+              occurrencesPerMonth: 1,
+              subtotal: 20,
+              total: 20,
+            },
+            {
+              currency: "ARS",
+              description: "Internet",
+              id: "expense-3",
+              occurrencesPerMonth: 10,
+              subtotal: 5,
+              total: 50,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Subtotal" }));
+
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+      "Internet",
+      "Luz",
+      "Agua",
+    ]);
+
+    await user.click(screen.getByRole("button", { name: "Subtotal" }));
+
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+      "Agua",
+      "Luz",
+      "Internet",
+    ]);
+  });
+
+  it("sorts total numerically in ascending and descending order", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 300,
+            },
+            {
+              currency: "ARS",
+              description: "Luz",
+              id: "expense-2",
+              occurrencesPerMonth: 1,
+              subtotal: 20,
+              total: 20,
+            },
+            {
+              currency: "ARS",
+              description: "Internet",
+              id: "expense-3",
+              occurrencesPerMonth: 10,
+              subtotal: 5,
+              total: 50,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Total" }));
+
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+      "Luz",
+      "Internet",
+      "Agua",
+    ]);
+
+    await user.click(screen.getByRole("button", { name: "Total" }));
+
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+      "Agua",
+      "Internet",
+      "Luz",
+    ]);
   });
 
   it("falls back to the expenses tab for invalid query values", () => {

@@ -161,6 +161,8 @@ export function MonthlyExpensesTable({
         cell: ({ row }) =>
           formatCurrencyAmount(row.original.currency, row.original.subtotal),
         header: getSortableHeader("Subtotal"),
+        sortingFn: (rowA, rowB) =>
+          Number(rowA.original.subtotal) - Number(rowB.original.subtotal),
       },
       {
         accessorKey: "occurrencesPerMonth",
@@ -171,6 +173,8 @@ export function MonthlyExpensesTable({
         cell: ({ row }) =>
           formatCurrencyAmount(row.original.currency, row.original.total),
         header: getSortableHeader("Total"),
+        sortingFn: (rowA, rowB) =>
+          Number(rowA.original.total) - Number(rowB.original.total),
       },
       {
         accessorKey: "loanProgress",
