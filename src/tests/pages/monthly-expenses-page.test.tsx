@@ -55,6 +55,7 @@ const mockedSignIn = jest.mocked(signIn);
 const mockedSignOut = jest.mocked(signOut);
 const mockedToast = toast as unknown as MockedToast;
 const originalFetch = global.fetch;
+const SIDEBAR_STORAGE_KEY = "mis-finanzas.sidebar.open";
 
 function renderWithProviders(ui: ReactElement) {
   return render(<TooltipProvider>{ui}</TooltipProvider>);
@@ -222,6 +223,7 @@ describe("MonthlyExpensesPage", () => {
       update: jest.fn(),
     } as ReturnType<typeof useSession>);
     global.fetch = jest.fn();
+    window.localStorage.clear();
   });
 
   afterAll(() => {
@@ -414,6 +416,82 @@ describe("MonthlyExpensesPage", () => {
     expect(
       screen.getByRole("link", { name: "Reporte de deudas" }),
     ).toHaveAttribute("href", "/reportes/deudas");
+  });
+
+  it("keeps sidebar expanded by default when there is no persisted state", () => {
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    const sidebar = document.querySelector("[data-slot='sidebar'][data-state]");
+
+    expect(sidebar).not.toBeNull();
+    expect(sidebar).toHaveAttribute("data-state", "expanded");
+  });
+
+  it("renders a visible sidebar trigger attached to the sidebar edge", () => {
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    const sidebarTrigger = screen.getByRole("button", { name: "Toggle Sidebar" });
+
+    expect(sidebarTrigger).toHaveAttribute("data-sidebar", "trigger");
+  });
+
+  it("restores the sidebar state from localStorage", async () => {
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, "false");
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      const sidebar = document.querySelector("[data-slot='sidebar'][data-state]");
+
+      expect(sidebar).not.toBeNull();
+      expect(sidebar).toHaveAttribute("data-state", "collapsed");
+    });
+  });
+
+  it("persists sidebar state changes to localStorage when the trigger control is used", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
+
+    expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe("false");
+
+    await user.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
+
+    expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe("true");
   });
 
   it("updates the URL query when changing month and preserves the active tab", async () => {

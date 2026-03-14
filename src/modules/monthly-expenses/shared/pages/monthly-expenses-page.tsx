@@ -36,7 +36,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarSeparator,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import {
@@ -1164,18 +1163,23 @@ export default function MonthlyExpensesPage({
 
   return (
     <SidebarProvider>
-      <Sidebar collapsible="offcanvas" variant="inset">
-        <SidebarHeader className={styles.sidebarHeader}>
+      <Sidebar className={styles.sidebarShell} collapsible="icon" variant="inset">
+        <SidebarHeader
+          className={`${styles.sidebarHeader} group-data-[collapsible=icon]:hidden`}
+        >
           <p className={styles.sidebarTitle}>Mis finanzas</p>
           <p className={styles.sidebarSubtitle}>Navegacion principal</p>
         </SidebarHeader>
-        <SidebarSeparator />
         <SidebarContent>
           <SidebarGroup>
             <SidebarGroupLabel>Secciones</SidebarGroupLabel>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={activeTab === "expenses"}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={activeTab === "expenses"}
+                  tooltip="Gastos del mes"
+                >
                   <Link href={{ pathname: "/gastos", query: { month: formState.month } }}>
                     <IconCalendarDollar />
                     <span>Gastos del mes</span>
@@ -1183,7 +1187,11 @@ export default function MonthlyExpensesPage({
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={activeTab === "lenders"}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={activeTab === "lenders"}
+                  tooltip="Prestadores"
+                >
                   <Link href="/prestadores">
                     <IconBuildingBank />
                     <span>Prestadores</span>
@@ -1191,7 +1199,11 @@ export default function MonthlyExpensesPage({
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={activeTab === "debts"}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={activeTab === "debts"}
+                  tooltip="Reporte de deudas"
+                >
                   <Link href="/reportes/deudas">
                     <IconReportMoney />
                     <span>Reporte de deudas</span>
@@ -1201,13 +1213,15 @@ export default function MonthlyExpensesPage({
             </SidebarMenu>
           </SidebarGroup>
         </SidebarContent>
+        <div className={styles.sidebarEdgeTriggerDock}>
+          <SidebarTrigger className={styles.sidebarEdgeTrigger} />
+        </div>
       </Sidebar>
 
       <SidebarInset>
         <main className={styles.page}>
           <div className={styles.layout}>
             <div className={styles.topBar}>
-              <SidebarTrigger className={styles.sidebarTrigger} />
               <ThemeModeToggle />
               <GoogleAccountAvatar
                 onConnect={handleGoogleAccountConnect}

@@ -24,12 +24,51 @@ import {
 } from "@/components/ui/tooltip"
 import { IconLayoutSidebar } from "@tabler/icons-react"
 
-const SIDEBAR_COOKIE_NAME = "sidebar_state"
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
+const SIDEBAR_STORAGE_KEY = "mis-finanzas.sidebar.open"
+const SIDEBAR_STORAGE_VALUE_OPEN = "true"
+const SIDEBAR_STORAGE_VALUE_COLLAPSED = "false"
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
+
+function getPersistedSidebarState(): boolean | null {
+  if (typeof window === "undefined") {
+    return null
+  }
+
+  try {
+    const persistedState = window.localStorage.getItem(SIDEBAR_STORAGE_KEY)
+    if (persistedState === SIDEBAR_STORAGE_VALUE_OPEN) {
+      return true
+    }
+
+    if (persistedState === SIDEBAR_STORAGE_VALUE_COLLAPSED) {
+      return false
+    }
+
+    return null
+  } catch {
+    return null
+  }
+}
+
+function persistSidebarState(openState: boolean) {
+  if (typeof window === "undefined") {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(
+      SIDEBAR_STORAGE_KEY,
+      openState
+        ? SIDEBAR_STORAGE_VALUE_OPEN
+        : SIDEBAR_STORAGE_VALUE_COLLAPSED
+    )
+  } catch {
+    // Ignore storage failures (private mode, disabled storage, etc.)
+  }
+}
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed"
@@ -72,6 +111,20 @@ function SidebarProvider({
   // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen)
   const open = openProp ?? _open
+
+  React.useEffect(() => {
+    if (openProp !== undefined) {
+      return
+    }
+
+    const persistedState = getPersistedSidebarState()
+    if (persistedState === null) {
+      return
+    }
+
+    _setOpen(persistedState)
+  }, [openProp])
+
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
       const openState = typeof value === "function" ? value(open) : value
@@ -81,8 +134,7 @@ function SidebarProvider({
         _setOpen(openState)
       }
 
-      // This sets the cookie to keep the sidebar state.
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+      persistSidebarState(openState)
     },
     [setOpenProp, open]
   )

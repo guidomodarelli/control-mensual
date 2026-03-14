@@ -17,6 +17,10 @@
   gap: 0.5rem;
 }
 
+.sidebarShell {
+  position: relative;
+}
+
 .sidebarHeader {
   padding: 1rem 0.75rem 0.5rem;
 }
@@ -32,12 +36,15 @@
   color: color-mix(in srgb, var(--sidebar-foreground) 58%, var(--sidebar-accent-foreground) 42%);
 }
 
-.sidebarTrigger {
-  margin-right: auto;
+.sidebarEdgeTriggerDock {
+  position: absolute;
+  right: -0.85rem;
+  top: 0.75rem;
+  z-index: 30;
 }
 
-@media (min-width: 768px) {
-  .sidebarTrigger {
-    display: none;
-  }
+.sidebarEdgeTrigger {
+  border: 1px solid color-mix(in srgb, var(--sidebar-border) 78%, transparent 22%);
+  background: var(--sidebar);
+  box-shadow: 0 6px 16px -12px rgba(0, 0, 0, 0.55);
 }
