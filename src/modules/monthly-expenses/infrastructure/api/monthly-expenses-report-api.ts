@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { withCorrelationIdHeaders } from "@/modules/shared/infrastructure/observability/client-correlation-id";
+
 import type { MonthlyExpensesLoansReportResult } from "../../application/results/monthly-expenses-loans-report-result";
 
 const monthlyExpensesReportEntrySchema = z.object({
@@ -40,7 +42,9 @@ export class MonthlyExpensesReportApiError extends Error {
 export async function getMonthlyExpensesLoansReportViaApi(
   fetchImplementation: typeof fetch = fetch,
 ): Promise<MonthlyExpensesLoansReportResult> {
-  const response = await fetchImplementation("/api/storage/monthly-expenses-report");
+  const response = await fetchImplementation("/api/storage/monthly-expenses-report", {
+    headers: withCorrelationIdHeaders(),
+  });
   const responseJson = await response.json();
 
   if (!response.ok) {

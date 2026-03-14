@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { withCorrelationIdHeaders } from "@/modules/shared/infrastructure/observability/client-correlation-id";
+
 import type { SaveLendersCatalogCommand } from "../../application/commands/save-lenders-catalog-command";
 import type { LendersCatalogDocumentResult } from "../../application/results/lenders-catalog-document-result";
 import type { StoredLendersCatalogResult } from "../../application/results/stored-lenders-catalog-result";
@@ -42,7 +44,9 @@ export class LendersApiError extends Error {
 export async function getLendersCatalogViaApi(
   fetchImplementation: typeof fetch = fetch,
 ): Promise<LendersCatalogDocumentResult> {
-  const response = await fetchImplementation("/api/storage/lenders");
+  const response = await fetchImplementation("/api/storage/lenders", {
+    headers: withCorrelationIdHeaders(),
+  });
   const responseJson = await response.json();
 
   if (!response.ok) {
@@ -66,9 +70,9 @@ export async function saveLendersCatalogViaApi(
   const normalizedPayload = lendersRequestSchema.parse(payload);
   const response = await fetchImplementation("/api/storage/lenders", {
     body: JSON.stringify(normalizedPayload),
-    headers: {
+    headers: withCorrelationIdHeaders({
       "Content-Type": "application/json",
-    },
+    }),
     method: "POST",
   });
   const responseJson = await response.json();

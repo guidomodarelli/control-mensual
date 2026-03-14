@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { withCorrelationIdHeaders } from "@/modules/shared/infrastructure/observability/client-correlation-id";
+
 const storageRequestSchema = z.object({
   content: z.string().trim().min(1),
   mimeType: z.string().trim().min(1),
@@ -39,9 +41,9 @@ async function postStorageRequest(
   const normalizedPayload = storageRequestSchema.parse(payload);
   const response = await fetchImplementation(endpoint, {
     body: JSON.stringify(normalizedPayload),
-    headers: {
+    headers: withCorrelationIdHeaders({
       "Content-Type": "application/json",
-    },
+    }),
     method: "POST",
   });
   const responseJson = await response.json();

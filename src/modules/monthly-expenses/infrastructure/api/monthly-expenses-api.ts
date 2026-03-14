@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { withCorrelationIdHeaders } from "@/modules/shared/infrastructure/observability/client-correlation-id";
+
 import type { SaveMonthlyExpensesCommand } from "../../application/commands/save-monthly-expenses-command";
 import type { MonthlyExpensesDocumentResult } from "../../application/results/monthly-expenses-document-result";
 
@@ -68,9 +70,9 @@ export async function saveMonthlyExpensesDocumentViaApi(
   const normalizedPayload = monthlyExpensesRequestSchema.parse(payload);
   const response = await fetchImplementation("/api/storage/monthly-expenses", {
     body: JSON.stringify(normalizedPayload),
-    headers: {
+    headers: withCorrelationIdHeaders({
       "Content-Type": "application/json",
-    },
+    }),
     method: "POST",
   });
 
@@ -101,6 +103,9 @@ export async function getMonthlyExpensesDocumentViaApi(
   });
   const response = await fetchImplementation(
     `/api/storage/monthly-expenses?${searchParams.toString()}`,
+    {
+      headers: withCorrelationIdHeaders(),
+    },
   );
   const responseJson = await response.json();
 
