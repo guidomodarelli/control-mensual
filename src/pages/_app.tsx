@@ -50,7 +50,10 @@ export default function App({
         attribute="class"
         defaultTheme="system"
         disableTransitionOnChange
+        enableColorScheme={false}
         enableSystem
+        storageKey="theme"
+        themes={["light", "dark"]}
       >
         <TooltipProvider>
           <div className={`${interSans.className} ${interSans.variable} ${geistMono.variable}`}>

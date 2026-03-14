@@ -85,9 +85,9 @@
 }
 
 .changedFieldLabel {
-  color: #a16207;
+  color: color-mix(in srgb, var(--foreground) 62%, var(--primary) 38%);
   text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, #facc15 75%, #a16207 25%);
+  text-decoration-color: color-mix(in srgb, var(--primary) 58%, var(--foreground) 42%);
   text-decoration-thickness: 0.14em;
   text-underline-offset: 0.18em;
 }
@@ -216,9 +216,9 @@
 }
 
 .loanStatus {
-  border: 1px solid color-mix(in srgb, #60a5fa 35%, transparent);
-  background: color-mix(in srgb, #60a5fa 12%, transparent);
-  color: #1d4ed8;
+  border: 1px solid color-mix(in srgb, var(--primary) 38%, transparent);
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  color: color-mix(in srgb, var(--primary) 68%, var(--foreground) 32%);
 }
 
 .loanStatusIcon {
@@ -251,10 +251,10 @@
 .changesLegend {
   margin: 0;
   padding: 0.7rem 0.85rem;
-  border: 1px solid color-mix(in srgb, #facc15 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 42%, transparent);
   border-radius: 0.75rem;
-  background: color-mix(in srgb, #facc15 14%, transparent);
-  color: #a16207;
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  color: color-mix(in srgb, var(--primary) 66%, var(--foreground) 34%);
   font-size: 0.875rem;
 }
 

@@ -56,22 +56,23 @@ export function ThemeModeToggle() {
     () => true,
     () => false,
   );
+  const isThemeReady =
+    isHydrated &&
+    (resolvedTheme === "light" || resolvedTheme === "dark");
   const isDarkMode = resolvedTheme === "dark";
-  const tooltipLabel = !isHydrated || resolvedTheme === undefined
+  const tooltipLabel = !isThemeReady
     ? "Alternar tema"
     : isDarkMode
       ? "Cambiar a modo claro"
       : "Cambiar a modo oscuro";
 
   const handleToggleTheme = () => {
-    const nextTheme = isDarkMode ? "light" : "dark";
-
-    if (typeof document === "undefined") {
-      setTheme(nextTheme);
+    if (!isThemeReady || typeof document === "undefined") {
       return;
     }
 
     const rootElement = document.documentElement;
+    const nextTheme = isDarkMode ? "light" : "dark";
     const documentWithViewTransition = document as DocumentWithViewTransition;
 
     rootElement.setAttribute(
@@ -105,12 +106,13 @@ export function ThemeModeToggle() {
       <TooltipTrigger asChild>
         <Button
           aria-label="Alternar tema"
+          disabled={!isThemeReady}
           onClick={handleToggleTheme}
           size="icon-sm"
           type="button"
           variant="outline"
         >
-          {!isHydrated || resolvedTheme === undefined
+          {!isThemeReady
             ? <SunMoon aria-hidden="true" />
             : isDarkMode
               ? <Sun aria-hidden="true" />

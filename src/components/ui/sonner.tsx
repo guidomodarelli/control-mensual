@@ -5,11 +5,17 @@ import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { IconCircleCheck, IconInfoCircle, IconAlertTriangle, IconAlertOctagon, IconLoader } from "@tabler/icons-react"
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
+  const { theme = "light", resolvedTheme } = useTheme()
+  const toasterTheme: ToasterProps["theme"] =
+    resolvedTheme === "light" || resolvedTheme === "dark"
+      ? resolvedTheme
+      : theme === "light" || theme === "dark"
+        ? theme
+        : "light"
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={toasterTheme}
       className="toaster group"
       icons={{
         success: (

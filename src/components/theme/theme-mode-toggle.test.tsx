@@ -20,9 +20,9 @@ function createThemeMock(
     forcedTheme: undefined,
     resolvedTheme,
     setTheme,
-    systemTheme: "light",
-    theme: resolvedTheme,
-    themes: ["light", "dark"],
+    systemTheme: resolvedTheme === "dark" ? "dark" : "light",
+    theme: resolvedTheme ?? "system",
+    themes: ["light", "dark", "system"],
   };
 }
 
@@ -37,6 +37,8 @@ function renderThemeModeToggle() {
 describe("ThemeModeToggle", () => {
   afterEach(() => {
     jest.useRealTimers();
+    jest.restoreAllMocks();
+    mockedUseTheme.mockReset();
     document.documentElement.removeAttribute("transition-style");
   });
 
@@ -68,6 +70,28 @@ describe("ThemeModeToggle", () => {
     await user.click(screen.getByRole("button", { name: "Alternar tema" }));
 
     expect(setTheme).toHaveBeenCalledWith("light");
+  });
+
+  it("stays disabled until the resolved theme is available", async () => {
+    const user = userEvent.setup();
+    const setTheme = jest.fn();
+    const containsSpy = jest.spyOn(
+      document.documentElement.classList,
+      "contains",
+    );
+
+    mockedUseTheme.mockReturnValue(createThemeMock(undefined, setTheme));
+
+    renderThemeModeToggle();
+
+    const button = screen.getByRole("button", { name: "Alternar tema" });
+
+    expect(button).toBeDisabled();
+
+    await user.click(button);
+
+    expect(setTheme).not.toHaveBeenCalled();
+    expect(containsSpy).not.toHaveBeenCalled();
   });
 
   it("shows tooltip text", async () => {
