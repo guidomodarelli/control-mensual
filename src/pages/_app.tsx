@@ -12,6 +12,7 @@ import { useEffect } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { registerServiceWorker } from "@/modules/shared/infrastructure/pages/register-service-worker";
 
 const interSans = Inter({
   subsets: ["latin"],
@@ -28,6 +29,8 @@ type PagePropsWithSession = {
 };
 
 const APP_NAME = "Mis Finanzas";
+const APP_DESCRIPTION = "Gestiona tus gastos, prestadores y reportes mensuales.";
+const APP_THEME_COLOR = "#121826";
 const PAGE_TITLE_BY_PATHNAME: Record<string, string> = {
   "/": "Inicio",
   "/auth/error": "Error de autenticacion",
@@ -65,10 +68,23 @@ export default function App({
     void loadReactGrabCodexProvider();
   }, []);
 
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
+
   return (
     <SessionProvider session={session}>
       <Head>
         <title>{documentTitle}</title>
+        <meta content={APP_DESCRIPTION} name="description" />
+        <meta content={APP_NAME} name="application-name" />
+        <meta content={APP_THEME_COLOR} name="theme-color" />
+        <meta content="yes" name="mobile-web-app-capable" />
+        <meta content="yes" name="apple-mobile-web-app-capable" />
+        <meta content={APP_NAME} name="apple-mobile-web-app-title" />
+        <meta content="default" name="apple-mobile-web-app-status-bar-style" />
+        <link href="/manifest.webmanifest" rel="manifest" />
+        <link href="/apple-touch-icon.png" rel="apple-touch-icon" />
       </Head>
       <ThemeProvider
         attribute="class"
