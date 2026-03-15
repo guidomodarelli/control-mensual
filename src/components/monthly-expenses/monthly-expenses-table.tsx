@@ -45,6 +45,7 @@ import { cn } from "@/lib/utils";
 
 import {
   getFuzzyMatchIndices,
+  getFuzzyMatchRank,
   renderHighlightedText,
 } from "./fuzzy-search";
 import { LoanInfoPopover } from "./loan-info-popover";
@@ -611,6 +612,59 @@ function getLoanSortValue(
   }
 }
 
+function compareDescriptionByFuzzyRank(
+  leftDescription: string,
+  rightDescription: string,
+  query: string,
+): number {
+  const leftRank = getFuzzyMatchRank(leftDescription, query);
+  const rightRank = getFuzzyMatchRank(rightDescription, query);
+
+  if (leftRank && !rightRank) {
+    return -1;
+  }
+
+  if (!leftRank && rightRank) {
+    return 1;
+  }
+
+  if (!leftRank && !rightRank) {
+    return leftDescription.localeCompare(rightDescription, "es", {
+      sensitivity: "base",
+    });
+  }
+
+  if (!leftRank || !rightRank) {
+    return leftDescription.localeCompare(rightDescription, "es", {
+      sensitivity: "base",
+    });
+  }
+
+  if (leftRank.gapCount !== rightRank.gapCount) {
+    return leftRank.gapCount - rightRank.gapCount;
+  }
+
+  if (leftRank.maxGap !== rightRank.maxGap) {
+    return leftRank.maxGap - rightRank.maxGap;
+  }
+
+  if (leftRank.span !== rightRank.span) {
+    return leftRank.span - rightRank.span;
+  }
+
+  if (leftRank.startIndex !== rightRank.startIndex) {
+    return leftRank.startIndex - rightRank.startIndex;
+  }
+
+  if (leftDescription.length !== rightDescription.length) {
+    return leftDescription.length - rightDescription.length;
+  }
+
+  return leftDescription.localeCompare(rightDescription, "es", {
+    sensitivity: "base",
+  });
+}
+
 function formatCurrencyAmount(
   currency: MonthlyExpenseCurrency,
   value: string,
@@ -840,6 +894,7 @@ export function MonthlyExpensesTable({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [isRestoringTablePreferences, setIsRestoringTablePreferences] =
     useState(true);
+  const [descriptionFilter, setDescriptionFilter] = useState("");
 
   useEffect(() => {
     const persistedPreferences = getPersistedMonthlyExpensesTablePreferences();
@@ -881,6 +936,20 @@ export function MonthlyExpensesTable({
     sorting,
     LOAN_INSTALLMENT_END_COLUMN_ID,
   );
+  const fuzzySortedRows = useMemo(() => {
+    const normalizedFilter = descriptionFilter.trim();
+
+    if (!normalizedFilter) {
+      return rows;
+    }
+
+    return [...rows].sort((leftRow, rightRow) =>
+      compareDescriptionByFuzzyRank(
+        leftRow.description,
+        rightRow.description,
+        normalizedFilter,
+      ));
+  }, [descriptionFilter, rows]);
 
   const columns = useMemo<ColumnDef<MonthlyExpensesEditableRow>[]>(
     () => [
@@ -1755,11 +1824,13 @@ export function MonthlyExpensesTable({
               columnVisibilityButtonLabel="Columnas"
               columnVisibilityMenuLabel="Mostrar columnas"
               columns={columns}
-              data={rows}
+              data={fuzzySortedRows}
               emptyMessage="No hay gastos cargados para este mes."
               filterColumnId="description"
               filterLabel="Filtrar gastos"
               filterPlaceholder="Filtrar gastos por descripción"
+              filterValue={descriptionFilter}
+              onFilterValueChange={setDescriptionFilter}
               onColumnVisibilityChange={setColumnVisibility}
               onSortingChange={setSorting}
               showColumnVisibilityToggle={true}

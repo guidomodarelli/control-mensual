@@ -49,6 +49,8 @@ interface DataTableProps<TData, TValue> {
   filterColumnId?: string;
   filterLabel?: string;
   filterPlaceholder?: string;
+  filterValue?: string;
+  onFilterValueChange?: (value: string) => void;
   showColumnVisibilityToggle?: boolean;
   columnVisibilityButtonLabel?: string;
   columnVisibilityMenuLabel?: string;
@@ -73,6 +75,8 @@ export function DataTable<TData, TValue>({
   filterColumnId,
   filterLabel = "Filtrar",
   filterPlaceholder = "Filtrar...",
+  filterValue: controlledFilterValue,
+  onFilterValueChange,
   showColumnVisibilityToggle = false,
   columnVisibilityButtonLabel = "Columnas",
   columnVisibilityMenuLabel = "Mostrar columnas",
@@ -82,10 +86,15 @@ export function DataTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const [uncontrolledSorting, setUncontrolledSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+  const [uncontrolledFilterValue, setUncontrolledFilterValue] = React.useState("");
   const [uncontrolledColumnVisibility, setUncontrolledColumnVisibility] =
     React.useState<VisibilityState>({});
   const sorting = controlledSorting ?? uncontrolledSorting;
   const columnVisibility = controlledColumnVisibility ?? uncontrolledColumnVisibility;
+  const isFilterValueControlled = controlledFilterValue != null;
+  const resolvedFilterValue = isFilterValueControlled
+    ? controlledFilterValue
+    : uncontrolledFilterValue;
 
   const handleSortingChange = React.useCallback(
     (updater: SortingState | ((previousState: SortingState) => SortingState)) => {
@@ -153,7 +162,6 @@ export function DataTable<TData, TValue>({
   const shouldShowToolbarActions = shouldShowColumnVisibilityToggle;
   const shouldShowToolbar = Boolean(filterColumnId) || shouldShowToolbarActions;
   const filterColumn = filterColumnId ? table.getColumn(filterColumnId) : undefined;
-  const filterValue = String(filterColumn?.getFilterValue() ?? "");
   const footerGroups = table.getFooterGroups();
   const hasFooterContent = footerGroups.some((footerGroup) =>
     footerGroup.headers.some(
@@ -164,6 +172,20 @@ export function DataTable<TData, TValue>({
   const handleResetSorting = React.useCallback(() => {
     handleSortingChange([]);
   }, [handleSortingChange]);
+
+  React.useEffect(() => {
+    if (!filterColumn) {
+      return;
+    }
+
+    const currentFilterValue = String(filterColumn.getFilterValue() ?? "");
+
+    if (currentFilterValue === resolvedFilterValue) {
+      return;
+    }
+
+    filterColumn.setFilterValue(resolvedFilterValue);
+  }, [filterColumn, resolvedFilterValue]);
 
   return (
     <div className="grid gap-4">
@@ -176,17 +198,29 @@ export function DataTable<TData, TValue>({
                   aria-label={filterLabel}
                   className="w-full pr-9"
                   onChange={(event) => {
-                    filterColumn?.setFilterValue(event.target.value);
+                    const nextFilterValue = event.target.value;
+
+                    if (!isFilterValueControlled) {
+                      setUncontrolledFilterValue(nextFilterValue);
+                    }
+
+                    onFilterValueChange?.(nextFilterValue);
+                    filterColumn?.setFilterValue(nextFilterValue);
                   }}
                   placeholder={filterPlaceholder}
                   type="text"
-                  value={filterValue}
+                  value={resolvedFilterValue}
                 />
-                {filterValue ? (
+                {resolvedFilterValue ? (
                   <Button
                     aria-label="Limpiar filtro"
                     className="absolute right-1 top-1/2 -translate-y-1/2 active:-translate-y-1/2"
                     onClick={() => {
+                      if (!isFilterValueControlled) {
+                        setUncontrolledFilterValue("");
+                      }
+
+                      onFilterValueChange?.("");
                       filterColumn?.setFilterValue("");
                     }}
                     size="icon-xs"

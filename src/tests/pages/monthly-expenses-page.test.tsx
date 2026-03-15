@@ -2517,6 +2517,59 @@ describe("MonthlyExpensesPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("prioritizes fuzzy matches with contiguous letters over dispersed matches", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "AxxBxxC gasto",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 10000,
+              total: 10000,
+            },
+            {
+              currency: "ARS",
+              description: "Abc gasto",
+              id: "expense-2",
+              occurrencesPerMonth: 1,
+              subtotal: 12000,
+              total: 12000,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "abc");
+
+    const compactMatchRow = screen.getByText(
+      (_, element) => element?.textContent === "Abc gasto",
+    ).closest("tr");
+    const dispersedMatchRow = screen.getByText(
+      (_, element) => element?.textContent === "AxxBxxC gasto",
+    ).closest("tr");
+
+    expect(compactMatchRow).not.toBeNull();
+    expect(dispersedMatchRow).not.toBeNull();
+
+    if (!compactMatchRow || !dispersedMatchRow) {
+      throw new Error("Expected both fuzzy matching rows to be present");
+    }
+
+    const visibleRows = screen.getAllByRole("row");
+
+    expect(visibleRows.indexOf(compactMatchRow)).toBeLessThan(
+      visibleRows.indexOf(dispersedMatchRow),
+    );
+  });
+
   it("shows validation when a debt is missing start month or installments", async () => {
     const user = userEvent.setup();
 

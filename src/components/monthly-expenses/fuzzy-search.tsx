@@ -7,6 +7,14 @@ interface SearchCharWithSourceIndex {
   sourceIndex: number;
 }
 
+export interface FuzzyMatchRank {
+  gapCount: number;
+  matchedChars: number;
+  maxGap: number;
+  span: number;
+  startIndex: number;
+}
+
 export function normalizeSearchValue(value: string): string {
   return value
     .normalize("NFD")
@@ -68,6 +76,59 @@ export function getFuzzyMatchIndices(value: string, query: string): number[] | n
   }
 
   return Array.from(new Set(matchedIndices));
+}
+
+export function getFuzzyMatchRank(value: string, query: string): FuzzyMatchRank | null {
+  const normalizedQuery = normalizeSearchValue(query).trim();
+
+  if (!normalizedQuery) {
+    return null;
+  }
+
+  const valueChars = getSearchCharsWithSourceIndices(value);
+  const queryChars = Array.from(normalizedQuery);
+  const matchedSourceIndices: number[] = [];
+  let valueCursor = 0;
+
+  for (const queryChar of queryChars) {
+    let foundAt = -1;
+
+    for (let index = valueCursor; index < valueChars.length; index += 1) {
+      if (valueChars[index].char === queryChar) {
+        foundAt = index;
+        break;
+      }
+    }
+
+    if (foundAt === -1) {
+      return null;
+    }
+
+    matchedSourceIndices.push(valueChars[foundAt].sourceIndex);
+    valueCursor = foundAt + 1;
+  }
+
+  const startIndex = matchedSourceIndices[0] ?? 0;
+  const endIndex = matchedSourceIndices[matchedSourceIndices.length - 1] ?? startIndex;
+  let gapCount = 0;
+  let maxGap = 0;
+
+  for (let index = 1; index < matchedSourceIndices.length; index += 1) {
+    const gap = Math.max(matchedSourceIndices[index] - matchedSourceIndices[index - 1] - 1, 0);
+    gapCount += gap;
+
+    if (gap > maxGap) {
+      maxGap = gap;
+    }
+  }
+
+  return {
+    gapCount,
+    matchedChars: queryChars.length,
+    maxGap,
+    span: Math.max(endIndex - startIndex, 0),
+    startIndex,
+  };
 }
 
 export function renderHighlightedText(
