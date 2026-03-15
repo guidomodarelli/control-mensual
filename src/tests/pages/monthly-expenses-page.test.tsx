@@ -480,6 +480,7 @@ describe("MonthlyExpensesPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Columnas" }));
     await user.click(screen.getByRole("menuitemcheckbox", { name: "Moneda" }));
+    expect(screen.getByText("Columna deseleccionada")).toBeInTheDocument();
     await user.keyboard("{Escape}");
 
     expect(screen.getByText("Columnas u orden modificados")).toBeInTheDocument();
@@ -491,6 +492,10 @@ describe("MonthlyExpensesPage", () => {
     expect(
       screen.queryByText("Columnas u orden modificados"),
     ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Columnas" }));
+    expect(screen.queryByText("Columna deseleccionada")).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
   });
 
   it("shows sorting reset inside Columnas menu only when sorting is active and resets row order", async () => {

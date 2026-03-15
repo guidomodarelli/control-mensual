@@ -252,6 +252,7 @@ export function DataTable<TData, TValue>({
                         const columnMeta = column.columnDef.meta as
                           | { label?: string }
                           | undefined;
+                        const isColumnVisible = column.getIsVisible();
                         const label =
                           columnMeta?.label ??
                           (typeof column.columnDef.header === "string"
@@ -260,7 +261,7 @@ export function DataTable<TData, TValue>({
 
                         return (
                           <DropdownMenuCheckboxItem
-                            checked={column.getIsVisible()}
+                            checked={isColumnVisible}
                             key={column.id}
                             onSelect={(event) => {
                               event.preventDefault();
@@ -270,6 +271,15 @@ export function DataTable<TData, TValue>({
                             }}
                           >
                             {label}
+                            {!isColumnVisible ? (
+                              <>
+                                <span
+                                  aria-hidden="true"
+                                  className="absolute right-2 top-1.5 size-2 rounded-full bg-destructive ring-2 ring-background"
+                                />
+                                <span className="sr-only">Columna deseleccionada</span>
+                              </>
+                            ) : null}
                           </DropdownMenuCheckboxItem>
                         );
                       })}
