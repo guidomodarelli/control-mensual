@@ -3957,7 +3957,7 @@ describe("MonthlyExpensesPage", () => {
     ]);
   });
 
-  it("renders Prestamista to the right of Deuda / cuotas and keeps actions header at the end", () => {
+  it("renders Prestamista followed by Inicio cuota and Fin cuota, and keeps actions header at the end", () => {
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -3982,15 +3982,139 @@ describe("MonthlyExpensesPage", () => {
       .map((header) => header.textContent?.trim() ?? "");
     const loanHeaderIndex = headers.indexOf("Deuda / cuotas");
     const lenderHeaderIndex = headers.indexOf("Prestamista");
+    const installmentStartHeaderIndex = headers.indexOf("Inicio cuota");
+    const installmentEndHeaderIndex = headers.indexOf("Fin cuota");
 
     expect(loanHeaderIndex).toBeGreaterThanOrEqual(0);
     expect(lenderHeaderIndex).toBe(loanHeaderIndex + 1);
-    expect(headers.at(lenderHeaderIndex + 1)).toBe("");
+    expect(installmentStartHeaderIndex).toBe(lenderHeaderIndex + 1);
+    expect(installmentEndHeaderIndex).toBe(installmentStartHeaderIndex + 1);
+    expect(headers.at(installmentEndHeaderIndex + 1)).toBe("");
 
     const expenseRow = screen.getByRole("row", { name: /Prestamo tarjeta/i });
     const expenseCells = within(expenseRow).getAllByRole("cell");
 
     expect(expenseCells.at(lenderHeaderIndex)?.textContent?.trim()).toBe("-");
+    expect(expenseCells.at(installmentStartHeaderIndex)?.textContent?.trim()).toBe(
+      "-",
+    );
+    expect(expenseCells.at(installmentEndHeaderIndex)?.textContent?.trim()).toBe(
+      "-",
+    );
+  });
+
+  it("renders Inicio cuota and Fin cuota as MM/YYYY and sorts both columns by month-year", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Prestamo noviembre",
+              id: "expense-1",
+              loan: {
+                endMonth: "2026-02",
+                installmentCount: 4,
+                paidInstallments: 1,
+                startMonth: "2025-11",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Prestamo enero",
+              id: "expense-2",
+              loan: {
+                endMonth: "2026-04",
+                installmentCount: 4,
+                paidInstallments: 1,
+                startMonth: "2026-01",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Prestamo marzo",
+              id: "expense-3",
+              loan: {
+                endMonth: "2026-08",
+                installmentCount: 6,
+                paidInstallments: 1,
+                startMonth: "2026-03",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Sin deuda",
+              id: "expense-4",
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    const novemberRow = screen.getByRole("row", { name: /Prestamo noviembre/i });
+    const januaryRow = screen.getByRole("row", { name: /Prestamo enero/i });
+    const marchRow = screen.getByRole("row", { name: /Prestamo marzo/i });
+    const noLoanRow = screen.getByRole("row", { name: /Sin deuda/i });
+
+    expect(within(novemberRow).getByText("11/2025")).toBeInTheDocument();
+    expect(within(novemberRow).getByText("02/2026")).toBeInTheDocument();
+    expect(within(januaryRow).getByText("01/2026")).toBeInTheDocument();
+    expect(within(januaryRow).getByText("04/2026")).toBeInTheDocument();
+    expect(within(marchRow).getByText("03/2026")).toBeInTheDocument();
+    expect(within(marchRow).getByText("08/2026")).toBeInTheDocument();
+    expect(within(noLoanRow).getAllByText("-").length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole("button", { name: "Inicio cuota" }));
+
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+      "Prestamo noviembre",
+      "Prestamo enero",
+      "Prestamo marzo",
+      "Sin deuda",
+    ]);
+
+    await user.click(screen.getByRole("button", { name: "Inicio cuota" }));
+
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+      "Prestamo marzo",
+      "Prestamo enero",
+      "Prestamo noviembre",
+      "Sin deuda",
+    ]);
+
+    await user.click(screen.getByRole("button", { name: "Fin cuota" }));
+
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+      "Prestamo noviembre",
+      "Prestamo enero",
+      "Prestamo marzo",
+      "Sin deuda",
+    ]);
+
+    await user.click(screen.getByRole("button", { name: "Fin cuota" }));
+
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+      "Prestamo marzo",
+      "Prestamo enero",
+      "Prestamo noviembre",
+      "Sin deuda",
+    ]);
   });
 
   it("shows fallback values when the monthly snapshot could not be loaded", () => {

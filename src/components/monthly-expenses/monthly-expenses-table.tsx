@@ -50,9 +50,12 @@ const PAYMENT_LINK_URL_SCHEMA = z.url({
   protocol: /^https?$/,
   hostname: z.regexes.domain,
 });
+const YEAR_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
 type LoanSortMode = "paidInstallments" | "remainingInstallments" | "totalInstallments";
 const DEFAULT_LOAN_SORT_MODE: LoanSortMode = "paidInstallments";
 const LOAN_SORT_COLUMN_ID = "loanProgress";
+const LOAN_INSTALLMENT_START_COLUMN_ID = "loanInstallmentStart";
+const LOAN_INSTALLMENT_END_COLUMN_ID = "loanInstallmentEnd";
 const MONTHLY_EXPENSES_TABLE_PREFERENCES_STORAGE_KEY =
   "mis-finanzas.monthly-expenses.table-preferences";
 const SORTABLE_COLUMN_IDS = new Set([
@@ -66,6 +69,8 @@ const SORTABLE_COLUMN_IDS = new Set([
   "paymentLink",
   LOAN_SORT_COLUMN_ID,
   "lenderName",
+  LOAN_INSTALLMENT_START_COLUMN_ID,
+  LOAN_INSTALLMENT_END_COLUMN_ID,
 ]);
 const PERSISTABLE_COLUMN_VISIBILITY_IDS = new Set([
   "currency",
@@ -77,6 +82,8 @@ const PERSISTABLE_COLUMN_VISIBILITY_IDS = new Set([
   "paymentLink",
   LOAN_SORT_COLUMN_ID,
   "lenderName",
+  LOAN_INSTALLMENT_START_COLUMN_ID,
+  LOAN_INSTALLMENT_END_COLUMN_ID,
 ]);
 const LOAN_SORT_OPTIONS: Array<{ label: string; value: LoanSortMode }> = [
   {
@@ -494,6 +501,55 @@ function getLoanSortDirection(sorting: SortingState): "asc" | "desc" {
   return loanSortEntry.desc ? "desc" : "asc";
 }
 
+function getColumnSortDirection(
+  sorting: SortingState,
+  columnId: string,
+): "asc" | "desc" {
+  const sortEntry = sorting.find((entry) => entry.id === columnId);
+
+  if (!sortEntry) {
+    return "asc";
+  }
+
+  return sortEntry.desc ? "desc" : "asc";
+}
+
+function parseYearMonth(value: string): { month: string; year: string } | null {
+  const normalizedValue = value.trim();
+  const match = YEAR_MONTH_PATTERN.exec(normalizedValue);
+
+  if (!match) {
+    return null;
+  }
+
+  const [, year, month] = match;
+
+  return {
+    month,
+    year,
+  };
+}
+
+function formatYearMonth(value: string): string {
+  const parsedValue = parseYearMonth(value);
+
+  if (!parsedValue) {
+    return "-";
+  }
+
+  return `${parsedValue.month}/${parsedValue.year}`;
+}
+
+function getYearMonthSortValue(value: string): number | null {
+  const parsedValue = parseYearMonth(value);
+
+  if (!parsedValue) {
+    return null;
+  }
+
+  return Number(`${parsedValue.year}${parsedValue.month}`);
+}
+
 function getLoanSortValue(
   row: MonthlyExpensesEditableRow,
   loanSortMode: LoanSortMode,
@@ -703,6 +759,14 @@ export function MonthlyExpensesTable({
   }, [columnVisibility, loanSortMode, sorting]);
 
   const loanSortDirection = getLoanSortDirection(sorting);
+  const loanInstallmentStartSortDirection = getColumnSortDirection(
+    sorting,
+    LOAN_INSTALLMENT_START_COLUMN_ID,
+  );
+  const loanInstallmentEndSortDirection = getColumnSortDirection(
+    sorting,
+    LOAN_INSTALLMENT_END_COLUMN_ID,
+  );
 
   const columns = useMemo<ColumnDef<MonthlyExpensesEditableRow>[]>(
     () => [
@@ -1001,6 +1065,94 @@ export function MonthlyExpensesTable({
         },
       },
       {
+        id: LOAN_INSTALLMENT_START_COLUMN_ID,
+        accessorFn: (row) => row.startMonth,
+        cell: ({ row }) => formatYearMonth(row.original.startMonth),
+        header: getSortableHeader("Inicio cuota"),
+        meta: { label: "Inicio cuota" },
+        sortingFn: (rowA, rowB) => {
+          const leftValue = getYearMonthSortValue(rowA.original.startMonth);
+          const rightValue = getYearMonthSortValue(rowB.original.startMonth);
+
+          if (leftValue == null && rightValue != null) {
+            return loanInstallmentStartSortDirection === "desc" ? -1 : 1;
+          }
+
+          if (leftValue != null && rightValue == null) {
+            return loanInstallmentStartSortDirection === "desc" ? 1 : -1;
+          }
+
+          if (leftValue == null && rightValue == null) {
+            return rowA.original.description.localeCompare(
+              rowB.original.description,
+              "es",
+            );
+          }
+
+          if (leftValue == null || rightValue == null) {
+            return rowA.original.description.localeCompare(
+              rowB.original.description,
+              "es",
+            );
+          }
+
+          const difference = leftValue - rightValue;
+
+          if (difference !== 0) {
+            return difference;
+          }
+
+          return rowA.original.description.localeCompare(
+            rowB.original.description,
+            "es",
+          );
+        },
+      },
+      {
+        id: LOAN_INSTALLMENT_END_COLUMN_ID,
+        accessorFn: (row) => row.loanEndMonth,
+        cell: ({ row }) => formatYearMonth(row.original.loanEndMonth),
+        header: getSortableHeader("Fin cuota"),
+        meta: { label: "Fin cuota" },
+        sortingFn: (rowA, rowB) => {
+          const leftValue = getYearMonthSortValue(rowA.original.loanEndMonth);
+          const rightValue = getYearMonthSortValue(rowB.original.loanEndMonth);
+
+          if (leftValue == null && rightValue != null) {
+            return loanInstallmentEndSortDirection === "desc" ? -1 : 1;
+          }
+
+          if (leftValue != null && rightValue == null) {
+            return loanInstallmentEndSortDirection === "desc" ? 1 : -1;
+          }
+
+          if (leftValue == null && rightValue == null) {
+            return rowA.original.description.localeCompare(
+              rowB.original.description,
+              "es",
+            );
+          }
+
+          if (leftValue == null || rightValue == null) {
+            return rowA.original.description.localeCompare(
+              rowB.original.description,
+              "es",
+            );
+          }
+
+          const difference = leftValue - rightValue;
+
+          if (difference !== 0) {
+            return difference;
+          }
+
+          return rowA.original.description.localeCompare(
+            rowB.original.description,
+            "es",
+          );
+        },
+      },
+      {
         id: "actions",
         cell: ({ row }) => (
           <div className={styles.actionsCell}>
@@ -1020,6 +1172,8 @@ export function MonthlyExpensesTable({
     [
       actionDisabled,
       exchangeRateSnapshot,
+      loanInstallmentEndSortDirection,
+      loanInstallmentStartSortDirection,
       loanSortDirection,
       loanSortMode,
       onDeleteExpense,
