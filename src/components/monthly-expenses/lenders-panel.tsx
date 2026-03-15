@@ -36,12 +36,12 @@ interface LendersPanelProps {
   };
   isSubmitting: boolean;
   lenders: LenderOption[];
+  onDiscardUnsavedChanges: () => void;
   onDelete: (lenderId: string) => void;
   onFieldChange: (
     fieldName: "name" | "notes" | "type",
     value: string,
   ) => void;
-  onResetForm: () => void;
   onSubmit: () => Promise<boolean>;
 }
 
@@ -64,9 +64,9 @@ export function LendersPanel({
   formValues,
   isSubmitting,
   lenders,
+  onDiscardUnsavedChanges,
   onDelete,
   onFieldChange,
-  onResetForm,
   onSubmit,
 }: LendersPanelProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -104,13 +104,9 @@ export function LendersPanel({
     closeCreateModal();
   };
 
-  const handleResetForm = () => {
-    onResetForm();
-    setHasAttemptedSubmit(false);
-  };
-
   const handleDiscardChanges = () => {
-    handleResetForm();
+    onDiscardUnsavedChanges();
+    setHasAttemptedSubmit(false);
     setShowDiscardDialog(false);
     closeCreateModal();
   };

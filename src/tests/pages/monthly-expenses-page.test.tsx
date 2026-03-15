@@ -2683,6 +2683,10 @@ describe("MonthlyExpensesPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Descartar los cambios" }));
 
+    expect(mockedToast.info).toHaveBeenCalledWith(
+      "Se descartaron los cambios sin guardar.",
+    );
+
     await user.click(screen.getByRole("button", { name: "Agregar prestador" }));
 
     expect(screen.getByLabelText("Nombre")).toHaveValue("");

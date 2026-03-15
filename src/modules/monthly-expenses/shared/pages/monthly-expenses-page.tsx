@@ -1049,6 +1049,11 @@ export default function MonthlyExpensesPage({
     }));
   };
 
+  const handleDiscardUnsavedLendersChanges = () => {
+    handleResetLendersForm();
+    toast.info("Se descartaron los cambios sin guardar.");
+  };
+
   const handleLendersSubmit = async () => {
 
     const lenderName = lendersState.name.trim();
@@ -1289,9 +1294,9 @@ export default function MonthlyExpensesPage({
                 }}
                 isSubmitting={lendersState.isSubmitting}
                 lenders={lendersState.lenders}
+                onDiscardUnsavedChanges={handleDiscardUnsavedLendersChanges}
                 onDelete={handleDeleteLender}
                 onFieldChange={handleLenderFieldChange}
-                onResetForm={handleResetLendersForm}
                 onSubmit={handleLendersSubmit}
               />
       ) : null}
