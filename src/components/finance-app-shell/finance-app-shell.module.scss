@@ -30,7 +30,10 @@
 }
 
 .sidebarShell {
-  position: relative;
+  position: sticky !important;
+  top: 0;
+  bottom: auto !important;
+  align-self: flex-start;
 }
 
 .sidebarHeader {
