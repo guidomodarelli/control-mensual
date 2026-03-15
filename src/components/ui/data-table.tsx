@@ -52,7 +52,7 @@ interface DataTableProps<TData, TValue> {
   showColumnVisibilityToggle?: boolean;
   columnVisibilityButtonLabel?: string;
   columnVisibilityMenuLabel?: string;
-  resetSortingButtonLabel?: string;
+  resetSortingMenuItemLabel?: string;
   selectAllColumnsLabel?: string;
   deselectAllColumnsLabel?: string;
 }
@@ -71,7 +71,7 @@ export function DataTable<TData, TValue>({
   showColumnVisibilityToggle = false,
   columnVisibilityButtonLabel = "Columnas",
   columnVisibilityMenuLabel = "Mostrar columnas",
-  resetSortingButtonLabel = "No ordernar",
+  resetSortingMenuItemLabel = "Remover orden",
   selectAllColumnsLabel = "Seleccionar todas",
   deselectAllColumnsLabel = "Deseleccionar todas",
 }: DataTableProps<TData, TValue>) {
@@ -141,15 +141,11 @@ export function DataTable<TData, TValue>({
     showColumnVisibilityToggle && hideableColumns.length > 0;
   const hasModifiedColumnVisibility =
     shouldShowColumnVisibilityToggle && !areAllHideableColumnsVisible;
-  const shouldShowResetSortingButton = sorting.length > 0;
-  const shouldShowResetSortingBelowFilter =
-    shouldShowResetSortingButton && Boolean(filterColumnId);
-  const shouldShowResetSortingInActions =
-    shouldShowResetSortingButton && !shouldShowResetSortingBelowFilter;
-  const shouldShowRightToolbarActions =
-    shouldShowColumnVisibilityToggle || shouldShowResetSortingInActions;
-  const shouldShowToolbarActions =
-    shouldShowResetSortingButton || shouldShowColumnVisibilityToggle;
+  const shouldShowResetSortingMenuItem =
+    shouldShowColumnVisibilityToggle && sorting.length > 0;
+  const hasToolbarChanges =
+    hasModifiedColumnVisibility || shouldShowResetSortingMenuItem;
+  const shouldShowToolbarActions = shouldShowColumnVisibilityToggle;
   const shouldShowToolbar = Boolean(filterColumnId) || shouldShowToolbarActions;
   const footerGroups = table.getFooterGroups();
   const hasFooterContent = footerGroups.some((footerGroup) =>
@@ -180,19 +176,8 @@ export function DataTable<TData, TValue>({
               />
             ) : null}
 
-            {shouldShowRightToolbarActions ? (
+            {shouldShowToolbarActions ? (
               <div className="ml-auto flex flex-wrap items-center gap-2">
-                {shouldShowResetSortingInActions ? (
-                  <Button
-                    onClick={handleResetSorting}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    {resetSortingButtonLabel}
-                  </Button>
-                ) : null}
-
                 {shouldShowColumnVisibilityToggle ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -205,19 +190,38 @@ export function DataTable<TData, TValue>({
                       >
                         {columnVisibilityButtonLabel}
                         <ChevronDown aria-hidden="true" />
-                        {hasModifiedColumnVisibility ? (
+                        {hasToolbarChanges ? (
                           <>
                             <span
                               aria-hidden="true"
                               className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-destructive ring-2 ring-background"
                             />
-                            <span className="sr-only">Columnas modificadas</span>
+                            <span className="sr-only">Columnas u orden modificados</span>
                           </>
                         ) : null}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>{columnVisibilityMenuLabel}</DropdownMenuLabel>
+                      {shouldShowResetSortingMenuItem ? (
+                        <>
+                          <DropdownMenuItem
+                            className="pr-8"
+                            onSelect={(event) => {
+                              event.preventDefault();
+                              handleResetSorting();
+                            }}
+                          >
+                            {resetSortingMenuItemLabel}
+                            <span
+                              aria-hidden="true"
+                              className="absolute right-2 top-1.5 size-2 rounded-full bg-destructive ring-2 ring-background"
+                            />
+                            <span className="sr-only">Ordenamiento activo</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </>
+                      ) : null}
                       <DropdownMenuItem
                         disabled={areAllHideableColumnsVisible}
                         onSelect={(event) => {
@@ -272,18 +276,6 @@ export function DataTable<TData, TValue>({
               </div>
             ) : null}
           </div>
-
-          {shouldShowResetSortingBelowFilter ? (
-            <Button
-              className="justify-self-start"
-              onClick={handleResetSorting}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              {resetSortingButtonLabel}
-            </Button>
-          ) : null}
         </div>
       ) : null}
 
