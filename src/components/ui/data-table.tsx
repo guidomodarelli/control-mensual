@@ -71,9 +71,9 @@ export function DataTable<TData, TValue>({
   showColumnVisibilityToggle = false,
   columnVisibilityButtonLabel = "Columnas",
   columnVisibilityMenuLabel = "Mostrar columnas",
-  resetSortingMenuItemLabel = "Restablecer orden original",
-  selectAllColumnsLabel = "Seleccionar todas",
-  deselectAllColumnsLabel = "Deseleccionar todas",
+  resetSortingMenuItemLabel = "Quitar orden",
+  selectAllColumnsLabel = "Mostrar todas",
+  deselectAllColumnsLabel = "Ocultar todas",
 }: DataTableProps<TData, TValue>) {
   const [uncontrolledSorting, setUncontrolledSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);

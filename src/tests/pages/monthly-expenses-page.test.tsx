@@ -435,7 +435,7 @@ describe("MonthlyExpensesPage", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Columnas" }));
-    await user.click(screen.getByRole("menuitem", { name: "Deseleccionar todas" }));
+    await user.click(screen.getByRole("menuitem", { name: "Ocultar todas" }));
 
     await user.keyboard("{Escape}");
 
@@ -444,7 +444,7 @@ describe("MonthlyExpensesPage", () => {
     expect(screen.queryByRole("columnheader", { name: "Link" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Columnas" }));
-    await user.click(screen.getByRole("menuitem", { name: "Seleccionar todas" }));
+    await user.click(screen.getByRole("menuitem", { name: "Mostrar todas" }));
 
     await user.keyboard("{Escape}");
 
@@ -486,7 +486,7 @@ describe("MonthlyExpensesPage", () => {
     expect(screen.getByText("Columnas u orden modificados")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Columnas" }));
-    await user.click(screen.getByRole("menuitem", { name: "Seleccionar todas" }));
+    await user.click(screen.getByRole("menuitem", { name: "Mostrar todas" }));
     await user.keyboard("{Escape}");
 
     expect(
@@ -542,7 +542,7 @@ describe("MonthlyExpensesPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Columnas" }));
     expect(
-      screen.queryByRole("menuitem", { name: /Restablecer orden original/i }),
+      screen.queryByRole("menuitem", { name: /Quitar orden/i }),
     ).not.toBeInTheDocument();
     await user.keyboard("{Escape}");
 
@@ -557,7 +557,7 @@ describe("MonthlyExpensesPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Columnas" }));
     const resetSortingMenuItem = screen.getByRole("menuitem", {
-      name: /Restablecer orden original/i,
+      name: /Quitar orden/i,
     });
     const columnVisibilityMenuLabel = screen.getByText("Mostrar columnas");
 
@@ -569,7 +569,7 @@ describe("MonthlyExpensesPage", () => {
     expect(screen.getByText("Ordenamiento activo")).toBeInTheDocument();
 
     await user.click(
-      screen.getByRole("menuitem", { name: /Restablecer orden original/i }),
+      screen.getByRole("menuitem", { name: /Quitar orden/i }),
     );
     await user.keyboard("{Escape}");
 
@@ -584,7 +584,7 @@ describe("MonthlyExpensesPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Columnas" }));
     expect(
-      screen.queryByRole("menuitem", { name: /Restablecer orden original/i }),
+      screen.queryByRole("menuitem", { name: /Quitar orden/i }),
     ).not.toBeInTheDocument();
   });
 
