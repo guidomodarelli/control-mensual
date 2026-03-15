@@ -1,5 +1,9 @@
-import { useMemo, useState } from "react";
-import type { ColumnDef, SortingState } from "@tanstack/react-table";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type {
+  ColumnDef,
+  SortingState,
+  VisibilityState,
+} from "@tanstack/react-table";
 import { ArrowUpDown, ExternalLink } from "lucide-react";
 import { z } from "zod";
 
@@ -49,6 +53,31 @@ const PAYMENT_LINK_URL_SCHEMA = z.url({
 type LoanSortMode = "paidInstallments" | "remainingInstallments" | "totalInstallments";
 const DEFAULT_LOAN_SORT_MODE: LoanSortMode = "paidInstallments";
 const LOAN_SORT_COLUMN_ID = "loanProgress";
+const MONTHLY_EXPENSES_TABLE_PREFERENCES_STORAGE_KEY =
+  "mis-finanzas.monthly-expenses.table-preferences";
+const SORTABLE_COLUMN_IDS = new Set([
+  "description",
+  "currency",
+  "subtotal",
+  "occurrencesPerMonth",
+  "total",
+  "ars",
+  "usd",
+  "paymentLink",
+  LOAN_SORT_COLUMN_ID,
+  "lenderName",
+]);
+const PERSISTABLE_COLUMN_VISIBILITY_IDS = new Set([
+  "currency",
+  "subtotal",
+  "occurrencesPerMonth",
+  "total",
+  "ars",
+  "usd",
+  "paymentLink",
+  LOAN_SORT_COLUMN_ID,
+  "lenderName",
+]);
 const LOAN_SORT_OPTIONS: Array<{ label: string; value: LoanSortMode }> = [
   {
     label: "Cuotas pagadas",
@@ -84,6 +113,135 @@ function buildLoanSortingState(direction: "asc" | "desc"): SortingState {
       id: LOAN_SORT_COLUMN_ID,
     },
   ];
+}
+
+interface MonthlyExpensesTablePreferences {
+  columnVisibility: VisibilityState;
+  loanSortMode: LoanSortMode;
+  sorting: SortingState;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function parsePersistedLoanSortMode(value: unknown): LoanSortMode | null {
+  if (
+    value !== "paidInstallments" &&
+    value !== "remainingInstallments" &&
+    value !== "totalInstallments"
+  ) {
+    return null;
+  }
+
+  return value;
+}
+
+function parsePersistedSorting(value: unknown): SortingState | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const parsedSorting: SortingState = [];
+
+  for (const entry of value) {
+    if (!isRecord(entry)) {
+      continue;
+    }
+
+    const id = entry.id;
+    const desc = entry.desc;
+
+    if (
+      typeof id !== "string" ||
+      typeof desc !== "boolean" ||
+      !SORTABLE_COLUMN_IDS.has(id)
+    ) {
+      continue;
+    }
+
+    parsedSorting.push({
+      desc,
+      id,
+    });
+  }
+
+  return parsedSorting;
+}
+
+function parsePersistedColumnVisibility(value: unknown): VisibilityState | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const parsedColumnVisibility: VisibilityState = {};
+
+  for (const [columnId, isVisible] of Object.entries(value)) {
+    if (
+      !PERSISTABLE_COLUMN_VISIBILITY_IDS.has(columnId) ||
+      typeof isVisible !== "boolean"
+    ) {
+      continue;
+    }
+
+    parsedColumnVisibility[columnId] = isVisible;
+  }
+
+  return parsedColumnVisibility;
+}
+
+function getPersistedMonthlyExpensesTablePreferences(): MonthlyExpensesTablePreferences | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const serializedPreferences = window.localStorage.getItem(
+      MONTHLY_EXPENSES_TABLE_PREFERENCES_STORAGE_KEY,
+    );
+
+    if (!serializedPreferences) {
+      return null;
+    }
+
+    const parsedPreferences = JSON.parse(serializedPreferences);
+
+    if (!isRecord(parsedPreferences)) {
+      return null;
+    }
+
+    const loanSortMode =
+      parsePersistedLoanSortMode(parsedPreferences.loanSortMode) ??
+      DEFAULT_LOAN_SORT_MODE;
+    const sorting = parsePersistedSorting(parsedPreferences.sorting) ?? [];
+    const columnVisibility =
+      parsePersistedColumnVisibility(parsedPreferences.columnVisibility) ?? {};
+
+    return {
+      columnVisibility,
+      loanSortMode,
+      sorting,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function persistMonthlyExpensesTablePreferences(
+  preferences: MonthlyExpensesTablePreferences,
+): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      MONTHLY_EXPENSES_TABLE_PREFERENCES_STORAGE_KEY,
+      JSON.stringify(preferences),
+    );
+  } catch {
+    // Ignore storage failures (private mode, disabled storage, etc.)
+  }
 }
 
 interface LoanSortColumnHeaderProps {
@@ -505,9 +663,45 @@ export function MonthlyExpensesTable({
   showUnsavedChangesDialog,
   validationMessage,
 }: MonthlyExpensesTableProps) {
+  const hasSkippedInitialPersistence = useRef(false);
   const [loanSortMode, setLoanSortMode] =
     useState<LoanSortMode>(DEFAULT_LOAN_SORT_MODE);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [isRestoringTablePreferences, setIsRestoringTablePreferences] =
+    useState(true);
+
+  useEffect(() => {
+    const persistedPreferences = getPersistedMonthlyExpensesTablePreferences();
+
+    const restoreFrameId = window.requestAnimationFrame(() => {
+      if (persistedPreferences) {
+        setLoanSortMode(persistedPreferences.loanSortMode);
+        setSorting(persistedPreferences.sorting);
+        setColumnVisibility(persistedPreferences.columnVisibility);
+      }
+
+      setIsRestoringTablePreferences(false);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(restoreFrameId);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hasSkippedInitialPersistence.current) {
+      hasSkippedInitialPersistence.current = true;
+      return;
+    }
+
+    persistMonthlyExpensesTablePreferences({
+      columnVisibility,
+      loanSortMode,
+      sorting,
+    });
+  }, [columnVisibility, loanSortMode, sorting]);
+
   const loanSortDirection = getLoanSortDirection(sorting);
 
   const columns = useMemo<ColumnDef<MonthlyExpensesEditableRow>[]>(
@@ -945,7 +1139,26 @@ export function MonthlyExpensesTable({
           </div>
 
           <div className={styles.tableWrapper}>
+            {isRestoringTablePreferences ? (
+              <div
+                aria-label="Cargando configuración de tabla"
+                aria-live="polite"
+                className={styles.tableLoadingOverlay}
+                role="status"
+              >
+                <div className={styles.tableLoadingContent}>
+                  <span
+                    aria-hidden="true"
+                    className={styles.tableLoadingSpinner}
+                  />
+                  <span className={styles.tableLoadingText}>
+                    Cargando configuración de tabla...
+                  </span>
+                </div>
+              </div>
+            ) : null}
             <DataTable
+              columnVisibility={columnVisibility}
               columnVisibilityButtonLabel="Columnas"
               columnVisibilityMenuLabel="Mostrar columnas"
               columns={columns}
@@ -954,6 +1167,7 @@ export function MonthlyExpensesTable({
               filterColumnId="description"
               filterLabel="Filtrar gastos"
               filterPlaceholder="Filtrar gastos por descripción"
+              onColumnVisibilityChange={setColumnVisibility}
               onSortingChange={setSorting}
               showColumnVisibilityToggle={true}
               sorting={sorting}

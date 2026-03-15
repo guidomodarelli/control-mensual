@@ -56,6 +56,8 @@ const mockedSignOut = jest.mocked(signOut);
 const mockedToast = toast as unknown as MockedToast;
 const originalFetch = global.fetch;
 const SIDEBAR_STORAGE_KEY = "mis-finanzas.sidebar.open";
+const TABLE_PREFERENCES_STORAGE_KEY =
+  "mis-finanzas.monthly-expenses.table-preferences";
 
 function renderWithProviders(ui: ReactElement) {
   return render(<TooltipProvider>{ui}</TooltipProvider>);
@@ -207,6 +209,28 @@ function getMonthlyExpensesDescriptionsOrder(): Array<string | null> {
   return within(tableBody)
     .getAllByRole("row")
     .map((row) => within(row).getAllByRole("cell")[0].textContent?.trim() ?? null);
+}
+
+function getPersistedTablePreferences():
+  | {
+      columnVisibility: Record<string, boolean>;
+      loanSortMode: string;
+      sorting: Array<{ desc: boolean; id: string }>;
+    }
+  | null {
+  const serializedPreferences = window.localStorage.getItem(
+    TABLE_PREFERENCES_STORAGE_KEY,
+  );
+
+  if (!serializedPreferences) {
+    return null;
+  }
+
+  return JSON.parse(serializedPreferences) as {
+    columnVisibility: Record<string, boolean>;
+    loanSortMode: string;
+    sorting: Array<{ desc: boolean; id: string }>;
+  };
 }
 
 describe("MonthlyExpensesPage", () => {
@@ -426,6 +450,230 @@ describe("MonthlyExpensesPage", () => {
 
     expect(screen.getByRole("columnheader", { name: "Moneda" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Link" })).toBeInTheDocument();
+  });
+
+  it("shows a modified indicator on the column selector button when visibility changes", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    expect(screen.queryByText("Columnas modificadas")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Columnas" }));
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Moneda" }));
+    await user.keyboard("{Escape}");
+
+    expect(screen.getByText("Columnas modificadas")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Columnas" }));
+    await user.click(screen.getByRole("menuitem", { name: "Seleccionar todas" }));
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByText("Columnas modificadas")).not.toBeInTheDocument();
+  });
+
+  it("shows a reset sorting button only when sorting is active and resets row order", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Luz",
+              id: "expense-2",
+              occurrencesPerMonth: 1,
+              subtotal: 20,
+              total: 20,
+            },
+            {
+              currency: "ARS",
+              description: "Internet",
+              id: "expense-3",
+              occurrencesPerMonth: 1,
+              subtotal: 5,
+              total: 5,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "No ordernar" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Subtotal" }));
+
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+      "Internet",
+      "Luz",
+      "Agua",
+    ]);
+    expect(screen.getByRole("button", { name: "No ordernar" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "No ordernar" }));
+
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+      "Agua",
+      "Luz",
+      "Internet",
+    ]);
+    expect(screen.queryByRole("button", { name: "No ordernar" })).not.toBeInTheDocument();
+  });
+
+  it("restores persisted table sorting and column visibility from localStorage", async () => {
+    window.localStorage.setItem(
+      TABLE_PREFERENCES_STORAGE_KEY,
+      JSON.stringify({
+        columnVisibility: {
+          currency: false,
+          paymentLink: false,
+        },
+        loanSortMode: "paidInstallments",
+        sorting: [
+          {
+            desc: true,
+            id: "subtotal",
+          },
+        ],
+      }),
+    );
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Luz",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 20,
+              total: 20,
+            },
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-2",
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Internet",
+              id: "expense-3",
+              occurrencesPerMonth: 1,
+              subtotal: 5,
+              total: 5,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+        "Agua",
+        "Luz",
+        "Internet",
+      ]);
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("columnheader", { name: "Moneda" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("columnheader", { name: "Link" }),
+      ).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("columnheader", { name: "Descripción" })).toBeInTheDocument();
+  });
+
+  it("persists table sorting and column visibility in localStorage", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Luz",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 20,
+              total: 20,
+            },
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-2",
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Subtotal" }));
+    await user.click(screen.getByRole("button", { name: "Columnas" }));
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Moneda" }));
+
+    await waitFor(() => {
+      const persistedTablePreferences = getPersistedTablePreferences();
+
+      expect(persistedTablePreferences).not.toBeNull();
+      expect(persistedTablePreferences?.loanSortMode).toBe("paidInstallments");
+      expect(persistedTablePreferences?.sorting).toEqual([
+        {
+          desc: false,
+          id: "subtotal",
+        },
+      ]);
+      expect(persistedTablePreferences?.columnVisibility).toEqual(
+        expect.objectContaining({
+          currency: false,
+        }),
+      );
+    });
   });
 
   it("sorts subtotal numerically in ascending and descending order", async () => {
@@ -3451,6 +3699,109 @@ describe("MonthlyExpensesPage", () => {
     expect(screen.getByRole("button", { name: "Aplicar" })).toBeInTheDocument();
 
     expect(screen.getByRole("radio", { name: "Cuotas restantes" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+  });
+
+  it("restores persisted debt criterion and sorting direction from localStorage", async () => {
+    const user = userEvent.setup();
+
+    window.localStorage.setItem(
+      TABLE_PREFERENCES_STORAGE_KEY,
+      JSON.stringify({
+        columnVisibility: {},
+        loanSortMode: "totalInstallments",
+        sorting: [
+          {
+            desc: true,
+            id: "loanProgress",
+          },
+        ],
+      }),
+    );
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Prestamo A",
+              id: "expense-1",
+              loan: {
+                endMonth: "2026-10",
+                installmentCount: 10,
+                paidInstallments: 1,
+                startMonth: "2026-01",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Prestamo B",
+              id: "expense-2",
+              loan: {
+                endMonth: "2026-12",
+                installmentCount: 12,
+                paidInstallments: 4,
+                startMonth: "2026-01",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Prestamo C",
+              id: "expense-3",
+              loan: {
+                endMonth: "2026-03",
+                installmentCount: 3,
+                paidInstallments: 2,
+                startMonth: "2026-01",
+              },
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Sin deuda",
+              id: "expense-4",
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+        "Prestamo B",
+        "Prestamo A",
+        "Prestamo C",
+        "Sin deuda",
+      ]);
+    });
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Ordenar Deuda / cuotas",
+      }),
+    );
+
+    expect(screen.getByRole("radio", { name: "Total de cuotas" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByRole("radio", { name: "Descendente" })).toHaveAttribute(
       "aria-checked",
       "true",
     );

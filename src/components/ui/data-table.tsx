@@ -4,6 +4,7 @@ import * as React from "react";
 import type {
   ColumnDef,
   ColumnFiltersState,
+  OnChangeFn,
   SortingState,
   VisibilityState,
 } from "@tanstack/react-table";
@@ -43,12 +44,15 @@ interface DataTableProps<TData, TValue> {
   emptyMessage: string;
   sorting?: SortingState;
   onSortingChange?: (sorting: SortingState) => void;
+  columnVisibility?: VisibilityState;
+  onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
   filterColumnId?: string;
   filterLabel?: string;
   filterPlaceholder?: string;
   showColumnVisibilityToggle?: boolean;
   columnVisibilityButtonLabel?: string;
   columnVisibilityMenuLabel?: string;
+  resetSortingButtonLabel?: string;
   selectAllColumnsLabel?: string;
   deselectAllColumnsLabel?: string;
 }
@@ -59,19 +63,24 @@ export function DataTable<TData, TValue>({
   emptyMessage,
   sorting: controlledSorting,
   onSortingChange,
+  columnVisibility: controlledColumnVisibility,
+  onColumnVisibilityChange,
   filterColumnId,
   filterLabel = "Filtrar",
   filterPlaceholder = "Filtrar...",
   showColumnVisibilityToggle = false,
   columnVisibilityButtonLabel = "Columnas",
   columnVisibilityMenuLabel = "Mostrar columnas",
+  resetSortingButtonLabel = "No ordernar",
   selectAllColumnsLabel = "Seleccionar todas",
   deselectAllColumnsLabel = "Deseleccionar todas",
 }: DataTableProps<TData, TValue>) {
   const [uncontrolledSorting, setUncontrolledSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [uncontrolledColumnVisibility, setUncontrolledColumnVisibility] =
+    React.useState<VisibilityState>({});
   const sorting = controlledSorting ?? uncontrolledSorting;
+  const columnVisibility = controlledColumnVisibility ?? uncontrolledColumnVisibility;
 
   const handleSortingChange = React.useCallback(
     (updater: SortingState | ((previousState: SortingState) => SortingState)) => {
@@ -87,6 +96,21 @@ export function DataTable<TData, TValue>({
     [controlledSorting, onSortingChange, sorting],
   );
 
+  const handleColumnVisibilityChange = React.useCallback(
+    (
+      updater:
+        | VisibilityState
+        | ((previousState: VisibilityState) => VisibilityState),
+    ) => {
+      if (controlledColumnVisibility == null) {
+        setUncontrolledColumnVisibility(updater);
+      }
+
+      onColumnVisibilityChange?.(updater);
+    },
+    [controlledColumnVisibility, onColumnVisibilityChange],
+  );
+
   // TanStack Table manages internal reactive state through this hook.
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
@@ -97,7 +121,7 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     onSortingChange: handleSortingChange,
-    onColumnVisibilityChange: setColumnVisibility,
+    onColumnVisibilityChange: handleColumnVisibilityChange,
     state: {
       columnFilters,
       columnVisibility,
@@ -115,7 +139,18 @@ export function DataTable<TData, TValue>({
   );
   const shouldShowColumnVisibilityToggle =
     showColumnVisibilityToggle && hideableColumns.length > 0;
-  const shouldShowToolbar = Boolean(filterColumnId) || shouldShowColumnVisibilityToggle;
+  const hasModifiedColumnVisibility =
+    shouldShowColumnVisibilityToggle && !areAllHideableColumnsVisible;
+  const shouldShowResetSortingButton = sorting.length > 0;
+  const shouldShowResetSortingBelowFilter =
+    shouldShowResetSortingButton && Boolean(filterColumnId);
+  const shouldShowResetSortingInActions =
+    shouldShowResetSortingButton && !shouldShowResetSortingBelowFilter;
+  const shouldShowRightToolbarActions =
+    shouldShowColumnVisibilityToggle || shouldShowResetSortingInActions;
+  const shouldShowToolbarActions =
+    shouldShowResetSortingButton || shouldShowColumnVisibilityToggle;
+  const shouldShowToolbar = Boolean(filterColumnId) || shouldShowToolbarActions;
   const footerGroups = table.getFooterGroups();
   const hasFooterContent = footerGroups.some((footerGroup) =>
     footerGroup.headers.some(
@@ -123,89 +158,131 @@ export function DataTable<TData, TValue>({
     ),
   );
 
+  const handleResetSorting = React.useCallback(() => {
+    handleSortingChange([]);
+  }, [handleSortingChange]);
+
   return (
     <div className="grid gap-4">
       {shouldShowToolbar ? (
         <div className="flex flex-wrap items-center gap-3">
           {filterColumnId ? (
-            <Input
-              aria-label={filterLabel}
-              className="max-w-sm"
-              onChange={(event) =>
-                table.getColumn(filterColumnId)?.setFilterValue(event.target.value)
-              }
-              placeholder={filterPlaceholder}
-              type="text"
-              value={String(table.getColumn(filterColumnId)?.getFilterValue() ?? "")}
-            />
-          ) : null}
+            <div className="grid w-full max-w-sm gap-2">
+              <Input
+                aria-label={filterLabel}
+                className="w-full"
+                onChange={(event) =>
+                  table.getColumn(filterColumnId)?.setFilterValue(event.target.value)
+                }
+                placeholder={filterPlaceholder}
+                type="text"
+                value={String(table.getColumn(filterColumnId)?.getFilterValue() ?? "")}
+              />
 
-          {shouldShowColumnVisibilityToggle ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              {shouldShowResetSortingBelowFilter ? (
                 <Button
-                  aria-label={columnVisibilityButtonLabel}
-                  className="ml-auto"
+                  className="justify-self-start"
+                  onClick={handleResetSorting}
                   size="sm"
                   type="button"
                   variant="outline"
                 >
-                  {columnVisibilityButtonLabel}
-                  <ChevronDown aria-hidden="true" />
+                  {resetSortingButtonLabel}
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>{columnVisibilityMenuLabel}</DropdownMenuLabel>
-                <DropdownMenuItem
-                  disabled={areAllHideableColumnsVisible}
-                  onSelect={(event) => {
-                    event.preventDefault();
-                    hideableColumns.forEach((column) => {
-                      column.toggleVisibility(true);
-                    });
-                  }}
-                >
-                  {selectAllColumnsLabel}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!areSomeHideableColumnsVisible}
-                  onSelect={(event) => {
-                    event.preventDefault();
-                    hideableColumns.forEach((column) => {
-                      column.toggleVisibility(false);
-                    });
-                  }}
-                >
-                  {deselectAllColumnsLabel}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {hideableColumns.map((column) => {
-                  const columnMeta = column.columnDef.meta as
-                    | { label?: string }
-                    | undefined;
-                  const label =
-                    columnMeta?.label ??
-                    (typeof column.columnDef.header === "string"
-                      ? column.columnDef.header
-                      : column.id);
+              ) : null}
+            </div>
+          ) : null}
 
-                  return (
-                    <DropdownMenuCheckboxItem
-                      checked={column.getIsVisible()}
-                      key={column.id}
+          {shouldShowRightToolbarActions ? (
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              {shouldShowResetSortingInActions ? (
+                <Button
+                  onClick={handleResetSorting}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  {resetSortingButtonLabel}
+                </Button>
+              ) : null}
+
+              {shouldShowColumnVisibilityToggle ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      aria-label={columnVisibilityButtonLabel}
+                      className="relative"
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      {columnVisibilityButtonLabel}
+                      <ChevronDown aria-hidden="true" />
+                      {hasModifiedColumnVisibility ? (
+                        <>
+                          <span
+                            aria-hidden="true"
+                            className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-destructive ring-2 ring-background"
+                          />
+                          <span className="sr-only">Columnas modificadas</span>
+                        </>
+                      ) : null}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>{columnVisibilityMenuLabel}</DropdownMenuLabel>
+                    <DropdownMenuItem
+                      disabled={areAllHideableColumnsVisible}
                       onSelect={(event) => {
                         event.preventDefault();
-                      }}
-                      onCheckedChange={(nextVisible) => {
-                        column.toggleVisibility(Boolean(nextVisible));
+                        hideableColumns.forEach((column) => {
+                          column.toggleVisibility(true);
+                        });
                       }}
                     >
-                      {label}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                      {selectAllColumnsLabel}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={!areSomeHideableColumnsVisible}
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        hideableColumns.forEach((column) => {
+                          column.toggleVisibility(false);
+                        });
+                      }}
+                    >
+                      {deselectAllColumnsLabel}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {hideableColumns.map((column) => {
+                      const columnMeta = column.columnDef.meta as
+                        | { label?: string }
+                        | undefined;
+                      const label =
+                        columnMeta?.label ??
+                        (typeof column.columnDef.header === "string"
+                          ? column.columnDef.header
+                          : column.id);
+
+                      return (
+                        <DropdownMenuCheckboxItem
+                          checked={column.getIsVisible()}
+                          key={column.id}
+                          onSelect={(event) => {
+                            event.preventDefault();
+                          }}
+                          onCheckedChange={(nextVisible) => {
+                            column.toggleVisibility(Boolean(nextVisible));
+                          }}
+                        >
+                          {label}
+                        </DropdownMenuCheckboxItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
+            </div>
           ) : null}
         </div>
       ) : null}
