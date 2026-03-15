@@ -6,6 +6,7 @@ import { z } from "zod";
 import { ExpenseRowActions } from "@/components/monthly-expenses/expense-row-actions";
 import {
   ExpenseSheet,
+  type ExpenseEditableFieldName,
 } from "@/components/monthly-expenses/expense-sheet";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
+import type { LenderOption } from "./lender-picker";
 import styles from "./monthly-expenses-table.module.scss";
 
 type MonthlyExpenseCurrency = "ARS" | "USD";
@@ -71,6 +73,20 @@ interface MonthlyExpensesTableProps {
   isCopyFromDisabled: boolean;
   isExpenseSheetOpen: boolean;
   isSubmitting: boolean;
+  lenders: LenderOption[];
+  loadError: string | null;
+  month: string;
+  onAddExpense: () => void;
+  onCopyFromMonth: () => void;
+  onCopySourceMonthChange: (value: string) => void;
+  onDeleteExpense: (expenseId: string) => void;
+  onEditExpense: (expenseId: string) => void;
+  onExpenseFieldChange: (
+    fieldName: ExpenseEditableFieldName,
+    value: string,
+  ) => void;
+  onExpenseLenderSelect: (lenderId: string | null) => void;
+  onExpenseLoanToggle: (checked: boolean) => void;
   onMonthChange: (value: string) => void;
   onRequestCloseExpenseSheet: () => void;
   onSaveExpense: () => void;
