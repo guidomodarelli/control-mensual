@@ -781,6 +781,32 @@ export function MonthlyExpensesTable({
         },
       },
       {
+        accessorKey: "lenderName",
+        cell: ({ row }) => {
+          const lenderName = row.original.lenderName.trim();
+
+          return lenderName.length > 0 ? lenderName : "-";
+        },
+        header: getSortableHeader("Prestamista"),
+        meta: { label: "Prestamista" },
+        sortingFn: (rowA, rowB) => {
+          const leftValue = rowA.original.lenderName.trim();
+          const rightValue = rowB.original.lenderName.trim();
+
+          if (!leftValue && rightValue) {
+            return 1;
+          }
+
+          if (leftValue && !rightValue) {
+            return -1;
+          }
+
+          return leftValue.localeCompare(rightValue, "es", {
+            sensitivity: "base",
+          });
+        },
+      },
+      {
         id: "actions",
         cell: ({ row }) => (
           <div className={styles.actionsCell}>

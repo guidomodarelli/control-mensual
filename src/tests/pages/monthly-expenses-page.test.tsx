@@ -3606,7 +3606,7 @@ describe("MonthlyExpensesPage", () => {
     ]);
   });
 
-  it("renders an empty actions header immediately to the right of Deuda / cuotas", () => {
+  it("renders Prestamista to the right of Deuda / cuotas and keeps actions header at the end", () => {
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -3630,9 +3630,16 @@ describe("MonthlyExpensesPage", () => {
       .getAllByRole("columnheader")
       .map((header) => header.textContent?.trim() ?? "");
     const loanHeaderIndex = headers.indexOf("Deuda / cuotas");
+    const lenderHeaderIndex = headers.indexOf("Prestamista");
 
     expect(loanHeaderIndex).toBeGreaterThanOrEqual(0);
-    expect(headers.at(loanHeaderIndex + 1)).toBe("");
+    expect(lenderHeaderIndex).toBe(loanHeaderIndex + 1);
+    expect(headers.at(lenderHeaderIndex + 1)).toBe("");
+
+    const expenseRow = screen.getByRole("row", { name: /Prestamo tarjeta/i });
+    const expenseCells = within(expenseRow).getAllByRole("cell");
+
+    expect(expenseCells.at(lenderHeaderIndex)?.textContent?.trim()).toBe("-");
   });
 
   it("shows fallback values when the monthly snapshot could not be loaded", () => {
