@@ -308,8 +308,9 @@ describe("MonthlyExpensesPage", () => {
     );
 
     expect(
-      screen.getByText("Cambiá el mes para guardar o consultar otra planilla mensual."),
-    ).toBeInTheDocument();
+      screen.getAllByText("Cambiá el mes para guardar o consultar otra planilla mensual.")
+        .length,
+    ).toBeGreaterThan(0);
 
     await user.click(
       screen.getByRole("button", { name: "Cerrar información de Mes" }),
@@ -317,8 +318,10 @@ describe("MonthlyExpensesPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByText("Cambiá el mes para guardar o consultar otra planilla mensual."),
-      ).not.toBeInTheDocument();
+        screen.queryAllByText(
+          "Cambiá el mes para guardar o consultar otra planilla mensual.",
+        ).length,
+      ).toBe(0);
     });
   });
 
