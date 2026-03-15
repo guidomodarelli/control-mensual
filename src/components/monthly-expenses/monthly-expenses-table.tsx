@@ -1387,10 +1387,24 @@ export function MonthlyExpensesTable({
       },
       {
         accessorKey: "loanProgress",
-        cell: ({ row }) =>
-          row.original.isLoan
-            ? row.original.loanProgress || "Completá datos de la deuda"
-            : "No aplica",
+        cell: ({ row }) => {
+          if (!row.original.isLoan) {
+            return "No aplica";
+          }
+
+          if (!row.original.loanProgress) {
+            return "Completá datos de la deuda";
+          }
+
+          return (
+            <div className={styles.loanProgressCell}>
+              <span>{row.original.loanProgress}</span>
+              <span className={styles.loanProgressRemaining}>
+                {`${row.original.loanRemainingInstallments ?? 0} cuotas restantes`}
+              </span>
+            </div>
+          );
+        },
         header: ({ column }) => (
           <LoanSortColumnHeader
             column={column}

@@ -358,6 +358,16 @@
   color: var(--foreground);
 }
 
+.loanProgressCell {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.loanProgressRemaining {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
 .actionsCell {
   width: 1%;
   white-space: nowrap;
