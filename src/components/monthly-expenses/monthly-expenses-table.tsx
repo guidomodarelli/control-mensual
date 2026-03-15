@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
-import { ArrowUpDown, ExternalLink, SlidersHorizontal } from "lucide-react";
+import { ArrowUpDown, ExternalLink } from "lucide-react";
 import { z } from "zod";
 
 import { ExpenseRowActions } from "@/components/monthly-expenses/expense-row-actions";
@@ -60,6 +60,170 @@ const LOAN_SORT_OPTIONS: Array<{ label: string; value: LoanSortMode }> = [
     value: "totalInstallments",
   },
 ];
+const LOAN_SORT_DIRECTION_OPTIONS: Array<{
+  label: string;
+  value: "asc" | "desc";
+}> = [
+  {
+    label: "Ascendente",
+    value: "asc",
+  },
+  {
+    label: "Descendente",
+    value: "desc",
+  },
+];
+
+function buildLoanSortingState(direction: "asc" | "desc"): SortingState {
+  return [
+    {
+      desc: direction === "desc",
+      id: LOAN_SORT_COLUMN_ID,
+    },
+  ];
+}
+
+interface LoanSortColumnHeaderProps {
+  column: {
+    getCanSort: () => boolean;
+    getIsSorted: () => false | "asc" | "desc";
+  };
+  loanSortMode: LoanSortMode;
+  onApplyLoanSort: (args: {
+    direction: "asc" | "desc";
+    mode: LoanSortMode;
+  }) => void;
+}
+
+function LoanSortColumnHeader({
+  column,
+  loanSortMode,
+  onApplyLoanSort,
+}: LoanSortColumnHeaderProps) {
+  const canSort = column.getCanSort();
+  const currentSortDirection = column.getIsSorted() === "desc" ? "desc" : "asc";
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [draftLoanSortMode, setDraftLoanSortMode] =
+    useState<LoanSortMode>(loanSortMode);
+  const [draftLoanSortDirection, setDraftLoanSortDirection] = useState<
+    "asc" | "desc"
+  >(currentSortDirection);
+
+  function handlePopoverOpenChange(nextOpen: boolean) {
+    if (nextOpen) {
+      setDraftLoanSortMode(loanSortMode);
+      setDraftLoanSortDirection(currentSortDirection);
+    }
+
+    setIsPopoverOpen(nextOpen);
+  }
+
+  if (!canSort) {
+    return <span className={styles.headLabel}>Deuda / cuotas</span>;
+  }
+
+  return (
+    <div className={styles.loanSortHeader}>
+      <Popover onOpenChange={handlePopoverOpenChange} open={isPopoverOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            aria-label="Ordenar Deuda / cuotas"
+            className={styles.headButton}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            Deuda / cuotas
+            <ArrowUpDown aria-hidden="true" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className={styles.loanSortPopover}>
+          <p className={styles.loanSortPopoverTitle}>Criterio</p>
+
+          <RadioGroup
+            aria-label="Criterio de orden para Deuda / cuotas"
+            className={styles.loanSortOptions}
+            onValueChange={(value) => setDraftLoanSortMode(value as LoanSortMode)}
+            value={draftLoanSortMode}
+          >
+            {LOAN_SORT_OPTIONS.map((option) => {
+              const radioId = `loan-sort-mode-${option.value}`;
+
+              return (
+                <div className={styles.loanSortOption} key={option.value}>
+                  <RadioGroupItem
+                    aria-label={option.label}
+                    id={radioId}
+                    value={option.value}
+                  />
+                  <Label className={styles.loanSortOptionLabel} htmlFor={radioId}>
+                    {option.label}
+                  </Label>
+                </div>
+              );
+            })}
+          </RadioGroup>
+
+          <p className={styles.loanSortPopoverTitle}>Dirección</p>
+
+          <RadioGroup
+            aria-label="Dirección de orden para Deuda / cuotas"
+            className={styles.loanSortOptions}
+            onValueChange={(value) =>
+              setDraftLoanSortDirection(value as "asc" | "desc")
+            }
+            value={draftLoanSortDirection}
+          >
+            {LOAN_SORT_DIRECTION_OPTIONS.map((option) => {
+              const radioId = `loan-sort-direction-${option.value}`;
+
+              return (
+                <div className={styles.loanSortOption} key={option.value}>
+                  <RadioGroupItem
+                    aria-label={option.label}
+                    id={radioId}
+                    value={option.value}
+                  />
+                  <Label className={styles.loanSortOptionLabel} htmlFor={radioId}>
+                    {option.label}
+                  </Label>
+                </div>
+              );
+            })}
+          </RadioGroup>
+
+          <div className={styles.loanSortActions}>
+            <Button
+              className={styles.loanSortDiscardButton}
+              onClick={() => {
+                setIsPopoverOpen(false);
+              }}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              Descartar
+            </Button>
+            <Button
+              className={styles.loanSortApplyButton}
+              onClick={() => {
+                onApplyLoanSort({
+                  direction: draftLoanSortDirection,
+                  mode: draftLoanSortMode,
+                });
+                setIsPopoverOpen(false);
+              }}
+              size="sm"
+              type="button"
+            >
+              Aplicar
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
 
 export interface MonthlyExpensesEditableRow {
   currency: MonthlyExpenseCurrency;
@@ -180,87 +344,6 @@ function getLoanSortValue(
     case "totalInstallments":
       return row.loanTotalInstallments;
   }
-}
-
-function getLoanSortableHeader({
-  loanSortMode,
-  onLoanSortModeChange,
-}: {
-  loanSortMode: LoanSortMode;
-  onLoanSortModeChange: (loanSortMode: LoanSortMode) => void;
-}) {
-  return function LoanSortableHeader({
-    column,
-  }: {
-    column: {
-      getCanSort: () => boolean;
-      getIsSorted: () => false | "asc" | "desc";
-      toggleSorting: (desc?: boolean) => void;
-    };
-  }) {
-    if (!column.getCanSort()) {
-      return <span className={styles.headLabel}>Deuda / cuotas</span>;
-    }
-
-    return (
-      <div className={styles.loanSortHeader}>
-        <Button
-          aria-label="Ordenar Deuda / cuotas"
-          className={styles.headButton}
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          size="sm"
-          type="button"
-          variant="ghost"
-        >
-          Deuda / cuotas
-          <ArrowUpDown aria-hidden="true" />
-        </Button>
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              aria-label="Configurar orden de Deuda / cuotas"
-              className={styles.loanSortConfigButton}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-            >
-              <SlidersHorizontal aria-hidden="true" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className={styles.loanSortPopover}>
-            <p className={styles.loanSortPopoverTitle}>Ordenar por</p>
-
-            <RadioGroup
-              aria-label="Criterio de orden para Deuda / cuotas"
-              className={styles.loanSortOptions}
-              onValueChange={(value) =>
-                onLoanSortModeChange(value as LoanSortMode)
-              }
-              value={loanSortMode}
-            >
-              {LOAN_SORT_OPTIONS.map((option) => {
-                const radioId = `loan-sort-mode-${option.value}`;
-
-                return (
-                  <div className={styles.loanSortOption} key={option.value}>
-                    <RadioGroupItem
-                      aria-label={option.label}
-                      id={radioId}
-                      value={option.value}
-                    />
-                    <Label className={styles.loanSortOptionLabel} htmlFor={radioId}>
-                      {option.label}
-                    </Label>
-                  </div>
-                );
-              })}
-            </RadioGroup>
-          </PopoverContent>
-        </Popover>
-      </div>
-    );
-  };
 }
 
 function formatCurrencyAmount(
@@ -682,10 +765,16 @@ export function MonthlyExpensesTable({
           row.original.isLoan
             ? row.original.loanProgress || "Completá datos de la deuda"
             : "No aplica",
-        header: getLoanSortableHeader({
-          loanSortMode,
-          onLoanSortModeChange: setLoanSortMode,
-        }),
+        header: ({ column }) => (
+          <LoanSortColumnHeader
+            column={column}
+            loanSortMode={loanSortMode}
+            onApplyLoanSort={({ direction, mode }) => {
+              setLoanSortMode(mode);
+              setSorting(buildLoanSortingState(direction));
+            }}
+          />
+        ),
         meta: { label: "Deuda / cuotas" },
         sortingFn: (rowA, rowB) => {
           const leftIsNoAplica = !rowA.original.isLoan;

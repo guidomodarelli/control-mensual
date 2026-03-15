@@ -3164,7 +3164,7 @@ describe("MonthlyExpensesPage", () => {
 
     await user.click(
       screen.getByRole("button", {
-        name: "Configurar orden de Deuda / cuotas",
+        name: "Ordenar Deuda / cuotas",
       }),
     );
 
@@ -3173,7 +3173,16 @@ describe("MonthlyExpensesPage", () => {
         name: "Criterio de orden para Deuda / cuotas",
       }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("radiogroup", {
+        name: "Dirección de orden para Deuda / cuotas",
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Cuotas pagadas" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByRole("radio", { name: "Ascendente" })).toHaveAttribute(
       "aria-checked",
       "true",
     );
@@ -3185,13 +3194,10 @@ describe("MonthlyExpensesPage", () => {
       "aria-checked",
       "false",
     );
+    expect(screen.getByRole("button", { name: "Aplicar" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("radio", { name: "Cuotas restantes" }));
-    await user.click(
-      screen.getByRole("button", {
-        name: "Configurar orden de Deuda / cuotas",
-      }),
-    );
+    expect(screen.getByRole("button", { name: "Aplicar" })).toBeInTheDocument();
 
     expect(screen.getByRole("radio", { name: "Cuotas restantes" })).toHaveAttribute(
       "aria-checked",
@@ -3268,6 +3274,8 @@ describe("MonthlyExpensesPage", () => {
         name: "Ordenar Deuda / cuotas",
       }),
     );
+    await user.click(screen.getByRole("radio", { name: "Ascendente" }));
+    await user.click(screen.getByRole("button", { name: "Aplicar" }));
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Prestamo A",
       "Prestamo C",
@@ -3280,6 +3288,8 @@ describe("MonthlyExpensesPage", () => {
         name: "Ordenar Deuda / cuotas",
       }),
     );
+    await user.click(screen.getByRole("radio", { name: "Descendente" }));
+    await user.click(screen.getByRole("button", { name: "Aplicar" }));
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Prestamo B",
       "Prestamo C",
@@ -3289,16 +3299,26 @@ describe("MonthlyExpensesPage", () => {
 
     await user.click(
       screen.getByRole("button", {
-        name: "Configurar orden de Deuda / cuotas",
+        name: "Ordenar Deuda / cuotas",
       }),
     );
     await user.click(screen.getByRole("radio", { name: "Cuotas restantes" }));
+    expect(screen.getByRole("button", { name: "Aplicar" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Aplicar" }));
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+      "Prestamo A",
+      "Prestamo B",
+      "Prestamo C",
+      "Sin deuda",
+    ]);
 
     await user.click(
       screen.getByRole("button", {
         name: "Ordenar Deuda / cuotas",
       }),
     );
+    await user.click(screen.getByRole("radio", { name: "Ascendente" }));
+    await user.click(screen.getByRole("button", { name: "Aplicar" }));
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Prestamo C",
       "Prestamo B",
@@ -3309,27 +3329,10 @@ describe("MonthlyExpensesPage", () => {
     await user.click(
       screen.getByRole("button", {
         name: "Ordenar Deuda / cuotas",
-      }),
-    );
-    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
-      "Prestamo A",
-      "Prestamo B",
-      "Prestamo C",
-      "Sin deuda",
-    ]);
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Configurar orden de Deuda / cuotas",
       }),
     );
     await user.click(screen.getByRole("radio", { name: "Total de cuotas" }));
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Ordenar Deuda / cuotas",
-      }),
-    );
+    await user.click(screen.getByRole("button", { name: "Aplicar" }));
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Prestamo C",
       "Prestamo A",
@@ -3342,6 +3345,8 @@ describe("MonthlyExpensesPage", () => {
         name: "Ordenar Deuda / cuotas",
       }),
     );
+    await user.click(screen.getByRole("radio", { name: "Descendente" }));
+    await user.click(screen.getByRole("button", { name: "Aplicar" }));
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Prestamo B",
       "Prestamo A",

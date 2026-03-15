@@ -141,16 +141,6 @@
 .loanSortHeader {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-}
-
-.loanSortConfigButton {
-  color: var(--muted-foreground);
-}
-
-.loanSortConfigButton:hover,
-.loanSortConfigButton:focus-visible {
-  color: var(--foreground);
 }
 
 .loanSortPopover {
@@ -163,6 +153,10 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--muted-foreground);
+}
+
+.loanSortPopoverTitle + .loanSortOptions {
+  margin-top: 0.35rem;
 }
 
 .loanSortOptions {
@@ -179,6 +173,18 @@
   font-size: 0.875rem;
   color: var(--foreground);
   cursor: pointer;
+}
+
+.loanSortActions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.125rem;
+}
+
+.loanSortDiscardButton,
+.loanSortApplyButton {
+  min-width: 6.5rem;
 }
 
 .cellField {
