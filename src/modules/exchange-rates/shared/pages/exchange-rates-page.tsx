@@ -161,8 +161,7 @@ export default function ExchangeRatesPage({
           <p className={styles.eyebrow}>Mercado cambiario</p>
           <h1 className={styles.title}>Cotizaciones del dólar</h1>
           <p className={styles.description}>
-            Consultá el valor oficial, blue y solidario del mes seleccionado
-            usando el histórico de Ámbito y la configuración global de IIBB.
+            Consultá el valor oficial, blue y solidario del mes seleccionado.
           </p>
         </div>
 
