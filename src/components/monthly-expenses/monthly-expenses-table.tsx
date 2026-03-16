@@ -287,6 +287,64 @@ interface LoanSortColumnHeaderProps {
   }) => void;
 }
 
+interface ReceiptDeleteConfirmButtonProps {
+  actionDisabled: boolean;
+  onConfirm: () => void;
+  receiptFileName: string;
+}
+
+function ReceiptDeleteConfirmButton({
+  actionDisabled,
+  onConfirm,
+  receiptFileName,
+}: ReceiptDeleteConfirmButtonProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <Popover onOpenChange={setIsOpen} open={isOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          aria-label={`Eliminar comprobante ${receiptFileName}`}
+          className={styles.receiptDeleteButton}
+          disabled={actionDisabled}
+          size="icon-sm"
+          type="button"
+          variant="ghost"
+        >
+          <Trash2 aria-hidden="true" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className={styles.receiptDeleteConfirmPopover}>
+        <p className={styles.receiptDeleteConfirmMessage}>
+          ¿Querés eliminar este comprobante?
+        </p>
+        <div className={styles.receiptDeleteConfirmActions}>
+          <Button
+            onClick={() => setIsOpen(false)}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            Cancelar
+          </Button>
+          <Button
+            aria-label={`Confirmar eliminación de comprobante ${receiptFileName}`}
+            onClick={() => {
+              setIsOpen(false);
+              onConfirm();
+            }}
+            size="sm"
+            type="button"
+            variant="destructive"
+          >
+            Eliminar
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function LoanSortColumnHeader({
   column,
   loanSortMode,
@@ -1528,21 +1586,15 @@ export function MonthlyExpensesTable({
                             >
                               <Pencil aria-hidden="true" />
                             </Button>
-                            <Button
-                              aria-label={`Eliminar comprobante ${receipt.fileName}`}
-                              className={styles.receiptDeleteButton}
-                              disabled={actionDisabled}
-                              onClick={() =>
+                            <ReceiptDeleteConfirmButton
+                              actionDisabled={actionDisabled}
+                              onConfirm={() =>
                                 onDeleteReceipt({
                                   expenseId: row.original.id,
                                   receiptFileId: receipt.fileId,
                                 })}
-                              size="icon-sm"
-                              type="button"
-                              variant="ghost"
-                            >
-                              <Trash2 aria-hidden="true" />
-                            </Button>
+                              receiptFileName={receipt.fileName}
+                            />
                           </div>
                         );
                       })}

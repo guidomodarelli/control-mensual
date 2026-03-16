@@ -4186,6 +4186,18 @@ describe("MonthlyExpensesPage", () => {
       }),
     );
 
+    expect(
+      fetchMock.mock.calls.find(
+        ([url]) => url === "/api/storage/monthly-expenses",
+      ),
+    ).toBeUndefined();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Confirmar eliminación de comprobante comprobante.pdf",
+      }),
+    );
+
     expect(confirmSpy).not.toHaveBeenCalled();
 
     await waitFor(() => {

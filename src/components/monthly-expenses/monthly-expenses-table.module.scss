@@ -535,6 +535,22 @@
   color: var(--destructive);
 }
 
+.receiptDeleteConfirmPopover {
+  width: min(18rem, calc(100vw - 2rem));
+}
+
+.receiptDeleteConfirmMessage {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--foreground);
+}
+
+.receiptDeleteConfirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .extraReceiptsTrigger {
   min-width: auto;
   height: auto;
