@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Info, Link2, X } from "lucide-react";
+import { Info, X } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import {
   Alert,
@@ -55,7 +54,6 @@ export type ExpenseEditableFieldName =
   | "installmentCount"
   | "manualCoveredPayments"
   | "occurrencesPerMonth"
-  | "paymentLink"
   | "startMonth"
   | "subtotal";
 
@@ -92,11 +90,6 @@ type ExpenseFieldErrorMap = Partial<Record<ExpenseSheetFormFieldName, string>>;
 type ExpenseSheetFormValues = Record<ExpenseSheetFormFieldName, string>;
 
 const INSTALLMENT_COUNT_SUGGESTIONS = ["3", "6", "9", "12", "18", "24"];
-const PAYMENT_LINK_PROTOCOL_PATTERN = /^[a-zA-Z][a-zA-Z\d+.-]*:/;
-const PAYMENT_LINK_URL_SCHEMA = z.url({
-  protocol: /^https?$/,
-  hostname: z.regexes.domain,
-});
 
 function getFieldLabel(label: string, isChanged: boolean) {
   return (
@@ -194,25 +187,9 @@ function getExpenseSheetFormValues(
     description: draft.description,
     installmentCount: draft.installmentCount,
     occurrencesPerMonth: draft.occurrencesPerMonth,
-    paymentLink: draft.paymentLink,
     startMonth: draft.startMonth,
     subtotal: draft.subtotal,
   };
-}
-
-function isValidHttpPaymentLink(value: string): boolean {
-  try {
-    const normalizedValue = value.trim();
-    const paymentLinkWithProtocol = PAYMENT_LINK_PROTOCOL_PATTERN.test(
-      normalizedValue,
-    )
-      ? normalizedValue
-      : `https://${normalizedValue}`;
-    PAYMENT_LINK_URL_SCHEMA.parse(paymentLinkWithProtocol);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 function getFieldErrors(draft: MonthlyExpensesEditableRow): ExpenseFieldErrorMap {
@@ -231,16 +208,6 @@ function getFieldErrors(draft: MonthlyExpensesEditableRow): ExpenseFieldErrorMap
 
   if (!Number.isInteger(occurrencesPerMonth) || occurrencesPerMonth <= 0) {
     fieldErrors.occurrencesPerMonth = "Ingresá una cantidad mayor a 0.";
-  }
-
-  const normalizedPaymentLink = draft.paymentLink.trim();
-
-  if (
-    normalizedPaymentLink.length > 0 &&
-    !isValidHttpPaymentLink(normalizedPaymentLink)
-  ) {
-    fieldErrors.paymentLink =
-      "Ingresá un link válido con dominio (por ejemplo, ejemplo.com).";
   }
 
   if (draft.isLoan && !draft.startMonth.trim()) {
@@ -490,53 +457,6 @@ function ExpenseSheetContent({
                             <SelectItem value="USD">Dolar estadounidense (USD)</SelectItem>
                           </SelectContent>
                         </Select>
-                        <FormMessage className={styles.fieldErrorText} />
-                      </div>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="paymentLink"
-                  render={() => (
-                    <FormItem className={cn(styles.fieldGroup, styles.fullWidthField)}>
-                      <FormLabel>
-                        {getFieldLabel(
-                          "Link de pago (Opcional)",
-                          changedFields.has("paymentLink"),
-                        )}
-                      </FormLabel>
-                      <div className={styles.fieldControlWrapper}>
-                        <InputGroup
-                          className={cn(
-                            shouldShowValidation &&
-                              fieldErrors.paymentLink &&
-                              styles.invalidField,
-                            changedFields.has("paymentLink") && styles.changedField,
-                          )}
-                          data-changed={
-                            changedFields.has("paymentLink") ? "true" : "false"
-                          }
-                        >
-                          <InputGroupAddon align="inline-start" aria-hidden="true">
-                            <Link2 className={styles.inputAddonIcon} />
-                          </InputGroupAddon>
-                          <FormControl>
-                            <InputGroupInput
-                              aria-label="Link de pago"
-                              data-changed={
-                                changedFields.has("paymentLink") ? "true" : "false"
-                              }
-                              onChange={(event) =>
-                                onFieldChange("paymentLink", event.target.value)
-                              }
-                              placeholder="https://..."
-                              type="url"
-                              value={draft.paymentLink}
-                            />
-                          </FormControl>
-                        </InputGroup>
                         <FormMessage className={styles.fieldErrorText} />
                       </div>
                     </FormItem>

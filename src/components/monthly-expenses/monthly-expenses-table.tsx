@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   ColumnDef,
   SortingState,
@@ -10,12 +10,13 @@ import {
   Check,
   CircleX,
   ExternalLink,
+  Link2,
   Paperclip,
+  Plus,
   Pencil,
   Trash2,
   X,
 } from "lucide-react";
-import { z } from "zod";
 
 import { ExpenseRowActions } from "@/components/monthly-expenses/expense-row-actions";
 import {
@@ -25,8 +26,21 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Highlighter } from "@/components/ui/highlighter";
 import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import {
   Popover,
@@ -56,14 +70,13 @@ import {
 } from "./fuzzy-search";
 import { LoanInfoPopover } from "./loan-info-popover";
 import type { LenderOption } from "./lender-picker";
+import {
+  getValidPaymentLink as getValidPaymentLinkUrl,
+  PAYMENT_LINK_VALIDATION_ERROR_MESSAGE,
+} from "./payment-link";
 import styles from "./monthly-expenses-table.module.scss";
 
 type MonthlyExpenseCurrency = "ARS" | "USD";
-const PAYMENT_LINK_PROTOCOL_PATTERN = /^[a-zA-Z][a-zA-Z\d+.-]*:/;
-const PAYMENT_LINK_URL_SCHEMA = z.url({
-  protocol: /^https?$/,
-  hostname: z.regexes.domain,
-});
 const YEAR_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
 type LoanSortMode = "paidInstallments" | "remainingInstallments" | "totalInstallments";
 const DEFAULT_LOAN_SORT_MODE: LoanSortMode = "paidInstallments";
@@ -554,6 +567,7 @@ interface MonthlyExpensesTableProps {
   onCopySourceMonthChange: (value: string) => void;
   onDeleteAllReceiptsFolderReference: (expenseId: string) => void;
   onDeleteExpense: (expenseId: string) => void;
+  onDeletePaymentLink: (expenseId: string) => void | Promise<void>;
   onDeleteMonthlyFolderReference: (expenseId: string) => void;
   onEditExpense: (expenseId: string) => void;
   onExpenseFieldChange: (
@@ -575,6 +589,10 @@ interface MonthlyExpensesTableProps {
     expenseId: string;
     manualCoveredPayments: number;
   }) => void;
+  onUpdatePaymentLink: (args: {
+    expenseId: string;
+    paymentLink: string;
+  }) => void | Promise<void>;
   onUploadReceipt: (expenseId: string) => void;
   onRequestCloseExpenseSheet: () => void;
   onSaveExpense: () => void;
@@ -586,6 +604,12 @@ interface MonthlyExpensesTableProps {
   showCopyFromControls: boolean;
   showUnsavedChangesDialog: boolean;
   validationMessage: string | null;
+}
+
+interface PaymentLinkDialogState {
+  expenseDescription: string;
+  expenseId: string;
+  mode: "create" | "edit";
 }
 
 function getSortableHeader(label: string) {
@@ -909,27 +933,8 @@ function getPaymentProgress(row: MonthlyExpensesEditableRow): {
   };
 }
 
-function getValidPaymentLink(value: string): string | null {
-  return getValidHttpUrl(value);
-}
-
 function getValidHttpUrl(value: string): string | null {
-  const normalizedValue = value.trim();
-
-  if (!normalizedValue) {
-    return null;
-  }
-
-  try {
-    const paymentLinkWithProtocol = PAYMENT_LINK_PROTOCOL_PATTERN.test(
-      normalizedValue,
-    )
-      ? normalizedValue
-      : `https://${normalizedValue}`;
-    return PAYMENT_LINK_URL_SCHEMA.parse(paymentLinkWithProtocol);
-  } catch {
-    return null;
-  }
+  return getValidPaymentLinkUrl(value);
 }
 
 function getDriveStatusMessage(
@@ -1101,6 +1106,7 @@ export function MonthlyExpensesTable({
   onCopySourceMonthChange,
   onDeleteAllReceiptsFolderReference,
   onDeleteExpense,
+  onDeletePaymentLink,
   onDeleteMonthlyFolderReference,
   onEditExpense,
   onExpenseFieldChange,
@@ -1109,6 +1115,7 @@ export function MonthlyExpensesTable({
   onDeleteReceipt,
   onEditReceiptCoverage,
   onUpdateManualCoveredPayments,
+  onUpdatePaymentLink,
   onMonthChange,
   onUploadReceipt,
   onRequestCloseExpenseSheet,
@@ -1123,31 +1130,29 @@ export function MonthlyExpensesTable({
   validationMessage,
 }: MonthlyExpensesTableProps) {
   const hasSkippedInitialPersistence = useRef(false);
+  const initialTablePreferences = useMemo(
+    () =>
+      getPersistedMonthlyExpensesTablePreferences() ?? {
+        columnVisibility: {},
+        loanSortMode: DEFAULT_LOAN_SORT_MODE,
+        sorting: [],
+      },
+    [],
+  );
   const [loanSortMode, setLoanSortMode] =
-    useState<LoanSortMode>(DEFAULT_LOAN_SORT_MODE);
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [isRestoringTablePreferences, setIsRestoringTablePreferences] =
-    useState(true);
+    useState<LoanSortMode>(initialTablePreferences.loanSortMode);
+  const [sorting, setSorting] = useState<SortingState>(
+    initialTablePreferences.sorting,
+  );
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+    initialTablePreferences.columnVisibility,
+  );
   const [descriptionFilter, setDescriptionFilter] = useState("");
-
-  useEffect(() => {
-    const persistedPreferences = getPersistedMonthlyExpensesTablePreferences();
-
-    const restoreFrameId = window.requestAnimationFrame(() => {
-      if (persistedPreferences) {
-        setLoanSortMode(persistedPreferences.loanSortMode);
-        setSorting(persistedPreferences.sorting);
-        setColumnVisibility(persistedPreferences.columnVisibility);
-      }
-
-      setIsRestoringTablePreferences(false);
-    });
-
-    return () => {
-      window.cancelAnimationFrame(restoreFrameId);
-    };
-  }, []);
+  const [paymentLinkDialogState, setPaymentLinkDialogState] =
+    useState<PaymentLinkDialogState | null>(null);
+  const [paymentLinkDraftValue, setPaymentLinkDraftValue] = useState("");
+  const [paymentLinkDraftError, setPaymentLinkDraftError] =
+    useState<string | null>(null);
 
   useEffect(() => {
     if (!hasSkippedInitialPersistence.current) {
@@ -1185,6 +1190,52 @@ export function MonthlyExpensesTable({
         normalizedFilter,
       ));
   }, [descriptionFilter, rows]);
+
+  const handleOpenPaymentLinkDialog = useCallback(({
+    expenseDescription,
+    expenseId,
+    mode,
+    paymentLink,
+  }: {
+    expenseDescription: string;
+    expenseId: string;
+    mode: "create" | "edit";
+    paymentLink: string;
+  }) => {
+    setPaymentLinkDialogState({
+      expenseDescription,
+      expenseId,
+      mode,
+    });
+    setPaymentLinkDraftValue(paymentLink);
+    setPaymentLinkDraftError(null);
+  }, []);
+
+  const handleClosePaymentLinkDialog = () => {
+    setPaymentLinkDialogState(null);
+    setPaymentLinkDraftValue("");
+    setPaymentLinkDraftError(null);
+  };
+
+  const handleSavePaymentLink = async () => {
+    if (!paymentLinkDialogState) {
+      return;
+    }
+
+    const normalizedPaymentLink = getValidPaymentLinkUrl(paymentLinkDraftValue);
+
+    if (!normalizedPaymentLink) {
+      setPaymentLinkDraftError(PAYMENT_LINK_VALIDATION_ERROR_MESSAGE);
+      return;
+    }
+
+    setPaymentLinkDraftError(null);
+    await onUpdatePaymentLink({
+      expenseId: paymentLinkDialogState.expenseId,
+      paymentLink: normalizedPaymentLink,
+    });
+    handleClosePaymentLinkDialog();
+  };
 
   const columns = useMemo<ColumnDef<MonthlyExpensesEditableRow>[]>(
     () => [
@@ -1352,36 +1403,104 @@ export function MonthlyExpensesTable({
       {
         accessorKey: "paymentLink",
         cell: ({ row }) => {
-          const paymentLink = getValidPaymentLink(row.original.paymentLink);
+          const paymentLink = getValidPaymentLinkUrl(row.original.paymentLink);
+          const expenseDescription = row.original.description.trim() || "gasto";
 
           if (!paymentLink) {
-            return "-";
+            return (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    aria-label={`Agregar link de pago para ${expenseDescription}`}
+                    className={styles.paymentLinkActionButton}
+                    disabled={actionDisabled}
+                    onClick={() =>
+                      handleOpenPaymentLinkDialog({
+                        expenseDescription,
+                        expenseId: row.original.id,
+                        mode: "create",
+                        paymentLink: row.original.paymentLink,
+                      })}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Plus aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Agregar link de pago</TooltipContent>
+              </Tooltip>
+            );
           }
 
           return (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <a
-                  className={styles.paymentLinkAction}
-                  href={paymentLink}
-                  rel="noopener noreferrer"
-                  target="_blank"
-                >
-                  Abrir
-                  <ExternalLink aria-hidden="true" className={styles.paymentLinkIcon} />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>Abrir página de pago</TooltipContent>
-            </Tooltip>
+            <div className={styles.paymentLinkActionsRow}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <a
+                    className={styles.paymentLinkAction}
+                    href={paymentLink}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    Abrir
+                    <ExternalLink aria-hidden="true" className={styles.paymentLinkIcon} />
+                  </a>
+                </TooltipTrigger>
+                <TooltipContent>Abrir página de pago</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    aria-label={`Editar link de pago para ${expenseDescription}`}
+                    className={styles.paymentLinkActionButton}
+                    disabled={actionDisabled}
+                    onClick={() =>
+                      handleOpenPaymentLinkDialog({
+                        expenseDescription,
+                        expenseId: row.original.id,
+                        mode: "edit",
+                        paymentLink: row.original.paymentLink,
+                      })}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Pencil aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Editar link de pago</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    aria-label={`Eliminar link de pago para ${expenseDescription}`}
+                    className={styles.paymentLinkActionButton}
+                    disabled={actionDisabled}
+                    onClick={() => {
+                      void onDeletePaymentLink(row.original.id);
+                    }}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Trash2 aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Eliminar link de pago</TooltipContent>
+              </Tooltip>
+            </div>
           );
         },
         header: getSortableHeader("Link"),
         meta: { label: "Link" },
         sortingFn: (rowA, rowB) => {
           const leftHasPaymentLink =
-            getValidPaymentLink(rowA.original.paymentLink) != null ? 1 : 0;
+            getValidPaymentLinkUrl(rowA.original.paymentLink) != null ? 1 : 0;
           const rightHasPaymentLink =
-            getValidPaymentLink(rowB.original.paymentLink) != null ? 1 : 0;
+            getValidPaymentLinkUrl(rowB.original.paymentLink) != null ? 1 : 0;
 
           return leftHasPaymentLink - rightHasPaymentLink;
         },
@@ -2012,12 +2131,14 @@ export function MonthlyExpensesTable({
       loanSortMode,
       onDeleteAllReceiptsFolderReference,
       onDeleteExpense,
+      onDeletePaymentLink,
       onDeleteMonthlyFolderReference,
       onDeleteReceipt,
       onEditReceiptCoverage,
       onEditExpense,
       onUpdateManualCoveredPayments,
       onUploadReceipt,
+      handleOpenPaymentLinkDialog,
     ],
   );
 
@@ -2143,24 +2264,6 @@ export function MonthlyExpensesTable({
           </div>
 
           <div className={styles.tableWrapper}>
-            {isRestoringTablePreferences ? (
-              <div
-                aria-label="Cargando configuración de tabla"
-                aria-live="polite"
-                className={styles.tableLoadingOverlay}
-                role="status"
-              >
-                <div className={styles.tableLoadingContent}>
-                  <span
-                    aria-hidden="true"
-                    className={styles.tableLoadingSpinner}
-                  />
-                  <span className={styles.tableLoadingText}>
-                    Cargando configuración de tabla...
-                  </span>
-                </div>
-              </div>
-            ) : null}
             <DataTable
               columnVisibility={columnVisibility}
               columnVisibilityButtonLabel="Columnas"
@@ -2215,6 +2318,93 @@ export function MonthlyExpensesTable({
           showUnsavedChangesDialog={showUnsavedChangesDialog}
           validationMessage={validationMessage}
         />
+
+        <Dialog
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) {
+              handleClosePaymentLinkDialog();
+            }
+          }}
+          open={paymentLinkDialogState != null}
+        >
+          <DialogContent
+            className={styles.paymentLinkDialogContent}
+            onEscapeKeyDown={(event) => {
+              event.preventDefault();
+              handleClosePaymentLinkDialog();
+            }}
+            onInteractOutside={(event) => {
+              event.preventDefault();
+              handleClosePaymentLinkDialog();
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>
+                {paymentLinkDialogState?.mode === "edit"
+                  ? "Editar link de pago"
+                  : "Agregar link de pago"}
+              </DialogTitle>
+              <DialogDescription>
+                {`Completá el link para ${paymentLinkDialogState?.expenseDescription ?? "este gasto"}.`}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className={styles.paymentLinkDialogField}>
+              <Label htmlFor="payment-link-dialog-input">Link de pago</Label>
+              <InputGroup>
+                <InputGroupAddon align="inline-start" aria-hidden="true">
+                  <Link2 className={styles.paymentLinkDialogIcon} />
+                </InputGroupAddon>
+                <InputGroupInput
+                  aria-invalid={paymentLinkDraftError ? "true" : "false"}
+                  aria-label={`Link de pago de ${paymentLinkDialogState?.expenseDescription ?? "gasto"}`}
+                  autoFocus
+                  id="payment-link-dialog-input"
+                  onChange={(event) => {
+                    setPaymentLinkDraftValue(event.target.value);
+
+                    if (paymentLinkDraftError) {
+                      setPaymentLinkDraftError(null);
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleSavePaymentLink();
+                    }
+                  }}
+                  placeholder="https://..."
+                  type="url"
+                  value={paymentLinkDraftValue}
+                />
+              </InputGroup>
+              {paymentLinkDraftError ? (
+                <p className={styles.paymentLinkDialogError} role="alert">
+                  {paymentLinkDraftError}
+                </p>
+              ) : null}
+            </div>
+
+            <DialogFooter className={styles.paymentLinkDialogActions}>
+              <Button
+                onClick={handleClosePaymentLinkDialog}
+                type="button"
+                variant="outline"
+              >
+                Cancelar
+              </Button>
+              <Button
+                disabled={actionDisabled}
+                onClick={() => {
+                  void handleSavePaymentLink();
+                }}
+                type="button"
+              >
+                Guardar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </section>
   );

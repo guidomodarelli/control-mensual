@@ -34,7 +34,7 @@ function createDraftRow(): MonthlyExpensesEditableRow {
 }
 
 describe("ExpenseSheet", () => {
-  it("does not render manual covered payments input in the modal", () => {
+  it("does not render manual covered payments or payment link inputs in the modal", () => {
     render(
       <TooltipProvider>
         <ExpenseSheet
@@ -65,5 +65,7 @@ describe("ExpenseSheet", () => {
       screen.queryByText("Pagos manuales (sin comprobante)"),
     ).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Pagos manuales")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Link de pago")).not.toBeInTheDocument();
+    expect(screen.queryByText("Link de pago (Opcional)")).not.toBeInTheDocument();
   });
 });

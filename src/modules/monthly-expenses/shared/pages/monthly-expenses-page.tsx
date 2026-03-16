@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { z } from "zod";
 
 import { FinanceAppShell } from "@/components/finance-app-shell/finance-app-shell";
 import { ExpenseReceiptCoverageEditDialog } from "@/components/monthly-expenses/expense-receipt-coverage-edit-dialog";
@@ -21,6 +20,11 @@ import {
   type MonthlyExpensesEditableReceipt,
   type MonthlyExpensesEditableRow,
 } from "@/components/monthly-expenses/monthly-expenses-table";
+import {
+  getValidPaymentLink,
+  normalizePaymentLink,
+  PAYMENT_LINK_VALIDATION_ERROR_MESSAGE,
+} from "@/components/monthly-expenses/payment-link";
 import { TypingAnimation } from "@/components/ui/typing-animation";
 import type { ExpenseEditableFieldName } from "@/components/monthly-expenses/expense-sheet";
 import {
@@ -134,11 +138,6 @@ interface ExpenseReceiptCoverageEditState {
 }
 
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
-const PAYMENT_LINK_PROTOCOL_PATTERN = /^[a-zA-Z][a-zA-Z\d+.-]*:/;
-const PAYMENT_LINK_URL_SCHEMA = z.url({
-  protocol: /^https?$/,
-  hostname: z.regexes.domain,
-});
 const MONTHLY_EXPENSES_TAB_KEYS = ["expenses", "lenders", "debts"] as const;
 export type MonthlyExpensesTabKey = (typeof MONTHLY_EXPENSES_TAB_KEYS)[number];
 type MonthlyExpenseCurrency = "ARS" | "USD";
@@ -181,26 +180,6 @@ function createClosedExpenseReceiptCoverageEditState(): ExpenseReceiptCoverageEd
     receiptFileId: null,
     receiptFileName: "",
   };
-}
-
-function normalizeHttpPaymentLink(value: string): string {
-  const normalizedValue = value.trim();
-  const paymentLinkWithProtocol = PAYMENT_LINK_PROTOCOL_PATTERN.test(
-    normalizedValue,
-  )
-    ? normalizedValue
-    : `https://${normalizedValue}`;
-
-  return PAYMENT_LINK_URL_SCHEMA.parse(paymentLinkWithProtocol);
-}
-
-function isValidHttpPaymentLink(value: string): boolean {
-  try {
-    normalizeHttpPaymentLink(value);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 function getValidReceiptMimeType(file: File): string | null {
@@ -692,15 +671,6 @@ function getExpenseValidationMessage(
     return GENERIC_EXPENSE_VALIDATION_MESSAGE;
   }
 
-  const normalizedPaymentLink = row.paymentLink.trim();
-
-  if (
-    normalizedPaymentLink.length > 0 &&
-    !isValidHttpPaymentLink(normalizedPaymentLink)
-  ) {
-    return GENERIC_EXPENSE_VALIDATION_MESSAGE;
-  }
-
   const installmentCount = Number(row.installmentCount);
 
   if (
@@ -742,10 +712,6 @@ function getChangedExpenseFields(
     changedFields.add("occurrencesPerMonth");
   }
 
-  if (originalRow.paymentLink !== draft.paymentLink) {
-    changedFields.add("paymentLink");
-  }
-
   if (originalRow.isLoan !== draft.isLoan) {
     changedFields.add("isLoan");
   }
@@ -777,6 +743,13 @@ function toSaveMonthlyExpensesCommand(
 ): SaveMonthlyExpensesCommand {
   return {
     items: state.rows.map((row) => ({
+      ...(getValidPaymentLink(row.paymentLink)
+        ? {
+            paymentLink: normalizePaymentLink(row.paymentLink),
+          }
+        : {
+            paymentLink: null,
+          }),
       ...((row.allReceiptsFolderId.trim().length > 0 &&
         row.allReceiptsFolderViewUrl.trim().length > 0 &&
         row.monthlyFolderId.trim().length > 0 &&
@@ -790,13 +763,6 @@ function toSaveMonthlyExpensesCommand(
             },
           }
         : {}),
-      ...(row.paymentLink.trim().length > 0
-        ? {
-            paymentLink: normalizeHttpPaymentLink(row.paymentLink),
-          }
-        : {
-            paymentLink: null,
-          }),
       ...(row.receipts.length > 0
         ? {
             receipts: row.receipts.map((receipt) => ({
@@ -1762,6 +1728,91 @@ export default function MonthlyExpensesPage({
     });
   };
 
+  const handleUpdatePaymentLink = async ({
+    expenseId,
+    paymentLink,
+  }: {
+    expenseId: string;
+    paymentLink: string;
+  }) => {
+    if (!isOAuthConfigured || !isAuthenticated) {
+      toast.warning("Conectate con Google para guardar links de pago.");
+      return;
+    }
+
+    const expenseRow = formState.rows.find((row) => row.id === expenseId);
+
+    if (!expenseRow) {
+      toast.warning("No pudimos encontrar el gasto seleccionado.");
+      return;
+    }
+
+    const normalizedPaymentLink = getValidPaymentLink(paymentLink);
+
+    if (!normalizedPaymentLink) {
+      toast.warning(PAYMENT_LINK_VALIDATION_ERROR_MESSAGE);
+      return;
+    }
+
+    if (normalizedPaymentLink === getValidPaymentLink(expenseRow.paymentLink)) {
+      return;
+    }
+
+    const nextRows = formState.rows.map((row) =>
+      row.id === expenseId
+        ? {
+            ...row,
+            paymentLink: normalizedPaymentLink,
+          }
+        : row,
+    );
+
+    const wasSaved = await persistMonthlyExpensesRows(nextRows, {
+      loading: "Guardando link de pago...",
+      success: "Link de pago guardado correctamente.",
+    });
+
+    if (!wasSaved) {
+      toast.error("No pudimos guardar el link de pago.");
+    }
+  };
+
+  const handleDeletePaymentLink = async (expenseId: string) => {
+    if (!isOAuthConfigured || !isAuthenticated) {
+      toast.warning("Conectate con Google para eliminar links de pago.");
+      return;
+    }
+
+    const expenseRow = formState.rows.find((row) => row.id === expenseId);
+
+    if (!expenseRow) {
+      toast.warning("No pudimos encontrar el gasto seleccionado.");
+      return;
+    }
+
+    if (!getValidPaymentLink(expenseRow.paymentLink)) {
+      return;
+    }
+
+    const nextRows = formState.rows.map((row) =>
+      row.id === expenseId
+        ? {
+            ...row,
+            paymentLink: "",
+          }
+        : row,
+    );
+
+    const wasSaved = await persistMonthlyExpensesRows(nextRows, {
+      loading: "Eliminando link de pago...",
+      success: "Link de pago eliminado.",
+    });
+
+    if (!wasSaved) {
+      toast.error("No pudimos eliminar el link de pago.");
+    }
+  };
+
   const handleDeleteMonthlyFolderReference = async (expenseId: string) => {
     if (!isOAuthConfigured || !isAuthenticated) {
       toast.warning("Conectate con Google para actualizar carpetas.");
@@ -2179,6 +2230,7 @@ export default function MonthlyExpensesPage({
                 onCopySourceMonthChange={handleCopySourceMonthChange}
                 onDeleteAllReceiptsFolderReference={handleDeleteAllReceiptsFolderReference}
                 onDeleteExpense={handleRemoveExpense}
+                onDeletePaymentLink={handleDeletePaymentLink}
                 onDeleteMonthlyFolderReference={handleDeleteMonthlyFolderReference}
                 onDeleteReceipt={handleDeleteExpenseReceipt}
                 onEditReceiptCoverage={handleOpenReceiptCoverageEditor}
@@ -2191,6 +2243,7 @@ export default function MonthlyExpensesPage({
                 onSaveExpense={handleSaveExpense}
                 onSaveUnsavedChanges={handleSaveUnsavedChanges}
                 onUpdateManualCoveredPayments={handleUpdateManualCoveredPayments}
+                onUpdatePaymentLink={handleUpdatePaymentLink}
                 onUploadReceipt={handleOpenReceiptUpload}
                 onUnsavedChangesClose={handleUnsavedChangesClose}
                 onUnsavedChangesDiscard={handleUnsavedChangesDiscard}

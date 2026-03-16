@@ -1548,7 +1548,7 @@ describe("MonthlyExpensesPage", () => {
     });
   });
 
-  it("persists paymentLink as null when the payment link input is left empty", async () => {
+  it("adds a payment link from the Link column plus button, normalizes protocol, and persists", async () => {
     const user = userEvent.setup();
     const fetchMock = createMonthlyExpensesFetchMock();
 
@@ -1569,20 +1569,28 @@ describe("MonthlyExpensesPage", () => {
       <MonthlyExpensesPage
         {...basePageProps}
         initialDocument={{
-          items: [],
+          items: [
+            {
+              currency: "ARS",
+              description: "Electricidad",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              paymentLink: null,
+              subtotal: 45,
+              total: 45,
+            },
+          ],
           month: "2026-03",
         }}
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
-    await user.type(screen.getByLabelText("Descripción"), "Electricidad");
-    await user.type(screen.getByLabelText("Subtotal"), "45");
-    await user.type(
-      screen.getByLabelText("Link de pago"),
-      "https://pagos.empresa-energia.com",
+    await user.click(
+      screen.getByRole("button", {
+        name: "Agregar link de pago para Electricidad",
+      }),
     );
-    await user.clear(screen.getByLabelText("Link de pago"));
+    await user.type(screen.getByLabelText("Link de pago de Electricidad"), "google.com");
     await user.click(screen.getByRole("button", { name: "Guardar" }));
 
     await waitFor(() => {
@@ -1591,57 +1599,7 @@ describe("MonthlyExpensesPage", () => {
           {
             currency: "ARS",
             description: "Electricidad",
-            id: expect.any(String),
-            occurrencesPerMonth: 1,
-            paymentLink: null,
-            subtotal: 45,
-          },
-        ],
-        month: "2026-03",
-      });
-    });
-  });
-
-  it("accepts paymentLink without protocol and normalizes it before saving", async () => {
-    const user = userEvent.setup();
-    const fetchMock = createMonthlyExpensesFetchMock();
-
-    mockedUseSession.mockReturnValue({
-      data: {
-        expires: "2099-01-01T00:00:00.000Z",
-        user: {
-          email: "gus@example.com",
-          name: "Gus",
-        },
-      },
-      status: "authenticated",
-      update: jest.fn(),
-    } as ReturnType<typeof useSession>);
-    global.fetch = fetchMock as typeof fetch;
-
-    renderWithProviders(
-      <MonthlyExpensesPage
-        {...basePageProps}
-        initialDocument={{
-          items: [],
-          month: "2026-03",
-        }}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
-    await user.type(screen.getByLabelText("Descripción"), "Electricidad");
-    await user.type(screen.getByLabelText("Subtotal"), "45");
-    await user.type(screen.getByLabelText("Link de pago"), "google.com");
-    await user.click(screen.getByRole("button", { name: "Guardar" }));
-
-    await waitFor(() => {
-      expect(getMonthlyExpensesSavePayload(fetchMock)).toEqual({
-        items: [
-          {
-            currency: "ARS",
-            description: "Electricidad",
-            id: expect.any(String),
+            id: "expense-1",
             occurrencesPerMonth: 1,
             paymentLink: "https://google.com",
             subtotal: 45,
@@ -1650,6 +1608,200 @@ describe("MonthlyExpensesPage", () => {
         month: "2026-03",
       });
     });
+
+    expect(screen.getByRole("link", { name: "Abrir" })).toHaveAttribute(
+      "href",
+      "https://google.com",
+    );
+  });
+
+  it("edits an existing payment link from the Link column pencil button and persists", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock();
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Electricidad",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              paymentLink: "https://pagos.empresa-energia.com",
+              subtotal: 45,
+              total: 45,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Editar link de pago para Electricidad",
+      }),
+    );
+    await user.clear(screen.getByLabelText("Link de pago de Electricidad"));
+    await user.type(
+      screen.getByLabelText("Link de pago de Electricidad"),
+      "pagos.nuevo-proveedor.com",
+    );
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => {
+      expect(getMonthlyExpensesSavePayload(fetchMock)).toEqual({
+        items: [
+          {
+            currency: "ARS",
+            description: "Electricidad",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            paymentLink: "https://pagos.nuevo-proveedor.com",
+            subtotal: 45,
+          },
+        ],
+        month: "2026-03",
+      });
+    });
+  });
+
+  it("deletes an existing payment link from the Link column trash button and shows plus again", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock();
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Electricidad",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              paymentLink: "https://pagos.empresa-energia.com",
+              subtotal: 45,
+              total: 45,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Eliminar link de pago para Electricidad",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(getMonthlyExpensesSavePayload(fetchMock)).toEqual({
+        items: [
+          {
+            currency: "ARS",
+            description: "Electricidad",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            paymentLink: null,
+            subtotal: 45,
+          },
+        ],
+        month: "2026-03",
+      });
+    });
+
+    expect(
+      screen.getByRole("button", {
+        name: "Agregar link de pago para Electricidad",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows validation for invalid payment links in the table modal and does not persist", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock();
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Electricidad",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              paymentLink: null,
+              subtotal: 45,
+              total: 45,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Agregar link de pago para Electricidad",
+      }),
+    );
+    await user.type(screen.getByLabelText("Link de pago de Electricidad"), "asdads");
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+    expect(
+      screen.getByText(
+        "Ingresá un link válido con dominio (por ejemplo, ejemplo.com).",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Link de pago de Electricidad")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("does not render the authenticated session identity details", () => {
@@ -1789,7 +1941,7 @@ describe("MonthlyExpensesPage", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Abrir acciones para Agua" }));
-    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Editar" }));
 
     expect(
       screen.getByRole("heading", { name: "Editar gasto" }),
@@ -1989,7 +2141,7 @@ describe("MonthlyExpensesPage", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Abrir acciones para Agua" }));
-    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Editar" }));
     await user.clear(screen.getByLabelText("Descripción"));
     await user.type(screen.getByLabelText("Descripción"), "Agua filtrada");
 
@@ -2066,7 +2218,7 @@ describe("MonthlyExpensesPage", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Abrir acciones para Agua" }));
-    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Editar" }));
     await user.clear(screen.getByLabelText("Descripción"));
     await user.type(screen.getByLabelText("Descripción"), "Agua descartada");
 
@@ -2122,7 +2274,7 @@ describe("MonthlyExpensesPage", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Abrir acciones para Agua" }));
-    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Editar" }));
     await user.clear(screen.getByLabelText("Descripción"));
     await user.type(screen.getByLabelText("Descripción"), "Agua pendiente");
 
@@ -2182,7 +2334,7 @@ describe("MonthlyExpensesPage", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Abrir acciones para Agua" }));
-    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Editar" }));
     await user.clear(screen.getByLabelText("Descripción"));
     await user.type(screen.getByLabelText("Descripción"), "Agua en progreso");
 
@@ -2252,68 +2404,6 @@ describe("MonthlyExpensesPage", () => {
       screen.getByRole("radio", { name: "Un único pago al mes" }),
     ).toBeChecked();
     expect(screen.queryByLabelText("Veces al mes")).not.toBeInTheDocument();
-  });
-
-  it("validates payment link after save attempt and keeps save enabled", async () => {
-    const user = userEvent.setup();
-
-    mockedUseSession.mockReturnValue({
-      data: {
-        expires: "2099-01-01T00:00:00.000Z",
-        user: {
-          email: "gus@example.com",
-          name: "Gus",
-        },
-      },
-      status: "authenticated",
-      update: jest.fn(),
-    } as ReturnType<typeof useSession>);
-
-    renderWithProviders(
-      <MonthlyExpensesPage
-        {...basePageProps}
-        initialDocument={{
-          items: [],
-          month: "2026-03",
-        }}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
-    await user.type(screen.getByLabelText("Descripción"), "Electricidad");
-    await user.type(screen.getByLabelText("Subtotal"), "45");
-    await user.type(screen.getByLabelText("Link de pago"), "asdads");
-
-    expect(
-      screen.queryByText(
-        "Ingresá un link válido con dominio (por ejemplo, ejemplo.com).",
-      ),
-    ).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Guardar" }));
-
-    expect(
-      screen.getByText(
-        "Ingresá un link válido con dominio (por ejemplo, ejemplo.com).",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText("Link de pago")).toHaveAttribute(
-      "aria-invalid",
-      "true",
-    );
-
-    await user.clear(screen.getByLabelText("Link de pago"));
-
-    expect(
-      screen.queryByText(
-        "Ingresá un link válido con dominio (por ejemplo, ejemplo.com).",
-      ),
-    ).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Link de pago")).toHaveAttribute(
-      "aria-invalid",
-      "false",
-    );
-    expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled();
   });
 
   it("shows and hides the debt fields inside the sheet when the loan checkbox changes", async () => {
@@ -2673,7 +2763,7 @@ describe("MonthlyExpensesPage", () => {
     await user.click(
       screen.getByRole("button", { name: "Abrir acciones para Prestamo tarjeta" }),
     );
-    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Editar" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
 
     expect(screen.queryByText("Completá la fecha de inicio.")).not.toBeInTheDocument();
@@ -2850,7 +2940,7 @@ describe("MonthlyExpensesPage", () => {
     await user.click(
       screen.getByRole("button", { name: "Abrir acciones para Prestamo tarjeta" }),
     );
-    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Editar" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
     await user.type(screen.getByLabelText("Cantidad total de cuotas"), "7");
     fireEvent.change(screen.getByLabelText("Inicio de la deuda"), {
@@ -2929,7 +3019,7 @@ describe("MonthlyExpensesPage", () => {
     await user.click(
       screen.getByRole("button", { name: "Abrir acciones para Prestamo tarjeta" }),
     );
-    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Editar" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
     await user.type(screen.getByLabelText("Cantidad total de cuotas"), "0");
     fireEvent.change(screen.getByLabelText("Inicio de la deuda"), {
@@ -2988,7 +3078,7 @@ describe("MonthlyExpensesPage", () => {
     await user.click(
       screen.getByRole("button", { name: "Abrir acciones para Prestamo tarjeta" }),
     );
-    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Editar" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
 
     const startMonthInput = screen.getByLabelText("Inicio de la deuda");
@@ -3052,7 +3142,7 @@ describe("MonthlyExpensesPage", () => {
     await user.click(
       screen.getByRole("button", { name: "Abrir acciones para Prestamo tarjeta" }),
     );
-    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Editar" }));
 
     await user.click(screen.getByRole("button", { name: "Guardar" }));
 
@@ -3125,7 +3215,7 @@ describe("MonthlyExpensesPage", () => {
     await user.click(
       screen.getByRole("button", { name: "Abrir acciones para Prestamo personal" }),
     );
-    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Editar" }));
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
     await user.click(screen.getByRole("button", { name: "Seleccioná un prestamista" }));
 
@@ -3456,16 +3546,7 @@ describe("MonthlyExpensesPage", () => {
       <MonthlyExpensesPage
         {...basePageProps}
         initialDocument={{
-          items: [
-            {
-              currency: "ARS",
-              description: "Prestamo tarjeta",
-              id: "expense-1",
-              occurrencesPerMonth: 1,
-              subtotal: 50000,
-              total: 50000,
-            },
-          ],
+          items: [],
           month: "2026-03",
         }}
         initialLendersCatalog={{
@@ -3480,10 +3561,9 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    await user.click(
-      screen.getByRole("button", { name: "Abrir acciones para Prestamo tarjeta" }),
-    );
-    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
+    await user.type(screen.getByLabelText("Descripción"), "Prestamo tarjeta");
+    await user.type(screen.getByLabelText("Subtotal"), "50000");
     await user.click(screen.getByLabelText("Es deuda/préstamo"));
     await user.click(screen.getByRole("button", { name: "Seleccioná un prestamista" }));
     await user.click(screen.getByRole("button", { name: "Papa Familiar" }));
@@ -3499,7 +3579,7 @@ describe("MonthlyExpensesPage", () => {
           {
             currency: "ARS",
             description: "Prestamo tarjeta",
-            id: "expense-1",
+            id: expect.any(String),
             loan: {
               installmentCount: 12,
               lenderId: "lender-1",
@@ -3624,25 +3704,15 @@ describe("MonthlyExpensesPage", () => {
       <MonthlyExpensesPage
         {...basePageProps}
         initialDocument={{
-          items: [
-            {
-              currency: "ARS",
-              description: "Expensas",
-              id: "expense-1",
-              occurrencesPerMonth: 1,
-              subtotal: 55032.07,
-              total: 55032.07,
-            },
-          ],
+          items: [],
           month: "2026-03",
         }}
       />,
     );
 
-    await user.click(
-      screen.getByRole("button", { name: "Abrir acciones para Expensas" }),
-    );
-    await user.click(screen.getByRole("menuitem", { name: "Editar" }));
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
+    await user.type(screen.getByLabelText("Descripción"), "Expensas");
+    await user.type(screen.getByLabelText("Subtotal"), "55032,07");
     await user.click(screen.getByRole("button", { name: "Guardar" }));
 
     expect(
@@ -4829,7 +4899,7 @@ describe("MonthlyExpensesPage", () => {
       }),
     );
 
-    expect(screen.getByRole("radio", { name: "Total de cuotas" })).toHaveAttribute(
+    expect(await screen.findByRole("radio", { name: "Total de cuotas" })).toHaveAttribute(
       "aria-checked",
       "true",
     );
@@ -4840,153 +4910,122 @@ describe("MonthlyExpensesPage", () => {
   });
 
   it("sorts Deuda / cuotas by selected metric and keeps No aplica at the end", async () => {
-    const user = userEvent.setup();
+    const initialDocument = {
+      items: [
+        {
+          currency: "ARS" as const,
+          description: "Prestamo A",
+          id: "expense-1",
+          loan: {
+            endMonth: "2026-10",
+            installmentCount: 10,
+            paidInstallments: 1,
+            startMonth: "2026-01",
+          },
+          occurrencesPerMonth: 1,
+          subtotal: 100,
+          total: 100,
+        },
+        {
+          currency: "ARS" as const,
+          description: "Prestamo B",
+          id: "expense-2",
+          loan: {
+            endMonth: "2026-12",
+            installmentCount: 12,
+            paidInstallments: 4,
+            startMonth: "2026-01",
+          },
+          occurrencesPerMonth: 1,
+          subtotal: 100,
+          total: 100,
+        },
+        {
+          currency: "ARS" as const,
+          description: "Prestamo C",
+          id: "expense-3",
+          loan: {
+            endMonth: "2026-03",
+            installmentCount: 3,
+            paidInstallments: 2,
+            startMonth: "2026-01",
+          },
+          occurrencesPerMonth: 1,
+          subtotal: 100,
+          total: 100,
+        },
+        {
+          currency: "ARS" as const,
+          description: "Sin deuda",
+          id: "expense-4",
+          occurrencesPerMonth: 1,
+          subtotal: 100,
+          total: 100,
+        },
+      ],
+      month: "2026-03",
+    };
+    const scenarios: Array<{
+      loanSortMode: "paidInstallments" | "remainingInstallments" | "totalInstallments";
+      order: Array<string>;
+      sorting: Array<{ desc: boolean; id: string }>;
+    }> = [
+      {
+        loanSortMode: "paidInstallments",
+        order: ["Prestamo A", "Prestamo C", "Prestamo B", "Sin deuda"],
+        sorting: [{ desc: false, id: "loanProgress" }],
+      },
+      {
+        loanSortMode: "paidInstallments",
+        order: ["Prestamo B", "Prestamo C", "Prestamo A", "Sin deuda"],
+        sorting: [{ desc: true, id: "loanProgress" }],
+      },
+      {
+        loanSortMode: "remainingInstallments",
+        order: ["Prestamo A", "Prestamo B", "Prestamo C", "Sin deuda"],
+        sorting: [{ desc: true, id: "loanProgress" }],
+      },
+      {
+        loanSortMode: "remainingInstallments",
+        order: ["Prestamo C", "Prestamo B", "Prestamo A", "Sin deuda"],
+        sorting: [{ desc: false, id: "loanProgress" }],
+      },
+      {
+        loanSortMode: "totalInstallments",
+        order: ["Prestamo C", "Prestamo A", "Prestamo B", "Sin deuda"],
+        sorting: [{ desc: false, id: "loanProgress" }],
+      },
+      {
+        loanSortMode: "totalInstallments",
+        order: ["Prestamo B", "Prestamo A", "Prestamo C", "Sin deuda"],
+        sorting: [{ desc: true, id: "loanProgress" }],
+      },
+    ];
 
-    renderWithProviders(
-      <MonthlyExpensesPage
-        {...basePageProps}
-        initialDocument={{
-          items: [
-            {
-              currency: "ARS",
-              description: "Prestamo A",
-              id: "expense-1",
-              loan: {
-                endMonth: "2026-10",
-                installmentCount: 10,
-                paidInstallments: 1,
-                startMonth: "2026-01",
-              },
-              occurrencesPerMonth: 1,
-              subtotal: 100,
-              total: 100,
-            },
-            {
-              currency: "ARS",
-              description: "Prestamo B",
-              id: "expense-2",
-              loan: {
-                endMonth: "2026-12",
-                installmentCount: 12,
-                paidInstallments: 4,
-                startMonth: "2026-01",
-              },
-              occurrencesPerMonth: 1,
-              subtotal: 100,
-              total: 100,
-            },
-            {
-              currency: "ARS",
-              description: "Prestamo C",
-              id: "expense-3",
-              loan: {
-                endMonth: "2026-03",
-                installmentCount: 3,
-                paidInstallments: 2,
-                startMonth: "2026-01",
-              },
-              occurrencesPerMonth: 1,
-              subtotal: 100,
-              total: 100,
-            },
-            {
-              currency: "ARS",
-              description: "Sin deuda",
-              id: "expense-4",
-              occurrencesPerMonth: 1,
-              subtotal: 100,
-              total: 100,
-            },
-          ],
-          month: "2026-03",
-        }}
-      />,
-    );
+    for (const scenario of scenarios) {
+      window.localStorage.setItem(
+        TABLE_PREFERENCES_STORAGE_KEY,
+        JSON.stringify({
+          columnVisibility: {},
+          loanSortMode: scenario.loanSortMode,
+          sorting: scenario.sorting,
+        }),
+      );
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Ordenar Deuda / cuotas",
-      }),
-    );
-    await user.click(screen.getByRole("radio", { name: "Ascendente" }));
-    await user.click(screen.getByRole("button", { name: "Aplicar" }));
-    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
-      "Prestamo A",
-      "Prestamo C",
-      "Prestamo B",
-      "Sin deuda",
-    ]);
+      const rendered = renderWithProviders(
+        <MonthlyExpensesPage
+          {...basePageProps}
+          initialDocument={initialDocument}
+        />,
+      );
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Ordenar Deuda / cuotas",
-      }),
-    );
-    await user.click(screen.getByRole("radio", { name: "Descendente" }));
-    await user.click(screen.getByRole("button", { name: "Aplicar" }));
-    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
-      "Prestamo B",
-      "Prestamo C",
-      "Prestamo A",
-      "Sin deuda",
-    ]);
+      await waitFor(() => {
+        expect(getMonthlyExpensesDescriptionsOrder()).toEqual(scenario.order);
+      });
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Ordenar Deuda / cuotas",
-      }),
-    );
-    await user.click(screen.getByRole("radio", { name: "Cuotas restantes" }));
-    expect(screen.getByRole("button", { name: "Aplicar" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Aplicar" }));
-    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
-      "Prestamo A",
-      "Prestamo B",
-      "Prestamo C",
-      "Sin deuda",
-    ]);
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Ordenar Deuda / cuotas",
-      }),
-    );
-    await user.click(screen.getByRole("radio", { name: "Ascendente" }));
-    await user.click(screen.getByRole("button", { name: "Aplicar" }));
-    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
-      "Prestamo C",
-      "Prestamo B",
-      "Prestamo A",
-      "Sin deuda",
-    ]);
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Ordenar Deuda / cuotas",
-      }),
-    );
-    await user.click(screen.getByRole("radio", { name: "Total de cuotas" }));
-    await user.click(screen.getByRole("button", { name: "Aplicar" }));
-    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
-      "Prestamo C",
-      "Prestamo A",
-      "Prestamo B",
-      "Sin deuda",
-    ]);
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Ordenar Deuda / cuotas",
-      }),
-    );
-    await user.click(screen.getByRole("radio", { name: "Descendente" }));
-    await user.click(screen.getByRole("button", { name: "Aplicar" }));
-    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
-      "Prestamo B",
-      "Prestamo A",
-      "Prestamo C",
-      "Sin deuda",
-    ]);
+      rendered.unmount();
+      window.localStorage.clear();
+    }
   });
 
   it("renders Prestamista followed by Inicio cuota and Fin cuota, and keeps actions header at the end", () => {

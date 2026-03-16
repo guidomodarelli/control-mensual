@@ -502,6 +502,46 @@
   height: 0.85rem;
 }
 
+.paymentLinkActionsRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.paymentLinkActionButton {
+  color: var(--muted-foreground);
+}
+
+.paymentLinkActionButton:hover {
+  color: var(--primary);
+}
+
+.paymentLinkDialogContent {
+  width: min(32rem, calc(100vw - 2rem));
+}
+
+.paymentLinkDialogField {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.paymentLinkDialogIcon {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.paymentLinkDialogError {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--destructive);
+}
+
+.paymentLinkDialogActions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
 .receiptActionsCell {
   display: flex;
   align-items: center;
