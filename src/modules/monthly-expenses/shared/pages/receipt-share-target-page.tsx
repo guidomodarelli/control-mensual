@@ -38,6 +38,7 @@ import {
   getRemainingReceiptPayments,
   suggestExpenseIdForSharedReceipt,
 } from "./receipt-share-target-page-helpers";
+import { isIosShareTargetUnsupported } from "./receipt-share-target-support";
 import styles from "./receipt-share-target-page.module.scss";
 
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -187,6 +188,8 @@ export default function ReceiptShareTargetPage() {
   const [partialCoveredPayments, setPartialCoveredPayments] = useState("1");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isIosShareTargetUnsupportedForCurrentDevice, setIsIosShareTargetUnsupportedForCurrentDevice] =
+    useState(false);
 
   const sharedReceiptPayload =
     loadSharedReceiptState.status === "ready"
@@ -243,6 +246,12 @@ export default function ReceiptShareTargetPage() {
 
     return remainingReceiptPayments;
   }, [coverageMode, partialCoveredPayments, remainingReceiptPayments]);
+
+  useEffect(() => {
+    setIsIosShareTargetUnsupportedForCurrentDevice(
+      isIosShareTargetUnsupported(window.navigator),
+    );
+  }, []);
 
   useEffect(() => {
     const shareErrorValue = Array.isArray(router.query.shareError)
@@ -559,9 +568,27 @@ export default function ReceiptShareTargetPage() {
         ) : null}
 
         {loadSharedReceiptState.status === "empty" ? (
-          <p className={styles.feedbackNeutral}>
-            No hay un comprobante pendiente. Compartí un archivo hacia XFly desde otra app.
-          </p>
+          isIosShareTargetUnsupportedForCurrentDevice ? (
+            <div className={styles.authCard}>
+              <p className={styles.feedbackNeutral}>
+                iOS no soporta compartir archivos hacia PWAs desde la hoja del sistema.
+                Abri XFly y carga el comprobante manualmente desde la seccion de gastos.
+              </p>
+              <Button
+                onClick={() => {
+                  void router.push("/gastos");
+                }}
+                type="button"
+                variant="outline"
+              >
+                Abrir gastos
+              </Button>
+            </div>
+          ) : (
+            <p className={styles.feedbackNeutral}>
+              No hay un comprobante pendiente. Comparti un archivo hacia XFly desde otra app.
+            </p>
+          )
         ) : null}
 
         {sharedReceiptPayload && sharedReceiptPreviewSource ? (

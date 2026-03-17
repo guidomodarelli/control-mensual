@@ -3,6 +3,7 @@
   "short_name": "XFly",
   "description": "Gestiona tus gastos, prestamistas y reportes mensuales.",
   "lang": "es-AR",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
