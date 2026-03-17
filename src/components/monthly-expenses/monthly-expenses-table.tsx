@@ -638,16 +638,17 @@ function getSortableHeader(label: string) {
     const SortIcon = sorted === "asc" ? ArrowUp : sorted === "desc" ? ArrowDown : ArrowUpDown;
 
     return (
-      <Button
-        className={styles.headButton}
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        size="sm"
-        type="button"
-        variant="ghost"
-      >
-        {label}
-        <SortIcon aria-hidden="true" />
-      </Button>
+      <span className={styles.sortableHeader}>
+        <span className={styles.headLabel}>{label}</span>
+        <button
+          aria-label={`Ordenar ${label}`}
+          className={styles.sortIconButton}
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          type="button"
+        >
+          <SortIcon aria-hidden="true" />
+        </button>
+      </span>
     );
   };
 }

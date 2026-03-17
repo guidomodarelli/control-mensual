@@ -196,6 +196,38 @@
   color: var(--muted-foreground);
 }
 
+.sortableHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sortIconButton {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px;
+  color: var(--muted-foreground);
+  transition: color 0.15s;
+
+  &:hover {
+    color: var(--foreground);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
 .loanSortHeader {
   display: inline-flex;
   align-items: center;

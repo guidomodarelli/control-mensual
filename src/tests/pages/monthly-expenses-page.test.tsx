@@ -546,7 +546,7 @@ describe("MonthlyExpensesPage", () => {
     ).not.toBeInTheDocument();
     await user.keyboard("{Escape}");
 
-    await user.click(screen.getByRole("button", { name: "Subtotal" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar Subtotal" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Internet",
@@ -691,7 +691,7 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Subtotal" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar Subtotal" }));
     await user.click(screen.getByRole("button", { name: "Columnas" }));
     await user.click(screen.getByRole("menuitemcheckbox", { name: "Moneda" }));
 
@@ -761,7 +761,7 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Subtotal" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar Subtotal" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Internet",
@@ -769,7 +769,7 @@ describe("MonthlyExpensesPage", () => {
       "Agua",
     ]);
 
-    await user.click(screen.getByRole("button", { name: "Subtotal" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar Subtotal" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Agua",
@@ -816,7 +816,7 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Total" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar Total" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Luz",
@@ -824,7 +824,7 @@ describe("MonthlyExpensesPage", () => {
       "Agua",
     ]);
 
-    await user.click(screen.getByRole("button", { name: "Total" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar Total" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Agua",
@@ -878,7 +878,7 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "ARS" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar ARS" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Luz",
@@ -886,7 +886,7 @@ describe("MonthlyExpensesPage", () => {
       "Internet",
     ]);
 
-    await user.click(screen.getByRole("button", { name: "ARS" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar ARS" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Internet",
@@ -940,7 +940,7 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "USD" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar USD" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Internet",
@@ -948,7 +948,7 @@ describe("MonthlyExpensesPage", () => {
       "Agua",
     ]);
 
-    await user.click(screen.getByRole("button", { name: "USD" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar USD" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Agua",
@@ -4718,11 +4718,11 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Link" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar Link" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual(["Sin link", "Con link"]);
 
-    await user.click(screen.getByRole("button", { name: "Link" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar Link" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual(["Con link", "Sin link"]);
   });
@@ -5151,7 +5151,7 @@ describe("MonthlyExpensesPage", () => {
     expect(within(marchRow).getByText("08/2026")).toBeInTheDocument();
     expect(within(noLoanRow).getAllByText("-").length).toBeGreaterThan(0);
 
-    await user.click(screen.getByRole("button", { name: "Inicio cuota" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar Inicio cuota" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Prestamo noviembre",
@@ -5160,7 +5160,7 @@ describe("MonthlyExpensesPage", () => {
       "Sin deuda",
     ]);
 
-    await user.click(screen.getByRole("button", { name: "Inicio cuota" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar Inicio cuota" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Prestamo marzo",
@@ -5169,7 +5169,7 @@ describe("MonthlyExpensesPage", () => {
       "Sin deuda",
     ]);
 
-    await user.click(screen.getByRole("button", { name: "Fin cuota" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar Fin cuota" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Prestamo noviembre",
@@ -5178,7 +5178,7 @@ describe("MonthlyExpensesPage", () => {
       "Sin deuda",
     ]);
 
-    await user.click(screen.getByRole("button", { name: "Fin cuota" }));
+    await user.click(screen.getByRole("button", { name: "Ordenar Fin cuota" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Prestamo marzo",
