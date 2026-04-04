@@ -1,7 +1,7 @@
 import type {
   GetServerSidePropsContext,
 } from "next";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
@@ -1031,6 +1031,19 @@ function getFilteredLoansReportEntries(
   });
 }
 
+function getRequestedMonthFromQuery(
+  queryValue: string | string[] | undefined,
+): string | null {
+  const monthValue = Array.isArray(queryValue) ? queryValue[0] : queryValue;
+  const normalizedMonth = monthValue?.trim();
+
+  if (!normalizedMonth || !MONTH_PATTERN.test(normalizedMonth)) {
+    return null;
+  }
+
+  return normalizedMonth;
+}
+
 export function getReportProviderFilterOptions(
   entries: MonthlyExpensesLoansReportResult["entries"],
   lenders: LenderOption[],
@@ -1223,6 +1236,94 @@ export default function MonthlyExpensesPage({
     }
   };
 
+  const navigateToMonth = useCallback(
+    async (normalizedMonth: string, options?: { shallow?: boolean }) =>
+      router.push(
+        {
+          pathname: router.pathname,
+          query: {
+            ...router.query,
+            month: normalizedMonth,
+          },
+        },
+        undefined,
+        {
+          scroll: false,
+          ...(options?.shallow ? { shallow: true } : {}),
+        },
+      ),
+    [router],
+  );
+
+  const loadMonth = useCallback(
+    async (
+      normalizedMonth: string,
+      options: {
+        updateRoute?: boolean;
+      } = {},
+    ) => {
+      setIsMonthTransitionPending(true);
+      setPendingMonth(normalizedMonth);
+
+      try {
+        const [document, copyableMonths] = await Promise.all([
+          getMonthlyExpensesDocumentViaApi(normalizedMonth, {
+            includeDriveStatuses: false,
+          }),
+          getMonthlyExpensesCopyableMonthsViaApi(normalizedMonth),
+        ]);
+
+        setFormState(createMonthlyExpensesFormState(document));
+        setCurrentLoadError(null);
+        setCopyableMonthsState(copyableMonths);
+        setCopySourceMonth(copyableMonths.defaultSourceMonth);
+        setIsCopyingFromMonth(false);
+        setExpenseSheetState(createClosedExpenseSheetState());
+        setExpenseReceiptUploadState(createClosedExpenseReceiptUploadState());
+        setExpenseReceiptCoverageEditState(
+          createClosedExpenseReceiptCoverageEditState(),
+        );
+
+        if (options.updateRoute ?? true) {
+          await navigateToMonth(normalizedMonth, { shallow: true });
+        }
+      } catch (error) {
+        toast.error(getSafeMonthlyExpensesLoadErrorMessage(error));
+      } finally {
+        setIsMonthTransitionPending(false);
+        setPendingMonth(null);
+      }
+    },
+    [navigateToMonth],
+  );
+
+  useEffect(() => {
+    if (!router.isReady || !isOAuthConfigured || !isAuthenticated || isSessionLoading) {
+      return;
+    }
+
+    const requestedMonth = getRequestedMonthFromQuery(router.query.month);
+
+    if (
+      !requestedMonth ||
+      requestedMonth === formState.month ||
+      requestedMonth === pendingMonth
+    ) {
+      return;
+    }
+
+    void loadMonth(requestedMonth, { updateRoute: false });
+  }, [
+    formState.month,
+    isAuthenticated,
+    isOAuthConfigured,
+    isSessionLoading,
+    loadMonth,
+    pendingMonth,
+    router.isReady,
+    router.query.month,
+  ]);
+
   const handleMonthChange = async (value: string) => {
     const normalizedMonth = value.trim();
 
@@ -1234,48 +1335,12 @@ export default function MonthlyExpensesPage({
       return;
     }
 
-    setIsMonthTransitionPending(true);
-    setPendingMonth(normalizedMonth);
-
-    try {
-      const [document, copyableMonths] = await Promise.all([
-        getMonthlyExpensesDocumentViaApi(normalizedMonth, {
-          includeDriveStatuses: false,
-        }),
-        getMonthlyExpensesCopyableMonthsViaApi(normalizedMonth),
-      ]);
-
-      setFormState(createMonthlyExpensesFormState(document));
-      setCurrentLoadError(null);
-      setCopyableMonthsState(copyableMonths);
-      setCopySourceMonth(copyableMonths.defaultSourceMonth);
-      setIsCopyingFromMonth(false);
-      setExpenseSheetState(createClosedExpenseSheetState());
-      setExpenseReceiptUploadState(createClosedExpenseReceiptUploadState());
-      setExpenseReceiptCoverageEditState(
-        createClosedExpenseReceiptCoverageEditState(),
-      );
-
-      await router.replace(
-        {
-          pathname: router.pathname,
-          query: {
-            ...router.query,
-            month: normalizedMonth,
-          },
-        },
-        undefined,
-        {
-          scroll: false,
-          shallow: true,
-        },
-      );
-    } catch (error) {
-      toast.error(getSafeMonthlyExpensesLoadErrorMessage(error));
-    } finally {
-      setIsMonthTransitionPending(false);
-      setPendingMonth(null);
+    if (!isOAuthConfigured || !isAuthenticated || isSessionLoading) {
+      await navigateToMonth(normalizedMonth);
+      return;
     }
+
+    await loadMonth(normalizedMonth);
   };
 
   const handleCopySourceMonthChange = (value: string) => {
