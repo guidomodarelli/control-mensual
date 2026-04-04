@@ -43,6 +43,7 @@ import {
   getSafeMonthlyExpensesErrorMessage,
 } from "@/modules/monthly-expenses/application/queries/get-monthly-expenses-page-feedback";
 import {
+  createEmptyMonthlyExpensesCopyableMonthsResult,
   type MonthlyExpensesCopyableMonthsResult,
 } from "@/modules/monthly-expenses/application/results/monthly-expenses-copyable-months-result";
 import {
@@ -1111,6 +1112,7 @@ export default function MonthlyExpensesPage({
   const [isMonthTransitionPending, setIsMonthTransitionPending] = useState(false);
   const [pendingMonth, setPendingMonth] = useState<string | null>(null);
   const shouldIgnoreNextExpenseSheetCloseRef = useRef(false);
+  const latestMonthLoadRequestIdRef = useRef(0);
 
   const isAuthenticated = status === "authenticated";
   const isSessionLoading = status === "loading";
@@ -1134,6 +1136,7 @@ export default function MonthlyExpensesPage({
   );
 
   useEffect(() => {
+    latestMonthLoadRequestIdRef.current += 1;
     setFormState(createMonthlyExpensesFormState(initialDocument));
     setCopyableMonthsState(initialCopyableMonths);
     setCopySourceMonth(initialCopyableMonths.defaultSourceMonth);
@@ -1262,21 +1265,40 @@ export default function MonthlyExpensesPage({
         updateRoute?: boolean;
       } = {},
     ) => {
+      const requestId = latestMonthLoadRequestIdRef.current + 1;
+      latestMonthLoadRequestIdRef.current = requestId;
       setIsMonthTransitionPending(true);
       setPendingMonth(normalizedMonth);
 
       try {
-        const [document, copyableMonths] = await Promise.all([
-          getMonthlyExpensesDocumentViaApi(normalizedMonth, {
-            includeDriveStatuses: false,
-          }),
-          getMonthlyExpensesCopyableMonthsViaApi(normalizedMonth),
-        ]);
+        const copyableMonthsPromise = getMonthlyExpensesCopyableMonthsViaApi(
+          normalizedMonth,
+        )
+          .then((copyableMonths) => ({
+            copyableMonths,
+            status: "fulfilled" as const,
+          }))
+          .catch(() => ({
+            status: "rejected" as const,
+          }));
+        const document = await getMonthlyExpensesDocumentViaApi(normalizedMonth, {
+          includeDriveStatuses: false,
+        });
+
+        if (latestMonthLoadRequestIdRef.current !== requestId) {
+          return;
+        }
+
+        if (options.updateRoute ?? true) {
+          await navigateToMonth(normalizedMonth, { shallow: true });
+
+          if (latestMonthLoadRequestIdRef.current !== requestId) {
+            return;
+          }
+        }
 
         setFormState(createMonthlyExpensesFormState(document));
         setCurrentLoadError(null);
-        setCopyableMonthsState(copyableMonths);
-        setCopySourceMonth(copyableMonths.defaultSourceMonth);
         setIsCopyingFromMonth(false);
         setExpenseSheetState(createClosedExpenseSheetState());
         setExpenseReceiptUploadState(createClosedExpenseReceiptUploadState());
@@ -1284,14 +1306,32 @@ export default function MonthlyExpensesPage({
           createClosedExpenseReceiptCoverageEditState(),
         );
 
-        if (options.updateRoute ?? true) {
-          await navigateToMonth(normalizedMonth, { shallow: true });
+        const copyableMonthsResult = await copyableMonthsPromise;
+
+        if (latestMonthLoadRequestIdRef.current !== requestId) {
+          return;
+        }
+
+        if (copyableMonthsResult.status === "fulfilled") {
+          setCopyableMonthsState(copyableMonthsResult.copyableMonths);
+          setCopySourceMonth(copyableMonthsResult.copyableMonths.defaultSourceMonth);
+        } else {
+          setCopyableMonthsState(
+            createEmptyMonthlyExpensesCopyableMonthsResult(normalizedMonth),
+          );
+          setCopySourceMonth(null);
         }
       } catch (error) {
+        if (latestMonthLoadRequestIdRef.current !== requestId) {
+          return;
+        }
+
         toast.error(getSafeMonthlyExpensesLoadErrorMessage(error));
       } finally {
-        setIsMonthTransitionPending(false);
-        setPendingMonth(null);
+        if (latestMonthLoadRequestIdRef.current === requestId) {
+          setIsMonthTransitionPending(false);
+          setPendingMonth(null);
+        }
       }
     },
     [navigateToMonth],

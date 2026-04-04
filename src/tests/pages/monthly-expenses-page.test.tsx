@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRouter } from "next/router";
 import { signIn, signOut, useSession } from "next-auth/react";
@@ -12,6 +12,7 @@ import {
   getSafeMonthlyExpensesLoadErrorMessage,
   getSafeMonthlyExpensesErrorMessage,
 } from "@/modules/monthly-expenses/application/queries/get-monthly-expenses-page-feedback";
+import type { MonthlyExpensesDocumentResult } from "@/modules/monthly-expenses/application/results/monthly-expenses-document-result";
 import { copyMonthlyExpenseTemplatesToMonth } from "@/modules/monthly-expenses/shared/pages/monthly-expenses-page";
 import type { StorageBootstrapResult } from "@/modules/storage/application/results/storage-bootstrap";
 import MonthlyExpensesPage, {
@@ -275,6 +276,21 @@ function getMonthlyExpensesSavePayload(fetchMock: jest.Mock) {
   expect(headers.get("Content-Type")).toBe("application/json");
 
   return JSON.parse(String(options.body));
+}
+
+function createDeferredValue<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+
+  return {
+    promise,
+    reject,
+    resolve,
+  };
 }
 
 function getMonthlyExpensesDescriptionsOrder(): Array<string | null> {
@@ -1442,7 +1458,7 @@ describe("MonthlyExpensesPage", () => {
         tab: "expenses",
       },
     });
-    const initialDocument = {
+    const initialDocument: MonthlyExpensesDocumentResult = {
       items: [
         {
           currency: "ARS",
@@ -1454,7 +1470,7 @@ describe("MonthlyExpensesPage", () => {
         },
       ],
       month: "2026-03",
-    } as const;
+    };
     const fetchMock = jest.fn().mockImplementation(async (input: RequestInfo | URL) => {
       if (
         input ===
@@ -1588,6 +1604,483 @@ describe("MonthlyExpensesPage", () => {
     });
 
     expect(screen.queryByText("Abril")).not.toBeInTheDocument();
+  });
+
+  it("pushes the new month before waiting for copyable months to finish loading", async () => {
+    const router = createMockRouter({
+      query: {
+        month: "2026-03",
+        tab: "expenses",
+      },
+    });
+    const aprilCopyableMonthsResponse = createDeferredValue<{
+      json: () => Promise<{
+        data: {
+          defaultSourceMonth: string;
+          sourceMonths: string[];
+          targetMonth: string;
+        };
+      }>;
+      ok: boolean;
+    }>();
+    const fetchMock = jest.fn().mockImplementation((input: RequestInfo | URL) => {
+      if (
+        input ===
+        "/api/storage/monthly-expenses?month=2026-04&includeDriveStatuses=false"
+      ) {
+        return Promise.resolve({
+          json: async () => ({
+            data: {
+              items: [
+                {
+                  currency: "ARS",
+                  description: "Abril",
+                  id: "expense-2",
+                  occurrencesPerMonth: 1,
+                  subtotal: 200,
+                  total: 200,
+                },
+              ],
+              month: "2026-04",
+            },
+          }),
+          ok: true,
+        });
+      }
+
+      if (input === "/api/storage/monthly-expenses-copyable-months?targetMonth=2026-04") {
+        return aprilCopyableMonthsResponse.promise;
+      }
+
+      if (
+        input ===
+        "/api/storage/monthly-expenses?month=2026-03&includeDriveStatuses=false"
+      ) {
+        return Promise.resolve({
+          json: async () => ({
+            data: {
+              items: [
+                {
+                  currency: "ARS",
+                  description: "Marzo",
+                  id: "expense-1",
+                  occurrencesPerMonth: 1,
+                  subtotal: 100,
+                  total: 100,
+                },
+              ],
+              month: "2026-03",
+            },
+          }),
+          ok: true,
+        });
+      }
+
+      if (input === "/api/storage/monthly-expenses-copyable-months?targetMonth=2026-03") {
+        return Promise.resolve({
+          json: async () => ({
+            data: {
+              defaultSourceMonth: "2026-02",
+              sourceMonths: ["2026-02", "2026-01"],
+              targetMonth: "2026-03",
+            },
+          }),
+          ok: true,
+        });
+      }
+
+      throw new Error(`Unexpected fetch input: ${String(input)}`);
+    });
+
+    mockedUseRouter.mockReturnValue(
+      router as unknown as ReturnType<typeof useRouter>,
+    );
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Marzo",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Mes"), {
+      target: {
+        value: "2026-04",
+      },
+    });
+
+    await waitFor(() => {
+      expect(router.push).toHaveBeenCalledWith(
+        {
+          pathname: "/gastos",
+          query: {
+            month: "2026-04",
+            tab: "expenses",
+          },
+        },
+        undefined,
+        {
+          scroll: false,
+          shallow: true,
+        },
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Mes")).toHaveValue("2026-04");
+      expect(screen.getByText("Abril")).toBeInTheDocument();
+    });
+
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/storage/monthly-expenses?month=2026-03&includeDriveStatuses=false",
+      expect.anything(),
+    );
+
+    await act(async () => {
+      aprilCopyableMonthsResponse.resolve({
+        json: async () => ({
+          data: {
+            defaultSourceMonth: "2026-03",
+            sourceMonths: ["2026-03", "2026-02"],
+            targetMonth: "2026-04",
+          },
+        }),
+        ok: true,
+      });
+      await Promise.resolve();
+    });
+  });
+
+  it("keeps month navigation working when refreshing copyable months fails", async () => {
+    const router = createMockRouter({
+      query: {
+        month: "2026-03",
+        tab: "expenses",
+      },
+    });
+    const fetchMock = jest.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      if (
+        input ===
+        "/api/storage/monthly-expenses?month=2026-04&includeDriveStatuses=false"
+      ) {
+        return {
+          json: async () => ({
+            data: {
+              items: [],
+              month: "2026-04",
+            },
+          }),
+          ok: true,
+        };
+      }
+
+      if (input === "/api/storage/monthly-expenses-copyable-months?targetMonth=2026-04") {
+        return {
+          json: async () => ({
+            error: "copyable months failed",
+          }),
+          ok: false,
+          status: 500,
+        };
+      }
+
+      throw new Error(`Unexpected fetch input: ${String(input)}`);
+    });
+
+    mockedUseRouter.mockReturnValue(
+      router as unknown as ReturnType<typeof useRouter>,
+    );
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Marzo",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+          ],
+          month: "2026-03",
+        }}
+        initialCopyableMonths={{
+          defaultSourceMonth: "2026-02",
+          sourceMonths: ["2026-02", "2026-01"],
+          targetMonth: "2026-03",
+        }}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Mes"), {
+      target: {
+        value: "2026-04",
+      },
+    });
+
+    await waitFor(() => {
+      expect(router.push).toHaveBeenCalledWith(
+        {
+          pathname: "/gastos",
+          query: {
+            month: "2026-04",
+            tab: "expenses",
+          },
+        },
+        undefined,
+        {
+          scroll: false,
+          shallow: true,
+        },
+      );
+    });
+
+    expect(screen.getByLabelText("Mes")).toHaveValue("2026-04");
+    expect(screen.getByRole("button", { name: "Copia de" })).toBeDisabled();
+    expect(screen.queryByText("2026-02")).not.toBeInTheDocument();
+    expect(mockedToast.error).not.toHaveBeenCalled();
+  });
+
+  it("ignores stale client-side month loads that finish after newer navigation", async () => {
+    const router = createMockRouter({
+      query: {
+        month: "2026-02",
+        tab: "expenses",
+      },
+    });
+    const aprilDocumentResponse = createDeferredValue<{
+      json: () => Promise<{ data: { items: Array<Record<string, unknown>>; month: string } }>;
+      ok: boolean;
+    }>();
+    const aprilCopyableMonthsResponse = createDeferredValue<{
+      json: () => Promise<{
+        data: {
+          defaultSourceMonth: string;
+          sourceMonths: string[];
+          targetMonth: string;
+        };
+      }>;
+      ok: boolean;
+    }>();
+    const fetchMock = jest.fn().mockImplementation((input: RequestInfo | URL) => {
+      if (
+        input ===
+        "/api/storage/monthly-expenses?month=2026-04&includeDriveStatuses=false"
+      ) {
+        return aprilDocumentResponse.promise;
+      }
+
+      if (input === "/api/storage/monthly-expenses-copyable-months?targetMonth=2026-04") {
+        return aprilCopyableMonthsResponse.promise;
+      }
+
+      if (
+        input ===
+        "/api/storage/monthly-expenses?month=2026-03&includeDriveStatuses=false"
+      ) {
+        return Promise.resolve({
+          json: async () => ({
+            data: {
+              items: [
+                {
+                  currency: "ARS",
+                  description: "Marzo",
+                  id: "expense-3",
+                  occurrencesPerMonth: 1,
+                  subtotal: 300,
+                  total: 300,
+                },
+              ],
+              month: "2026-03",
+            },
+          }),
+          ok: true,
+        });
+      }
+
+      if (input === "/api/storage/monthly-expenses-copyable-months?targetMonth=2026-03") {
+        return Promise.resolve({
+          json: async () => ({
+            data: {
+              defaultSourceMonth: "2026-02",
+              sourceMonths: ["2026-02", "2026-01"],
+              targetMonth: "2026-03",
+            },
+          }),
+          ok: true,
+        });
+      }
+
+      throw new Error(`Unexpected fetch input: ${String(input)}`);
+    });
+
+    mockedUseRouter.mockReturnValue(
+      router as unknown as ReturnType<typeof useRouter>,
+    );
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    const initialDocument: MonthlyExpensesDocumentResult = {
+      items: [
+        {
+          currency: "ARS",
+          description: "Febrero",
+          id: "expense-1",
+          occurrencesPerMonth: 1,
+          subtotal: 100,
+          total: 100,
+        },
+      ],
+      month: "2026-02",
+    };
+
+    const view = renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={initialDocument}
+        initialCopyableMonths={{
+          defaultSourceMonth: "2026-01",
+          sourceMonths: ["2026-01"],
+          targetMonth: "2026-02",
+        }}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Mes"), {
+      target: {
+        value: "2026-04",
+      },
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/storage/monthly-expenses?month=2026-04&includeDriveStatuses=false",
+        expect.objectContaining({
+          headers: expect.any(Object),
+          signal: undefined,
+        }),
+      );
+    });
+
+    router.query = {
+      month: "2026-03",
+      tab: "expenses",
+    };
+
+    view.rerender(
+      <TooltipProvider>
+        <MonthlyExpensesPage
+          {...basePageProps}
+          initialDocument={initialDocument}
+          initialCopyableMonths={{
+            defaultSourceMonth: "2026-01",
+            sourceMonths: ["2026-01"],
+            targetMonth: "2026-02",
+          }}
+        />
+      </TooltipProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Mes")).toHaveValue("2026-03");
+      expect(screen.getByText("Marzo")).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      aprilDocumentResponse.resolve({
+        json: async () => ({
+          data: {
+            items: [
+              {
+                currency: "ARS",
+                description: "Abril",
+                id: "expense-4",
+                occurrencesPerMonth: 1,
+                subtotal: 400,
+                total: 400,
+              },
+            ],
+            month: "2026-04",
+          },
+        }),
+        ok: true,
+      });
+      aprilCopyableMonthsResponse.resolve({
+        json: async () => ({
+          data: {
+            defaultSourceMonth: "2026-03",
+            sourceMonths: ["2026-03", "2026-02"],
+            targetMonth: "2026-04",
+          },
+        }),
+        ok: true,
+      });
+      await Promise.resolve();
+    });
+
+    expect(screen.getByLabelText("Mes")).toHaveValue("2026-03");
+    expect(screen.getByText("Marzo")).toBeInTheDocument();
+    expect(screen.queryByText("Abril")).not.toBeInTheDocument();
+    expect(router.push).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: expect.objectContaining({
+          month: "2026-04",
+        }),
+      }),
+      undefined,
+      expect.objectContaining({
+        shallow: true,
+      }),
+    );
   });
 
   it("preserves missing receipt statuses when loading the requested month client-side", async () => {
