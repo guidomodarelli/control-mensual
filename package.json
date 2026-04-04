@@ -62,7 +62,7 @@
     "jest": "30.3.0",
     "jest-environment-jsdom": "30.3.0",
     "msw": "2.12.13",
-    "react-grab": "^0.1.28",
+    "react-grab": "^0.1.29",
     "sass": "1.98.0",
     "shadcn": "^4.0.8",
     "tailwindcss": "4.2.2",
