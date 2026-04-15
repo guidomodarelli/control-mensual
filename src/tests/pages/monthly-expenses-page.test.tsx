@@ -3331,9 +3331,10 @@ describe("MonthlyExpensesPage", () => {
 
     await user.click(
       screen.getByRole("button", {
-        name: "Editar link de pago para Electricidad",
+        name: "Abrir acciones de link de pago para Electricidad",
       }),
     );
+    await user.click(screen.getByRole("menuitem", { name: "Editar link de pago" }));
     await user.clear(screen.getByLabelText("Link de pago de Electricidad"));
     await user.type(
       screen.getByLabelText("Link de pago de Electricidad"),
@@ -3397,9 +3398,10 @@ describe("MonthlyExpensesPage", () => {
 
     await user.click(
       screen.getByRole("button", {
-        name: "Eliminar link de pago para Electricidad",
+        name: "Abrir acciones de link de pago para Electricidad",
       }),
     );
+    await user.click(screen.getByRole("menuitem", { name: "Eliminar link de pago" }));
 
     expect(
       screen.getByText("¿Querés eliminar este link de pago?"),
@@ -3479,9 +3481,10 @@ describe("MonthlyExpensesPage", () => {
 
     await user.click(
       screen.getByRole("button", {
-        name: "Eliminar link de pago para Electricidad",
+        name: "Abrir acciones de link de pago para Electricidad",
       }),
     );
+    await user.click(screen.getByRole("menuitem", { name: "Eliminar link de pago" }));
 
     await user.click(screen.getByRole("button", { name: "Cancelar" }));
 

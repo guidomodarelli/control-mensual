@@ -5,39 +5,27 @@ import type {
   VisibilityState,
 } from "@tanstack/react-table";
 import {
-  AlertTriangle,
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Clock3,
-  CircleX,
-  EyeOff,
-  ExternalLink,
-  Link2,
-  Mail,
-  Paperclip,
-  Plus,
-  Pencil,
-  Trash2,
-} from "lucide-react";
-
-import { ExpenseRowActions } from "@/components/monthly-expenses/expense-row-actions";
-import {
-  ExpenseSheet,
-  type ExpenseEditableFieldName,
-} from "@/components/monthly-expenses/expense-sheet";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Highlighter } from "@/components/ui/highlighter";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Highlighter,
+} from "@/components/ui/highlighter";
 import { Input } from "@/components/ui/input";
 import {
   InputGroup,
@@ -52,18 +40,41 @@ import {
 } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Clock3,
+  CircleX,
+  EyeOff,
+  ExternalLink,
+  Link2,
+  Mail,
+  MoreVertical,
+  Paperclip,
+  Plus,
+  Pencil,
+  Trash2,
+} from "lucide-react";
+import { ExpenseRowActions } from "@/components/monthly-expenses/expense-row-actions";
+import {
+  ExpenseSheet,
+  type ExpenseEditableFieldName,
+} from "@/components/monthly-expenses/expense-sheet";
 
 import {
   compareFuzzyMatchRank,
@@ -323,75 +334,93 @@ interface ReceiptDeleteConfirmButtonProps {
   receiptFileName: string;
 }
 
-interface TrashConfirmButtonProps {
+interface PaymentLinkActionsMenuProps {
   actionDisabled: boolean;
-  confirmAriaLabel: string;
-  confirmButtonLabel?: string;
-  confirmMessage: string;
-  onConfirm: () => void | Promise<void>;
-  tooltipLabel: string;
-  triggerAriaLabel: string;
-  triggerClassName: string;
+  expenseDescription: string;
+  onDelete: () => void | Promise<void>;
+  onEdit: () => void;
 }
 
-function TrashConfirmButton({
+function PaymentLinkActionsMenu({
   actionDisabled,
-  confirmAriaLabel,
-  confirmButtonLabel = "Eliminar",
-  confirmMessage,
-  onConfirm,
-  tooltipLabel,
-  triggerAriaLabel,
-  triggerClassName,
-}: TrashConfirmButtonProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  expenseDescription,
+  onDelete,
+  onEdit,
+}: PaymentLinkActionsMenuProps) {
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const normalizedExpenseDescription = expenseDescription.trim() || "gasto";
 
   return (
-    <Popover onOpenChange={setIsOpen} open={isOpen}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <PopoverTrigger asChild>
-            <Button
-              aria-label={triggerAriaLabel}
-              className={triggerClassName}
-              disabled={actionDisabled}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-            >
-              <Trash2 aria-hidden="true" />
-            </Button>
-          </PopoverTrigger>
-        </TooltipTrigger>
-        <TooltipContent>{tooltipLabel}</TooltipContent>
-      </Tooltip>
-      <PopoverContent align="end" className={styles.receiptDeleteConfirmPopover}>
-        <p className={styles.receiptDeleteConfirmMessage}>{confirmMessage}</p>
-        <div className={styles.receiptDeleteConfirmActions}>
+    <AlertDialog onOpenChange={setIsConfirmDialogOpen} open={isConfirmDialogOpen}>
+      <DropdownMenu onOpenChange={setIsMenuOpen} open={isMenuOpen}>
+        <DropdownMenuTrigger asChild>
           <Button
-            onClick={() => setIsOpen(false)}
-            size="sm"
+            aria-label={`Abrir acciones de link de pago para ${normalizedExpenseDescription}`}
+            className={styles.paymentLinkActionButton}
+            disabled={actionDisabled}
+            size="icon-sm"
             type="button"
-            variant="outline"
+            variant="ghost"
           >
-            Cancelar
+            <MoreVertical aria-hidden="true" />
           </Button>
-          <Button
-            aria-label={confirmAriaLabel}
-            onClick={() => {
-              setIsOpen(false);
-              void onConfirm();
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            onSelect={() => {
+              setIsMenuOpen(false);
+              window.setTimeout(() => {
+                onEdit();
+              }, 0);
             }}
-            size="sm"
-            type="button"
+          >
+            <Pencil aria-hidden="true" />
+            Editar link de pago
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => {
+              setIsMenuOpen(false);
+              window.setTimeout(() => {
+                setIsConfirmDialogOpen(true);
+              }, 0);
+            }}
             variant="destructive"
           >
-            {confirmButtonLabel}
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
+            <Trash2 aria-hidden="true" />
+            Eliminar link de pago
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <AlertDialogContent size="sm">
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Querés eliminar este link de pago?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción guarda el cambio inmediatamente en tu archivo mensual.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            aria-label={`Confirmar eliminación de link de pago para ${normalizedExpenseDescription}`}
+            onClick={() => {
+              setIsConfirmDialogOpen(false);
+              void onDelete();
+            }}
+            variant="destructive"
+          >
+            Eliminar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
+}
+
+interface ReceiptDeleteConfirmButtonProps {
+  actionDisabled: boolean;
+  onConfirm: () => void | Promise<void>;
+  receiptFileName: string;
 }
 
 function ReceiptDeleteConfirmButton({
@@ -432,7 +461,7 @@ function ReceiptDeleteConfirmButton({
             aria-label={`Confirmar eliminación de comprobante ${receiptFileName}`}
             onClick={() => {
               setIsOpen(false);
-              onConfirm();
+              void onConfirm();
             }}
             size="sm"
             type="button"
@@ -2096,37 +2125,17 @@ export function MonthlyExpensesTable({
                 <TooltipContent>Abrir página de pago</TooltipContent>
               </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    aria-label={`Editar link de pago para ${expenseDescription}`}
-                    className={styles.paymentLinkActionButton}
-                    disabled={actionDisabled}
-                    onClick={() =>
-                      handleOpenPaymentLinkDialog({
-                        expenseDescription,
-                        expenseId: row.original.id,
-                        mode: "edit",
-                        paymentLink: row.original.paymentLink,
-                      })}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Pencil aria-hidden="true" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Editar link de pago</TooltipContent>
-              </Tooltip>
-
-              <TrashConfirmButton
+              <PaymentLinkActionsMenu
                 actionDisabled={actionDisabled}
-                confirmAriaLabel={`Confirmar eliminación de link de pago para ${expenseDescription}`}
-                confirmMessage="¿Querés eliminar este link de pago?"
-                onConfirm={() => onDeletePaymentLink(row.original.id)}
-                tooltipLabel="Eliminar link de pago"
-                triggerAriaLabel={`Eliminar link de pago para ${expenseDescription}`}
-                triggerClassName={styles.paymentLinkActionButton}
+                expenseDescription={expenseDescription}
+                onDelete={() => onDeletePaymentLink(row.original.id)}
+                onEdit={() =>
+                  handleOpenPaymentLinkDialog({
+                    expenseDescription,
+                    expenseId: row.original.id,
+                    mode: "edit",
+                    paymentLink: row.original.paymentLink,
+                  })}
               />
             </div>
           );
@@ -2842,7 +2851,7 @@ export function MonthlyExpensesTable({
           validationMessage={validationMessage}
         />
 
-        <Dialog
+        <AlertDialog
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
               handleClosePaymentLinkDialog();
@@ -2850,27 +2859,17 @@ export function MonthlyExpensesTable({
           }}
           open={paymentLinkDialogState != null}
         >
-          <DialogContent
-            className={styles.paymentLinkDialogContent}
-            onEscapeKeyDown={(event) => {
-              event.preventDefault();
-              handleClosePaymentLinkDialog();
-            }}
-            onInteractOutside={(event) => {
-              event.preventDefault();
-              handleClosePaymentLinkDialog();
-            }}
-          >
-            <DialogHeader>
-              <DialogTitle>
+          <AlertDialogContent className={styles.paymentLinkDialogContent} size="sm">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
                 {paymentLinkDialogState?.mode === "edit"
                   ? "Editar link de pago"
                   : "Agregar link de pago"}
-              </DialogTitle>
-              <DialogDescription>
+              </AlertDialogTitle>
+              <AlertDialogDescription>
                 {`Completá el link para ${paymentLinkDialogState?.expenseDescription ?? "este gasto"}.`}
-              </DialogDescription>
-            </DialogHeader>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
 
             <div className={styles.paymentLinkDialogField}>
               <Label htmlFor="payment-link-dialog-input">Link de pago</Label>
@@ -2908,7 +2907,7 @@ export function MonthlyExpensesTable({
               ) : null}
             </div>
 
-            <DialogFooter className={styles.paymentLinkDialogActions}>
+            <AlertDialogFooter className={styles.paymentLinkDialogActions}>
               <Button
                 onClick={handleClosePaymentLinkDialog}
                 type="button"
@@ -2925,9 +2924,9 @@ export function MonthlyExpensesTable({
               >
                 Guardar
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </section>
   );
