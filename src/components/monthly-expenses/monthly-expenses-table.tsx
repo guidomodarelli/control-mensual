@@ -105,8 +105,6 @@ const SORTABLE_COLUMN_IDS = new Set([
   "receiptShareStatus",
   "receiptShareLink",
   "receiptFileUrl",
-  "receiptFolderUrl",
-  "allReceiptsFolderUrl",
   LOAN_SORT_COLUMN_ID,
   "lenderName",
   LOAN_INSTALLMENT_START_COLUMN_ID,
@@ -125,8 +123,6 @@ const PERSISTABLE_COLUMN_VISIBILITY_IDS = new Set([
   "receiptShareStatus",
   "receiptShareLink",
   "receiptFileUrl",
-  "receiptFolderUrl",
-  "allReceiptsFolderUrl",
   LOAN_SORT_COLUMN_ID,
   "lenderName",
   LOAN_INSTALLMENT_START_COLUMN_ID,
@@ -2300,168 +2296,6 @@ export function MonthlyExpensesTable({
         },
       },
       {
-        id: "receiptFolderUrl",
-        accessorFn: (row) => row.monthlyFolderViewUrl,
-        cell: ({ row }) => {
-          const receiptFolderUrl = getValidHttpUrl(row.original.monthlyFolderViewUrl);
-          const canDeleteFolderReference = isBrokenDriveStatus(
-            row.original.monthlyFolderStatus,
-          );
-
-          if (!receiptFolderUrl) {
-            return (
-              <div className={styles.folderCellValue}>
-                <DriveStatusBadge status={row.original.monthlyFolderStatus} />
-                <span>-</span>
-                {canDeleteFolderReference ? (
-                  <TrashConfirmButton
-                    actionDisabled={actionDisabled}
-                    confirmAriaLabel="Confirmar quitar referencia de carpeta del mes actual"
-                    confirmButtonLabel="Quitar"
-                    confirmMessage="¿Querés quitar la referencia de carpeta?"
-                    onConfirm={() => onDeleteMonthlyFolderReference(row.original.id)}
-                    tooltipLabel="Quitar referencia de carpeta"
-                    triggerAriaLabel="Quitar referencia de carpeta del mes actual"
-                    triggerClassName={styles.receiptDeleteButton}
-                  />
-                ) : null}
-              </div>
-            );
-          }
-
-          return (
-            <div className={styles.folderCellValue}>
-              <DriveStatusBadge status={row.original.monthlyFolderStatus} />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <a
-                    className={styles.paymentLinkAction}
-                    href={receiptFolderUrl}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    Ver carpeta del mes actual
-                    <ExternalLink aria-hidden="true" className={styles.paymentLinkIcon} />
-                  </a>
-                </TooltipTrigger>
-                <TooltipContent>Abrir carpeta del mes actual en Drive</TooltipContent>
-              </Tooltip>
-              {canDeleteFolderReference ? (
-                <TrashConfirmButton
-                  actionDisabled={actionDisabled}
-                  confirmAriaLabel="Confirmar quitar referencia de carpeta del mes actual"
-                  confirmButtonLabel="Quitar"
-                  confirmMessage="¿Querés quitar la referencia de carpeta?"
-                  onConfirm={() => onDeleteMonthlyFolderReference(row.original.id)}
-                  tooltipLabel="Quitar referencia de carpeta"
-                  triggerAriaLabel="Quitar referencia de carpeta del mes actual"
-                  triggerClassName={styles.receiptDeleteButton}
-                />
-              ) : null}
-            </div>
-          );
-        },
-        header: getSortableHeader("Carpeta del mes actual"),
-        meta: { label: "Carpeta del mes actual" },
-        sortingFn: (rowA, rowB) => {
-          const leftFolderUrl = getValidHttpUrl(rowA.original.monthlyFolderViewUrl);
-          const rightFolderUrl = getValidHttpUrl(rowB.original.monthlyFolderViewUrl);
-
-          return compareValuesKeepingInvalidLast({
-            compareValidValues: (leftValue, rightValue) =>
-              leftValue.localeCompare(rightValue, "es", {
-                sensitivity: "base",
-              }),
-            leftValue: leftFolderUrl,
-            rightValue: rightFolderUrl,
-            sortDirection: getSortDirection("receiptFolderUrl"),
-          });
-        },
-      },
-      {
-        id: "allReceiptsFolderUrl",
-        accessorFn: (row) => row.allReceiptsFolderViewUrl,
-        cell: ({ row }) => {
-          const allReceiptsFolderUrl = getValidHttpUrl(
-            row.original.allReceiptsFolderViewUrl,
-          );
-          const canDeleteFolderReference = isBrokenDriveStatus(
-            row.original.allReceiptsFolderStatus,
-          );
-
-          if (!allReceiptsFolderUrl) {
-            return (
-              <div className={styles.folderCellValue}>
-                <DriveStatusBadge status={row.original.allReceiptsFolderStatus} />
-                <span>-</span>
-                {canDeleteFolderReference ? (
-                  <TrashConfirmButton
-                    actionDisabled={actionDisabled}
-                    confirmAriaLabel="Confirmar quitar referencia de carpeta de comprobantes"
-                    confirmButtonLabel="Quitar"
-                    confirmMessage="¿Querés quitar la referencia de carpeta?"
-                    onConfirm={() =>
-                      onDeleteAllReceiptsFolderReference(row.original.id)}
-                    tooltipLabel="Quitar referencia de carpeta"
-                    triggerAriaLabel="Quitar referencia de carpeta de comprobantes"
-                    triggerClassName={styles.receiptDeleteButton}
-                  />
-                ) : null}
-              </div>
-            );
-          }
-
-          return (
-            <div className={styles.folderCellValue}>
-              <DriveStatusBadge status={row.original.allReceiptsFolderStatus} />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <a
-                    className={styles.paymentLinkAction}
-                    href={allReceiptsFolderUrl}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    Ver carpeta
-                    <ExternalLink aria-hidden="true" className={styles.paymentLinkIcon} />
-                  </a>
-                </TooltipTrigger>
-                <TooltipContent>Abrir carpeta con todos los comprobantes en Drive</TooltipContent>
-              </Tooltip>
-              {canDeleteFolderReference ? (
-                <TrashConfirmButton
-                  actionDisabled={actionDisabled}
-                  confirmAriaLabel="Confirmar quitar referencia de carpeta de comprobantes"
-                  confirmButtonLabel="Quitar"
-                  confirmMessage="¿Querés quitar la referencia de carpeta?"
-                  onConfirm={() =>
-                    onDeleteAllReceiptsFolderReference(row.original.id)}
-                  tooltipLabel="Quitar referencia de carpeta"
-                  triggerAriaLabel="Quitar referencia de carpeta de comprobantes"
-                  triggerClassName={styles.receiptDeleteButton}
-                />
-              ) : null}
-            </div>
-          );
-        },
-        header: getSortableHeader("Carpeta de comprobantes"),
-        meta: { label: "Carpeta de comprobantes" },
-        sortingFn: (rowA, rowB) => {
-          const leftFolderUrl = getValidHttpUrl(rowA.original.allReceiptsFolderViewUrl);
-          const rightFolderUrl = getValidHttpUrl(rowB.original.allReceiptsFolderViewUrl);
-
-          return compareValuesKeepingInvalidLast({
-            compareValidValues: (leftValue, rightValue) =>
-              leftValue.localeCompare(rightValue, "es", {
-                sensitivity: "base",
-              }),
-            leftValue: leftFolderUrl,
-            rightValue: rightFolderUrl,
-            sortDirection: getSortDirection("allReceiptsFolderUrl"),
-          });
-        },
-      },
-      {
         accessorKey: "loanProgress",
         cell: ({ row }) => {
           if (!row.original.isLoan) {
@@ -2599,16 +2433,39 @@ export function MonthlyExpensesTable({
       },
       {
         id: "actions",
-        cell: ({ row }) => (
-          <div className={styles.actionsCell}>
-            <ExpenseRowActions
-              actionDisabled={actionDisabled}
-              description={row.original.description}
-              onDelete={() => onDeleteExpense(row.original.id)}
-              onEdit={() => onEditExpense(row.original.id)}
-            />
-          </div>
-        ),
+        cell: ({ row }) => {
+          const monthlyFolderViewUrl = getValidHttpUrl(row.original.monthlyFolderViewUrl);
+          const allReceiptsFolderViewUrl = getValidHttpUrl(
+            row.original.allReceiptsFolderViewUrl,
+          );
+          const canDeleteMonthlyFolderReference = isBrokenDriveStatus(
+            row.original.monthlyFolderStatus,
+          );
+          const canDeleteAllReceiptsFolderReference = isBrokenDriveStatus(
+            row.original.allReceiptsFolderStatus,
+          );
+
+          return (
+            <div className={styles.actionsCell}>
+              <ExpenseRowActions
+                actionDisabled={actionDisabled}
+                allReceiptsFolderViewUrl={allReceiptsFolderViewUrl}
+                canDeleteAllReceiptsFolderReference={
+                  canDeleteAllReceiptsFolderReference
+                }
+                canDeleteMonthlyFolderReference={canDeleteMonthlyFolderReference}
+                description={row.original.description}
+                monthlyFolderViewUrl={monthlyFolderViewUrl}
+                onDelete={() => onDeleteExpense(row.original.id)}
+                onDeleteAllReceiptsFolderReference={() =>
+                  onDeleteAllReceiptsFolderReference(row.original.id)}
+                onDeleteMonthlyFolderReference={() =>
+                  onDeleteMonthlyFolderReference(row.original.id)}
+                onEdit={() => onEditExpense(row.original.id)}
+              />
+            </div>
+          );
+        },
         enableHiding: false,
         enableSorting: false,
         header: () => null,

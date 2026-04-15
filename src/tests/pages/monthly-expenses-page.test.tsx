@@ -6681,10 +6681,6 @@ describe("MonthlyExpensesPage", () => {
     const paidHeaderIndex = headers.indexOf("Pagos");
     const manualPaidHeaderIndex = headers.indexOf("Pagos sin comprobante");
     const receiptHeaderIndex = headers.indexOf("Comprobantes");
-    const monthlyReceiptFolderHeaderIndex = headers.indexOf(
-      "Carpeta del mes actual",
-    );
-    const allReceiptsFolderHeaderIndex = headers.indexOf("Carpeta de comprobantes");
 
     expect(linkHeaderIndex).toBeGreaterThanOrEqual(0);
     expect(receiptShareStatusHeaderIndex).toBe(linkHeaderIndex + 1);
@@ -6692,14 +6688,14 @@ describe("MonthlyExpensesPage", () => {
     expect(paidHeaderIndex).toBe(receiptShareLinkHeaderIndex + 1);
     expect(manualPaidHeaderIndex).toBe(paidHeaderIndex + 1);
     expect(receiptHeaderIndex).toBe(manualPaidHeaderIndex + 1);
-    expect(monthlyReceiptFolderHeaderIndex).toBe(receiptHeaderIndex + 1);
-    expect(allReceiptsFolderHeaderIndex).toBe(monthlyReceiptFolderHeaderIndex + 1);
+    expect(headers).not.toContain("Carpeta del mes actual");
+    expect(headers).not.toContain("Carpeta de comprobantes");
     expect(
       screen.getByRole("button", { name: "Adjuntar comprobante" }),
     ).toBeInTheDocument();
   });
 
-  it("renders receipt link inside the comprobantes popover and keeps folder links visible", async () => {
+  it("renders receipt link inside the comprobantes popover and shows folder actions in row menu", async () => {
     const user = userEvent.setup();
 
     renderWithProviders(
@@ -6745,28 +6741,36 @@ describe("MonthlyExpensesPage", () => {
     const receiptLink = await screen.findByRole("link", {
       name: "Ver comprobante parte 1",
     });
-    const monthlyReceiptFolderLink = screen.getByRole("link", {
-      name: "Ver carpeta del mes actual",
+    await user.click(
+      screen.getByRole("button", { name: "Abrir acciones para Internet" }),
+    );
+
+    expect(screen.getByText("Carpetas")).toBeInTheDocument();
+
+    const monthlyReceiptFolderMenuItem = screen.getByRole("menuitem", {
+      name: "Carpeta mensual",
     });
-    const allReceiptsFolderLink = screen.getByRole("link", {
-      name: "Ver carpeta",
+    const allReceiptsFolderMenuItem = screen.getByRole("menuitem", {
+      name: "Carpeta histórica de comprobantes",
     });
 
     expect(receiptLink).toHaveAttribute(
       "href",
       "https://drive.google.com/file/d/receipt-file-id/view",
     );
-    expect(monthlyReceiptFolderLink).toHaveAttribute(
+    expect(monthlyReceiptFolderMenuItem).toHaveAttribute(
       "href",
       "https://drive.google.com/drive/folders/receipt-month-folder-id",
     );
-    expect(allReceiptsFolderLink).toHaveAttribute(
+    expect(allReceiptsFolderMenuItem).toHaveAttribute(
       "href",
       "https://drive.google.com/drive/folders/receipt-folder-id",
     );
   });
 
-  it("keeps folder links visible when an item has folders metadata and no receipts", () => {
+  it("shows folder actions in row menu when an item has folders metadata and no receipts", async () => {
+    const user = userEvent.setup();
+
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -6796,18 +6800,22 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    const monthlyReceiptFolderLink = screen.getByRole("link", {
-      name: "Ver carpeta del mes actual",
+    await user.click(
+      screen.getByRole("button", { name: "Abrir acciones para Internet" }),
+    );
+
+    const monthlyReceiptFolderMenuItem = screen.getByRole("menuitem", {
+      name: "Carpeta mensual",
     });
-    const allReceiptsFolderLink = screen.getByRole("link", {
-      name: "Ver carpeta",
+    const allReceiptsFolderMenuItem = screen.getByRole("menuitem", {
+      name: "Carpeta histórica de comprobantes",
     });
 
-    expect(monthlyReceiptFolderLink).toHaveAttribute(
+    expect(monthlyReceiptFolderMenuItem).toHaveAttribute(
       "href",
       "https://drive.google.com/drive/folders/receipt-month-folder-id",
     );
-    expect(allReceiptsFolderLink).toHaveAttribute(
+    expect(allReceiptsFolderMenuItem).toHaveAttribute(
       "href",
       "https://drive.google.com/drive/folders/receipt-folder-id",
     );
@@ -6860,13 +6868,16 @@ describe("MonthlyExpensesPage", () => {
     );
 
     await user.click(
-      screen.getByRole("button", {
+      screen.getByRole("button", { name: "Abrir acciones para Internet" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", {
         name: "Quitar referencia de carpeta del mes actual",
       }),
     );
 
     expect(
-      screen.getByText("¿Querés quitar la referencia de carpeta?"),
+      screen.getByText("¿Querés quitar la referencia de carpeta del mes actual?"),
     ).toBeInTheDocument();
 
     expect(
@@ -6884,7 +6895,10 @@ describe("MonthlyExpensesPage", () => {
     ).toBeUndefined();
 
     await user.click(
-      screen.getByRole("button", {
+      screen.getByRole("button", { name: "Abrir acciones para Internet" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", {
         name: "Quitar referencia de carpeta del mes actual",
       }),
     );
@@ -6963,7 +6977,10 @@ describe("MonthlyExpensesPage", () => {
     );
 
     await user.click(
-      screen.getByRole("button", {
+      screen.getByRole("button", { name: "Abrir acciones para Internet" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", {
         name: "Quitar referencia de carpeta del mes actual",
       }),
     );
@@ -7033,13 +7050,16 @@ describe("MonthlyExpensesPage", () => {
     );
 
     await user.click(
-      screen.getByRole("button", {
+      screen.getByRole("button", { name: "Abrir acciones para Internet" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", {
         name: "Quitar referencia de carpeta de comprobantes",
       }),
     );
 
     expect(
-      screen.getByText("¿Querés quitar la referencia de carpeta?"),
+      screen.getByText("¿Querés quitar la referencia de carpeta de comprobantes?"),
     ).toBeInTheDocument();
 
     expect(
@@ -7057,7 +7077,10 @@ describe("MonthlyExpensesPage", () => {
     ).toBeUndefined();
 
     await user.click(
-      screen.getByRole("button", {
+      screen.getByRole("button", { name: "Abrir acciones para Internet" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", {
         name: "Quitar referencia de carpeta de comprobantes",
       }),
     );
@@ -7133,7 +7156,10 @@ describe("MonthlyExpensesPage", () => {
     );
 
     await user.click(
-      screen.getByRole("button", {
+      screen.getByRole("button", { name: "Abrir acciones para Internet" }),
+    );
+    await user.click(
+      screen.getByRole("menuitem", {
         name: "Quitar referencia de carpeta de comprobantes",
       }),
     );

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Folder, FolderX, MoreVertical, Pencil, Trash2 } from "lucide-react";
 
 import {
   AlertDialog,
@@ -16,6 +16,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -23,23 +25,82 @@ import styles from "./expense-row-actions.module.scss";
 
 interface ExpenseRowActionsProps {
   actionDisabled: boolean;
+  allReceiptsFolderViewUrl: string | null;
+  canDeleteAllReceiptsFolderReference: boolean;
+  canDeleteMonthlyFolderReference: boolean;
   description: string;
+  monthlyFolderViewUrl: string | null;
+  onDeleteAllReceiptsFolderReference: () => void;
   onDelete: () => void;
+  onDeleteMonthlyFolderReference: () => void;
   onEdit: () => void;
 }
 
 export function ExpenseRowActions({
   actionDisabled,
+  allReceiptsFolderViewUrl,
+  canDeleteAllReceiptsFolderReference,
+  canDeleteMonthlyFolderReference,
   description,
+  monthlyFolderViewUrl,
+  onDeleteAllReceiptsFolderReference,
   onDelete,
+  onDeleteMonthlyFolderReference,
   onEdit,
 }: ExpenseRowActionsProps) {
   const normalizedDescription = description.trim() || "este gasto";
-  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [confirmActionType, setConfirmActionType] = useState<
+    | "deleteExpense"
+    | "deleteMonthlyFolderReference"
+    | "deleteAllReceiptsFolderReference"
+    | null
+  >(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const shouldRenderFoldersSection =
+    Boolean(monthlyFolderViewUrl) ||
+    Boolean(allReceiptsFolderViewUrl) ||
+    canDeleteMonthlyFolderReference ||
+    canDeleteAllReceiptsFolderReference;
+
+  const confirmDialogConfig =
+    confirmActionType === "deleteExpense"
+      ? {
+          actionLabel: "Confirmar",
+          ariaLabel: undefined,
+          description:
+            "Esta acción guarda el cambio inmediatamente en tu archivo mensual.",
+          onConfirm: onDelete,
+          title: "¿Querés eliminar este gasto?",
+        }
+      : confirmActionType === "deleteMonthlyFolderReference"
+        ? {
+            actionLabel: "Quitar",
+            ariaLabel: "Confirmar quitar referencia de carpeta del mes actual",
+            description:
+              "Esta acción guarda el cambio inmediatamente en tu archivo mensual.",
+            onConfirm: onDeleteMonthlyFolderReference,
+            title: "¿Querés quitar la referencia de carpeta del mes actual?",
+          }
+        : confirmActionType === "deleteAllReceiptsFolderReference"
+          ? {
+              actionLabel: "Quitar",
+              ariaLabel: "Confirmar quitar referencia de carpeta de comprobantes",
+              description:
+                "Esta acción guarda el cambio inmediatamente en tu archivo mensual.",
+              onConfirm: onDeleteAllReceiptsFolderReference,
+              title: "¿Querés quitar la referencia de carpeta de comprobantes?",
+            }
+          : null;
 
   return (
-    <AlertDialog onOpenChange={setIsAlertOpen} open={isAlertOpen}>
+    <AlertDialog
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          setConfirmActionType(null);
+        }
+      }}
+      open={confirmActionType !== null}
+    >
       <DropdownMenu onOpenChange={setIsMenuOpen} open={isMenuOpen}>
         <DropdownMenuTrigger asChild>
           <Button
@@ -68,7 +129,7 @@ export function ExpenseRowActions({
           <DropdownMenuItem
             onSelect={() => {
               setIsMenuOpen(false);
-              setIsAlertOpen(true);
+              setConfirmActionType("deleteExpense");
             }}
             variant="destructive"
           >
@@ -77,29 +138,96 @@ export function ExpenseRowActions({
               Eliminar
             </span>
           </DropdownMenuItem>
+          {shouldRenderFoldersSection ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Carpetas</DropdownMenuLabel>
+            </>
+          ) : null}
+          {monthlyFolderViewUrl ? (
+            <DropdownMenuItem asChild>
+              <a
+                href={monthlyFolderViewUrl}
+                onClick={() => setIsMenuOpen(false)}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                <span className={styles.menuItem}>
+                  <Folder aria-hidden="true" />
+                  Carpeta mensual
+                </span>
+              </a>
+            </DropdownMenuItem>
+          ) : null}
+          {allReceiptsFolderViewUrl ? (
+            <DropdownMenuItem asChild>
+              <a
+                href={allReceiptsFolderViewUrl}
+                onClick={() => setIsMenuOpen(false)}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                <span className={styles.menuItem}>
+                  <Folder aria-hidden="true" />
+                  Carpeta histórica de comprobantes
+                </span>
+              </a>
+            </DropdownMenuItem>
+          ) : null}
+          {canDeleteMonthlyFolderReference ? (
+            <DropdownMenuItem
+              onSelect={() => {
+                setIsMenuOpen(false);
+                setConfirmActionType("deleteMonthlyFolderReference");
+              }}
+              variant="destructive"
+            >
+              <span className={styles.menuItem}>
+                <FolderX aria-hidden="true" className={styles.destructiveIcon} />
+                Quitar referencia de carpeta del mes actual
+              </span>
+            </DropdownMenuItem>
+          ) : null}
+          {canDeleteAllReceiptsFolderReference ? (
+            <DropdownMenuItem
+              onSelect={() => {
+                setIsMenuOpen(false);
+                setConfirmActionType("deleteAllReceiptsFolderReference");
+              }}
+              variant="destructive"
+            >
+              <span className={styles.menuItem}>
+                <FolderX aria-hidden="true" className={styles.destructiveIcon} />
+                Quitar referencia de carpeta de comprobantes
+              </span>
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialogContent size="sm">
-        <AlertDialogHeader>
-          <AlertDialogTitle>¿Querés eliminar este gasto?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Esta acción guarda el cambio inmediatamente en tu archivo mensual.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => {
-              setIsAlertOpen(false);
-              onDelete();
-            }}
-            variant="destructive"
-          >
-            Confirmar
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
+      {confirmDialogConfig ? (
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmDialogConfig.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDialogConfig.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              aria-label={confirmDialogConfig.ariaLabel}
+              onClick={() => {
+                setConfirmActionType(null);
+                confirmDialogConfig.onConfirm();
+              }}
+              variant="destructive"
+            >
+              {confirmDialogConfig.actionLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      ) : null}
     </AlertDialog>
   );
 }
