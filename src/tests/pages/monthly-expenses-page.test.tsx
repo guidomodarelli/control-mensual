@@ -517,16 +517,16 @@ describe("MonthlyExpensesPage", () => {
       screen.queryByRole("menuitemcheckbox", { name: "Descripción" }),
     ).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("menuitemcheckbox", { name: "Moneda" }));
+    await user.click(screen.getByRole("menuitemcheckbox", { name: /Subtotal/i }));
 
     expect(
-      screen.getByRole("menuitemcheckbox", { name: "Subtotal" }),
+      screen.getByRole("menuitemcheckbox", { name: /Subtotal/i }),
     ).toBeInTheDocument();
 
     await user.keyboard("{Escape}");
 
     expect(
-      screen.queryByRole("columnheader", { name: "Moneda" }),
+      screen.queryByRole("columnheader", { name: "Subtotal" }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Descripción" })).toBeInTheDocument();
   });
@@ -633,7 +633,7 @@ describe("MonthlyExpensesPage", () => {
     await user.keyboard("{Escape}");
 
     expect(screen.getByRole("columnheader", { name: "Descripción" })).toBeInTheDocument();
-    expect(screen.queryByRole("columnheader", { name: "Moneda" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Subtotal" })).not.toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Link" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Columnas" }));
@@ -641,7 +641,7 @@ describe("MonthlyExpensesPage", () => {
 
     await user.keyboard("{Escape}");
 
-    expect(screen.getByRole("columnheader", { name: "Moneda" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Subtotal" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Link" })).toBeInTheDocument();
   });
 
@@ -672,7 +672,7 @@ describe("MonthlyExpensesPage", () => {
     ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Columnas" }));
-    await user.click(screen.getByRole("menuitemcheckbox", { name: "Moneda" }));
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Subtotal" }));
     expect(screen.getByText("Columna deseleccionada")).toBeInTheDocument();
     await user.keyboard("{Escape}");
 
@@ -780,7 +780,7 @@ describe("MonthlyExpensesPage", () => {
       TABLE_PREFERENCES_STORAGE_KEY,
       JSON.stringify({
         columnVisibility: {
-          currency: false,
+          subtotal: false,
           paymentLink: false,
         },
         loanSortMode: "paidInstallments",
@@ -838,7 +838,7 @@ describe("MonthlyExpensesPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByRole("columnheader", { name: "Moneda" }),
+        screen.queryByRole("columnheader", { name: "Subtotal" }),
       ).not.toBeInTheDocument();
       expect(
         screen.queryByRole("columnheader", { name: "Link" }),
@@ -880,7 +880,7 @@ describe("MonthlyExpensesPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Ordenar Subtotal" }));
     await user.click(screen.getByRole("button", { name: "Columnas" }));
-    await user.click(screen.getByRole("menuitemcheckbox", { name: "Moneda" }));
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Subtotal" }));
 
     await waitFor(() => {
       const persistedTablePreferences = getPersistedTablePreferences();
@@ -895,7 +895,7 @@ describe("MonthlyExpensesPage", () => {
       ]);
       expect(persistedTablePreferences?.columnVisibility).toEqual(
         expect.objectContaining({
-          currency: false,
+          subtotal: false,
         }),
       );
     });
@@ -1179,8 +1179,8 @@ describe("MonthlyExpensesPage", () => {
       />,
     );
 
-    expect(screen.getByText("$ 390,00")).toBeInTheDocument();
-    expect(screen.getByText("US$ 3,25")).toBeInTheDocument();
+    expect(screen.getByText(/\$\s*390,00/)).toBeInTheDocument();
+    expect(screen.getByText(/US\$\s*3,25/)).toBeInTheDocument();
   });
 
   it("falls back to the expenses tab for invalid query values", () => {
@@ -6064,7 +6064,7 @@ describe("MonthlyExpensesPage", () => {
     expect(screen.getByText(/^Dólar solidario:/i)).toBeInTheDocument();
     expect(screen.getByText("$ 1.476")).toBeInTheDocument();
     expect(screen.getAllByText("$ 14.760,00").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByText("US$ 10").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText(/US\$\s*10,00/).length).toBeGreaterThanOrEqual(2);
   });
 
   it("renders the Link column after USD and opens payment links in a new tab", async () => {

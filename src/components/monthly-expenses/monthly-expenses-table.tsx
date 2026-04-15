@@ -93,7 +93,6 @@ const SORTABLE_COLUMN_IDS = new Set([
   "description",
   "paymentsProgress",
   "paymentHistory",
-  "currency",
   "subtotal",
   "occurrencesPerMonth",
   "total",
@@ -110,7 +109,6 @@ const SORTABLE_COLUMN_IDS = new Set([
 const PERSISTABLE_COLUMN_VISIBILITY_IDS = new Set([
   "paymentsProgress",
   "paymentHistory",
-  "currency",
   "subtotal",
   "occurrencesPerMonth",
   "total",
@@ -151,6 +149,16 @@ const LOAN_SORT_DIRECTION_OPTIONS: Array<{
     value: "desc",
   },
 ];
+const CURRENCY_FORMATTER_BY_CURRENCY: Record<MonthlyExpenseCurrency, Intl.NumberFormat> = {
+  ARS: new Intl.NumberFormat("es-AR", {
+    currency: "ARS",
+    style: "currency",
+  }),
+  USD: new Intl.NumberFormat("es-AR", {
+    currency: "USD",
+    style: "currency",
+  }),
+};
 
 function buildLoanSortingState(direction: "asc" | "desc"): SortingState {
   return [
@@ -1100,25 +1108,7 @@ function formatCurrencyAmount(
     return value;
   }
 
-  if (currency === "ARS") {
-    return `$ ${new Intl.NumberFormat("es-AR", {
-      maximumFractionDigits: 2,
-      minimumFractionDigits: 2,
-    }).format(numericValue)}`;
-  }
-
-  const [, decimalPart = ""] = value.split(".");
-  const normalizedDecimalPart = decimalPart.slice(0, 2);
-  const minimumFractionDigits =
-    normalizedDecimalPart.length === 0 || /^0+$/.test(normalizedDecimalPart)
-      ? 0
-      : normalizedDecimalPart.length;
-  const prefix = currency === "USD" ? "US$" : "$";
-
-  return `${prefix} ${new Intl.NumberFormat("es-AR", {
-    maximumFractionDigits: Math.max(minimumFractionDigits, 0),
-    minimumFractionDigits,
-  }).format(numericValue)}`;
+  return CURRENCY_FORMATTER_BY_CURRENCY[currency].format(numericValue);
 }
 
 function formatConvertedAmount(
@@ -1129,14 +1119,7 @@ function formatConvertedAmount(
     return "-";
   }
 
-  if (currency === "ARS") {
-    return `$ ${new Intl.NumberFormat("es-AR", {
-      maximumFractionDigits: 2,
-      minimumFractionDigits: 2,
-    }).format(value)}`;
-  }
-
-  return formatCurrencyAmount(currency, value.toFixed(2));
+  return CURRENCY_FORMATTER_BY_CURRENCY[currency].format(value);
 }
 
 function formatExchangeRateAmount(value: number): string {
@@ -1865,21 +1848,6 @@ export function MonthlyExpensesTable({
             leftValue: rowA.original.description,
             rightValue: rowB.original.description,
             sortDirection: getSortDirection("description"),
-          }),
-      },
-      {
-        accessorKey: "currency",
-        header: getSortableHeader("Moneda"),
-        meta: { label: "Moneda" },
-        sortingFn: (rowA, rowB) =>
-          compareValuesKeepingInvalidLast({
-            compareValidValues: (leftValue, rightValue) =>
-              leftValue.localeCompare(rightValue, "es", {
-                sensitivity: "base",
-              }),
-            leftValue: rowA.original.currency,
-            rightValue: rowB.original.currency,
-            sortDirection: getSortDirection("currency"),
           }),
       },
       {
