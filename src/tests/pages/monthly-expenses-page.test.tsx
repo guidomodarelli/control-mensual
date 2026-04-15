@@ -2783,7 +2783,7 @@ describe("MonthlyExpensesPage", () => {
         lenderName: "Banco",
         loanEndMonth: "2026-12",
         loanPaidInstallments: 2,
-        loanProgress: "2 de 12 cuotas pagadas",
+        loanProgress: "2 de 12 cuotas abonadas",
         loanRemainingInstallments: 10,
         loanTotalInstallments: 12,
         manualCoveredPayments: "2",
@@ -2834,7 +2834,7 @@ describe("MonthlyExpensesPage", () => {
       lenderName: "Banco",
       loanEndMonth: "2026-12",
       loanPaidInstallments: 3,
-      loanProgress: "3 de 12 cuotas pagadas",
+      loanProgress: "3 de 12 cuotas abonadas",
       loanRemainingInstallments: 9,
       loanTotalInstallments: 12,
       manualCoveredPayments: "0",
@@ -2877,7 +2877,7 @@ describe("MonthlyExpensesPage", () => {
         lenderName: "Banco",
         loanEndMonth: "2026-02",
         loanPaidInstallments: 12,
-        loanProgress: "12 de 12 cuotas pagadas",
+        loanProgress: "12 de 12 cuotas abonadas",
         loanRemainingInstallments: 0,
         loanTotalInstallments: 12,
         manualCoveredPayments: "0",
@@ -2906,7 +2906,7 @@ describe("MonthlyExpensesPage", () => {
         lenderName: "Banco",
         loanEndMonth: "2026-12",
         loanPaidInstallments: 2,
-        loanProgress: "2 de 12 cuotas pagadas",
+        loanProgress: "2 de 12 cuotas abonadas",
         loanRemainingInstallments: 10,
         loanTotalInstallments: 12,
         manualCoveredPayments: "0",
@@ -7234,7 +7234,7 @@ describe("MonthlyExpensesPage", () => {
     ]);
   });
 
-  it("sorts Estado de envío with No aplica rows always at the end", async () => {
+  it("sorts Estado de envío with N/A rows always at the end", async () => {
     const user = userEvent.setup();
 
     renderWithProviders(
@@ -7547,7 +7547,7 @@ describe("MonthlyExpensesPage", () => {
     );
   });
 
-  it("sorts Deuda / cuotas by selected metric and keeps No aplica at the end", async () => {
+  it("sorts Deuda / cuotas by selected metric and keeps N/A at the end", async () => {
     const initialDocument = {
       items: [
         {

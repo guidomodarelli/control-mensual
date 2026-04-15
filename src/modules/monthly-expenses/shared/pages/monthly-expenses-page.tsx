@@ -474,7 +474,7 @@ export function toEditableRows(
     lenderName: item.loan?.lenderName ?? "",
     loanEndMonth: item.loan?.endMonth ?? "",
     loanProgress: item.loan
-      ? `${item.loan.paidInstallments} de ${item.loan.installmentCount} cuotas pagadas`
+      ? `${item.loan.paidInstallments} de ${item.loan.installmentCount} cuotas abonadas`
       : "",
     occurrencesPerMonth: formatEditableNumber(item.occurrencesPerMonth),
     paymentLink: item.paymentLink?.trim() ?? "",
@@ -634,7 +634,7 @@ function buildLoanProgressLabel(
   paidInstallments: number,
   installmentCount: number,
 ): string {
-  return `${paidInstallments} de ${installmentCount} cuotas pagadas`;
+  return `${paidInstallments} de ${installmentCount} cuotas abonadas`;
 }
 
 function normalizeLoanPreview(

@@ -2300,7 +2300,7 @@ export function MonthlyExpensesTable({
         accessorKey: "loanProgress",
         cell: ({ row }) => {
           if (!row.original.isLoan) {
-            return "No aplica";
+            return "N/A";
           }
 
           if (!row.original.loanProgress) {
