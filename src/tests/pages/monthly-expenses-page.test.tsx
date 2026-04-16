@@ -3335,6 +3335,9 @@ describe("MonthlyExpensesPage", () => {
       }),
     );
     await user.click(screen.getByRole("menuitem", { name: "Editar link de pago" }));
+    expect(screen.getByLabelText("Link de pago de Electricidad").tagName).toBe(
+      "TEXTAREA",
+    );
     await user.clear(screen.getByLabelText("Link de pago de Electricidad"));
     await user.type(
       screen.getByLabelText("Link de pago de Electricidad"),
@@ -4322,6 +4325,9 @@ describe("MonthlyExpensesPage", () => {
     expect(
       screen.getByRole("heading", { name: "Editar datos de envío" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Mensaje opcional de Internet").tagName,
+    ).toBe("TEXTAREA");
     expect(
       screen.queryByRole("heading", { name: "Editar gasto" }),
     ).not.toBeInTheDocument();

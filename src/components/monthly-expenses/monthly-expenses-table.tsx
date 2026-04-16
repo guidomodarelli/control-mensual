@@ -33,6 +33,7 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Popover,
   PopoverContent,
@@ -62,7 +63,6 @@ import {
   CircleX,
   EyeOff,
   ExternalLink,
-  Link2,
   Mail,
   MoreVertical,
   Paperclip,
@@ -378,7 +378,7 @@ function PaymentLinkActionsMenu({
             type="button"
             variant="ghost"
           >
-            <MoreVertical aria-hidden="true" />
+            <MoreVertical aria-hidden="true" className={styles.paymentLinkIcon} />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
@@ -3386,14 +3386,13 @@ export function MonthlyExpensesTable({
               <Label htmlFor="receipt-share-message-dialog-input">
                 Mensaje opcional
               </Label>
-              <Input
+              <Textarea
                 aria-label={`Mensaje opcional de ${receiptShareDialogState?.expenseDescription ?? "gasto"}`}
                 id="receipt-share-message-dialog-input"
                 onChange={(event) => {
                   setReceiptShareMessageDraftValue(event.target.value);
                 }}
                 placeholder="Opcional"
-                type="text"
                 value={receiptShareMessageDraftValue}
               />
               {receiptShareDraftError ? (
@@ -3446,33 +3445,21 @@ export function MonthlyExpensesTable({
 
             <div className={styles.paymentLinkDialogField}>
               <Label htmlFor="payment-link-dialog-input">Link de pago</Label>
-              <InputGroup>
-                <InputGroupAddon align="inline-start" aria-hidden="true">
-                  <Link2 className={styles.paymentLinkDialogIcon} />
-                </InputGroupAddon>
-                <InputGroupInput
-                  aria-invalid={paymentLinkDraftError ? "true" : "false"}
-                  aria-label={`Link de pago de ${paymentLinkDialogState?.expenseDescription ?? "gasto"}`}
-                  autoFocus
-                  id="payment-link-dialog-input"
-                  onChange={(event) => {
-                    setPaymentLinkDraftValue(event.target.value);
+              <Textarea
+                aria-invalid={paymentLinkDraftError ? "true" : "false"}
+                aria-label={`Link de pago de ${paymentLinkDialogState?.expenseDescription ?? "gasto"}`}
+                autoFocus
+                id="payment-link-dialog-input"
+                onChange={(event) => {
+                  setPaymentLinkDraftValue(event.target.value);
 
-                    if (paymentLinkDraftError) {
-                      setPaymentLinkDraftError(null);
-                    }
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      void handleSavePaymentLink();
-                    }
-                  }}
-                  placeholder="https://..."
-                  type="url"
-                  value={paymentLinkDraftValue}
-                />
-              </InputGroup>
+                  if (paymentLinkDraftError) {
+                    setPaymentLinkDraftError(null);
+                  }
+                }}
+                placeholder="https://..."
+                value={paymentLinkDraftValue}
+              />
               {paymentLinkDraftError ? (
                 <p className={styles.paymentLinkDialogError} role="alert">
                   {paymentLinkDraftError}
