@@ -1,0 +1,352 @@
+import { render, screen, within } from "@testing-library/react";
+import type { ReactElement } from "react";
+
+import { TooltipProvider } from "@/components/ui/tooltip";
+import type { StorageBootstrapResult } from "@/modules/storage/application/results/storage-bootstrap";
+
+export const SIDEBAR_STORAGE_KEY = "larry.sidebar.open";
+export const TABLE_PREFERENCES_STORAGE_KEY =
+  "larry.monthly-expenses.table-preferences";
+
+export const bootstrap: StorageBootstrapResult = {
+  architecture: {
+    dataStrategy: "ssr-first",
+    middleendLocation: "src/modules",
+    routing: "pages-router",
+  },
+  authStatus: "configured",
+  requiredScopes: [
+    "openid",
+    "email",
+    "profile",
+    "https://www.googleapis.com/auth/drive.file",
+  ],
+  storageTargets: [
+    {
+      id: "userFiles",
+      requiredScope: "https://www.googleapis.com/auth/drive.file",
+      writesUserVisibleFiles: true,
+    },
+  ],
+};
+
+export const basePageProps = {
+  bootstrap,
+  initialCopyableMonths: {
+    defaultSourceMonth: null,
+    sourceMonths: [],
+    targetMonth: "2026-03",
+  },
+  initialLendersCatalog: {
+    lenders: [],
+  },
+  initialLoansReport: {
+    entries: [],
+    summary: {
+      activeLoanCount: 0,
+      lenderCount: 0,
+      remainingAmount: 0,
+      trackedLoanCount: 0,
+    },
+  },
+  lendersLoadError: null,
+  loadError: null,
+  initialActiveTab: "expenses" as const,
+  reportLoadError: null,
+};
+
+export function renderWithProviders(ui: ReactElement) {
+  return render(<TooltipProvider>{ui}</TooltipProvider>);
+}
+
+export function createMockRouter(
+  overrides?: Partial<{
+    isReady: boolean;
+    pathname: string;
+    push: jest.Mock;
+    query: Record<string, string | string[] | undefined>;
+    replace: jest.Mock;
+  }>,
+) {
+  const router = {
+    isReady: true,
+    pathname: "/gastos",
+    query: {},
+    push: jest.fn().mockImplementation(async (nextRoute: unknown) => {
+      if (
+        typeof nextRoute === "object" &&
+        nextRoute !== null &&
+        "pathname" in nextRoute &&
+        typeof nextRoute.pathname === "string"
+      ) {
+        router.pathname = nextRoute.pathname;
+      }
+
+      if (
+        typeof nextRoute === "object" &&
+        nextRoute !== null &&
+        "query" in nextRoute &&
+        typeof nextRoute.query === "object" &&
+        nextRoute.query !== null
+      ) {
+        router.query = nextRoute.query as Record<string, string | string[] | undefined>;
+      }
+
+      return true;
+    }),
+    replace: jest.fn().mockImplementation(async (nextRoute: unknown) => {
+      if (
+        typeof nextRoute === "object" &&
+        nextRoute !== null &&
+        "pathname" in nextRoute &&
+        typeof nextRoute.pathname === "string"
+      ) {
+        router.pathname = nextRoute.pathname;
+      }
+
+      if (
+        typeof nextRoute === "object" &&
+        nextRoute !== null &&
+        "query" in nextRoute &&
+        typeof nextRoute.query === "object" &&
+        nextRoute.query !== null
+      ) {
+        router.query = nextRoute.query as Record<string, string | string[] | undefined>;
+      }
+
+      return true;
+    }),
+  };
+
+  return Object.assign(router, overrides);
+}
+
+export function createMonthlyExpensesFetchMock(overrides?: {
+  copyableMonths?: {
+    defaultSourceMonth: string | null;
+    sourceMonths: string[];
+    targetMonth: string;
+  };
+  monthlyDocument?: {
+    items: Array<Record<string, unknown>>;
+    month: string;
+  };
+  reportEntries?: Array<Record<string, unknown>>;
+  saveError?: string;
+}) {
+  return jest.fn().mockImplementation(async (input: RequestInfo | URL) => {
+    if (input === "/api/storage/monthly-expenses") {
+      if (overrides?.saveError) {
+        return {
+          json: async () => ({
+            error: overrides.saveError,
+          }),
+          ok: false,
+          status: 500,
+        };
+      }
+
+      return {
+        ok: true,
+        status: 204,
+      };
+    }
+
+    if (
+      typeof input === "string" &&
+      input.startsWith("/api/storage/monthly-expenses?")
+    ) {
+      return {
+        json: async () => ({
+          data: overrides?.monthlyDocument ?? {
+            items: [],
+            month: "2026-03",
+          },
+        }),
+        ok: true,
+      };
+    }
+
+    if (
+      typeof input === "string" &&
+      input.startsWith("/api/storage/monthly-expenses-copyable-months?")
+    ) {
+      return {
+        json: async () => ({
+          data: overrides?.copyableMonths ?? {
+            defaultSourceMonth: null,
+            sourceMonths: [],
+            targetMonth: "2026-03",
+          },
+        }),
+        ok: true,
+      };
+    }
+
+    if (input === "/api/storage/monthly-expenses-report") {
+      return {
+        json: async () => ({
+          data: {
+            entries: overrides?.reportEntries ?? [],
+            summary: {
+              activeLoanCount: 0,
+              lenderCount: 0,
+              remainingAmount: 0,
+              trackedLoanCount: 0,
+            },
+          },
+        }),
+        ok: true,
+      };
+    }
+
+    throw new Error(`Unexpected fetch input: ${String(input)}`);
+  });
+}
+
+export function getMonthlyExpensesSavePayload(fetchMock: jest.Mock) {
+  const saveCall = fetchMock.mock.calls.find(
+    ([url]) => url === "/api/storage/monthly-expenses",
+  );
+
+  expect(saveCall).toBeDefined();
+
+  const [, options] = saveCall as [string, RequestInit];
+  const headers = new Headers(options.headers);
+
+  expect(options).toEqual(
+    expect.objectContaining({
+      method: "POST",
+    }),
+  );
+  expect(headers.get("Content-Type")).toBe("application/json");
+
+  return JSON.parse(String(options.body));
+}
+
+export function createDeferredValue<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+
+  return {
+    promise,
+    reject,
+    resolve,
+  };
+}
+
+export function getMonthlyExpensesDescriptionsOrder(): Array<string | null> {
+  const table = screen.getByRole("table");
+  const tableBody = table.querySelector("tbody");
+
+  if (!tableBody) {
+    return [];
+  }
+
+  return within(tableBody)
+    .getAllByRole("row")
+    .map((row) => within(row).getAllByRole("cell")[0].textContent?.trim() ?? null);
+}
+
+export function getPersistedTablePreferences():
+  | {
+      columnVisibility: Record<string, boolean>;
+      loanSortMode: string;
+      sorting: Array<{ desc: boolean; id: string }>;
+    }
+  | null {
+  const serializedPreferences = window.localStorage.getItem(
+    TABLE_PREFERENCES_STORAGE_KEY,
+  );
+
+  if (!serializedPreferences) {
+    return null;
+  }
+
+  return JSON.parse(serializedPreferences) as {
+    columnVisibility: Record<string, boolean>;
+    loanSortMode: string;
+    sorting: Array<{ desc: boolean; id: string }>;
+  };
+}
+
+type RegisterDefaultHooksOptions = {
+  createDefaultRouter: () => unknown;
+  mockedSignIn: jest.Mock;
+  mockedSignOut: jest.Mock;
+  mockedToast: jest.Mock & {
+    error: jest.Mock;
+    info: jest.Mock;
+    promise: jest.Mock;
+    success: jest.Mock;
+    warning: jest.Mock;
+  };
+  mockedUseRouter: {
+    mockReturnValue: (value: unknown) => unknown;
+  };
+  mockedUseSession: {
+    mockReturnValue: (value: unknown) => unknown;
+  };
+  originalFetch: typeof fetch;
+};
+
+export function registerMonthlyExpensesPageDefaultHooks(
+  options: RegisterDefaultHooksOptions,
+) {
+  beforeEach(() => {
+    if (typeof HTMLElement !== "undefined") {
+      if (!HTMLElement.prototype.hasPointerCapture) {
+        Object.defineProperty(HTMLElement.prototype, "hasPointerCapture", {
+          configurable: true,
+          value: () => false,
+        });
+      }
+
+      if (!HTMLElement.prototype.setPointerCapture) {
+        Object.defineProperty(HTMLElement.prototype, "setPointerCapture", {
+          configurable: true,
+          value: () => undefined,
+        });
+      }
+
+      if (!HTMLElement.prototype.releasePointerCapture) {
+        Object.defineProperty(HTMLElement.prototype, "releasePointerCapture", {
+          configurable: true,
+          value: () => undefined,
+        });
+      }
+    }
+
+    if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) {
+      Object.defineProperty(Element.prototype, "scrollIntoView", {
+        configurable: true,
+        value: () => undefined,
+      });
+    }
+
+    options.mockedSignIn.mockReset();
+    options.mockedSignOut.mockReset();
+    options.mockedToast.mockReset();
+    options.mockedToast.error.mockReset();
+    options.mockedToast.info.mockReset();
+    options.mockedToast.promise.mockReset();
+    options.mockedToast.success.mockReset();
+    options.mockedToast.warning.mockReset();
+    options.mockedUseRouter.mockReturnValue(options.createDefaultRouter());
+    options.mockedUseSession.mockReturnValue({
+      data: null,
+      status: "unauthenticated",
+      update: jest.fn(),
+    });
+    global.fetch = jest.fn();
+    window.localStorage.clear();
+  });
+
+  afterAll(() => {
+    global.fetch = options.originalFetch;
+  });
+}

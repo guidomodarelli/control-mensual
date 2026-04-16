@@ -89,6 +89,7 @@ import {
 import { LoanInfoPopover } from "./loan-info-popover";
 import type { LenderOption } from "./lender-picker";
 import {
+  formatReceiptSharePhoneDisplay,
   normalizeReceiptSharePhoneDigits,
   RECEIPT_SHARE_PHONE_REQUIRED_ERROR_MESSAGE,
   validateOccurrencesPerMonth,
@@ -2614,6 +2615,7 @@ export function MonthlyExpensesTable({
           }
 
           const phoneDigits = row.original.receiptSharePhoneDigits.trim();
+          const formattedPhoneDigits = formatReceiptSharePhoneDisplay(phoneDigits);
 
           return (
             <div className={styles.paymentLinkActionsRow}>
@@ -2630,7 +2632,9 @@ export function MonthlyExpensesTable({
                       <ExternalLink aria-hidden="true" className={styles.paymentLinkIcon} />
                     </a>
                   </TooltipTrigger>
-                  <TooltipContent>{`Enviar comprobante a ${phoneDigits}`}</TooltipContent>
+                  <TooltipContent>
+                    {`Enviar comprobante a ${formattedPhoneDigits || phoneDigits}`}
+                  </TooltipContent>
                 </Tooltip>
               ) : (
                 <span className={styles.mutedValue}>Sin comprobantes</span>
@@ -3404,7 +3408,9 @@ export function MonthlyExpensesTable({
                 id="receipt-share-phone-dialog-input"
                 inputMode="numeric"
                 onChange={(event) => {
-                  setReceiptSharePhoneDraftValue(event.target.value);
+                  setReceiptSharePhoneDraftValue(
+                    normalizeReceiptSharePhoneDigits(event.target.value),
+                  );
 
                   if (receiptShareDraftError) {
                     setReceiptShareDraftError(null);
@@ -3412,7 +3418,7 @@ export function MonthlyExpensesTable({
                 }}
                 placeholder="5491123456789"
                 type="tel"
-                value={receiptSharePhoneDraftValue}
+                value={formatReceiptSharePhoneDisplay(receiptSharePhoneDraftValue)}
               />
               <Label htmlFor="receipt-share-message-dialog-input">
                 Mensaje opcional

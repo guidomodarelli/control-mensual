@@ -56,6 +56,7 @@ describe("saveMonthlyExpensesDocument", () => {
           manualCoveredPayments: 0,
           occurrencesPerMonth: 1,
           paymentLink: null,
+          paymentRecords: [],
           receipts: [],
           subtotal: 55032.07,
           total: 55032.07,

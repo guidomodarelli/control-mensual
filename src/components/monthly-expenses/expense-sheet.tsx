@@ -52,6 +52,7 @@ import {
 import { LoanInfoPopover } from "./loan-info-popover";
 import { PaymentFrequencyField } from "./payment-frequency-field";
 import {
+  formatReceiptSharePhoneDisplay,
   validateOccurrencesPerMonth,
   validateReceiptSharePhoneDigits,
   validateSubtotalAmount,
@@ -773,7 +774,9 @@ function ExpenseSheetContent({
                                 }
                                 placeholder="Ej: 5491123456789"
                                 type="tel"
-                                value={draft.receiptSharePhoneDigits}
+                                value={formatReceiptSharePhoneDisplay(
+                                  draft.receiptSharePhoneDigits,
+                                )}
                               />
                             </FormControl>
                             <FormMessage className={styles.fieldErrorText} />

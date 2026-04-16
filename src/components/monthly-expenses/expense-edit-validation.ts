@@ -1,4 +1,4 @@
-import { parsePhoneNumberFromString } from "libphonenumber-js";
+import { AsYouType, parsePhoneNumberFromString } from "libphonenumber-js";
 import { z } from "zod";
 
 export const OCCURRENCES_PER_MONTH_VALIDATION_ERROR_MESSAGE =
@@ -29,6 +29,31 @@ const receiptSharePhoneSchema = z
 
 export function normalizeReceiptSharePhoneDigits(value: string): string {
   return value.trim().replace(/\D+/g, "");
+}
+
+/**
+ * Formats a WhatsApp destination phone for display while preserving digits-only persistence.
+ *
+ * @param value - Raw phone input that may include separators or symbols.
+ * @returns Human-readable international-like phone format for UI display.
+ */
+export function formatReceiptSharePhoneDisplay(value: string): string {
+  const normalizedPhoneDigits = normalizeReceiptSharePhoneDigits(value);
+
+  if (!normalizedPhoneDigits) {
+    return "";
+  }
+
+  if (normalizedPhoneDigits.length <= 3) {
+    return normalizedPhoneDigits;
+  }
+
+  const formatter = new AsYouType();
+  const formattedPhone = normalizedPhoneDigits.startsWith("54")
+    ? formatter.input(`+${normalizedPhoneDigits}`)
+    : formatter.input(normalizedPhoneDigits);
+
+  return formattedPhone || normalizedPhoneDigits;
 }
 
 export function validateReceiptSharePhoneDigits(value: string): string | null {

@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useId,
   useMemo,
   useRef,
@@ -112,6 +113,7 @@ export function ExpenseReceiptUploadDialog({
   const [coverageMode, setCoverageMode] = useState<"full" | "partial">("full");
   const [partialCoveredPayments, setPartialCoveredPayments] = useState("1");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const wasOpenRef = useRef(isOpen);
   const inputIdBase = useId();
   const fullCoverageOptionId = `${inputIdBase}-full-coverage`;
   const partialCoverageOptionId = `${inputIdBase}-partial-coverage`;
@@ -172,6 +174,16 @@ export function ExpenseReceiptUploadDialog({
       fileInputRef.current.value = "";
     }
   }
+
+  useEffect(() => {
+    if (isOpen === wasOpenRef.current) {
+      return;
+    }
+
+    // Keep local state clean when the controlled dialog transitions open/closed.
+    resetDialogState();
+    wasOpenRef.current = isOpen;
+  }, [isOpen]);
 
   const handleDialogOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
