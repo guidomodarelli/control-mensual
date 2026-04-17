@@ -115,6 +115,21 @@ async function openQuickEditDialog({
 }
 
 describe("MonthlyExpensesTable dialog autofocus", () => {
+  it("associates receipt label with the file input in register payment dialog", async () => {
+    renderMonthlyExpensesTable([createRow()]);
+
+    const user = userEvent.setup();
+    const registerPaymentButtons = screen.getAllByRole("button", {
+      name: "Agregar nuevo registro de pago para Internet",
+    });
+
+    await user.click(registerPaymentButtons[0]);
+
+    expect(
+      screen.getByLabelText("Adjuntar comprobante (opcional):"),
+    ).toHaveAttribute("type", "file");
+  });
+
   it("focuses subtotal input when opening subtotal edit dialog", async () => {
     renderMonthlyExpensesTable([createRow()]);
 

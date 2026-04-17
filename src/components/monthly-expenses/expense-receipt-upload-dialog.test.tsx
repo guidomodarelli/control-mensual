@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
@@ -35,6 +35,21 @@ function renderExpenseReceiptUploadDialog(overrides: Partial<DialogProps> = {}) 
 }
 
 describe("ExpenseReceiptUploadDialog", () => {
+  /**
+   * Returns the accessible file input rendered by the receipt uploader.
+   *
+   * @returns The receipt file input element.
+   */
+  function getReceiptFileInput(): HTMLInputElement {
+    const fileInput = screen.getByLabelText("Comprobante para Internet");
+
+    if (!(fileInput instanceof HTMLInputElement)) {
+      throw new Error("File input not found");
+    }
+
+    return fileInput;
+  }
+
   it("uses a scrollable dialog container for small viewport heights", () => {
     renderExpenseReceiptUploadDialog();
 
@@ -104,13 +119,8 @@ describe("ExpenseReceiptUploadDialog", () => {
     const file = new File(["invoice"], "factura.pdf", {
       type: "application/pdf",
     });
-    const fileInput = document.querySelector('input[type="file"]');
 
-    if (!(fileInput instanceof HTMLInputElement)) {
-      throw new Error("File input not found");
-    }
-
-    await user.upload(fileInput, file);
+    await user.upload(getReceiptFileInput(), file);
     await user.click(screen.getByRole("button", { name: "Subir comprobante" }));
 
     await waitFor(() => {
@@ -158,13 +168,8 @@ describe("ExpenseReceiptUploadDialog", () => {
     const file = new File(["invoice"], "factura.pdf", {
       type: "application/pdf",
     });
-    const fileInput = document.querySelector('input[type="file"]');
 
-    if (!(fileInput instanceof HTMLInputElement)) {
-      throw new Error("File input not found");
-    }
-
-    await user.upload(fileInput, file);
+    await user.upload(getReceiptFileInput(), file);
     await user.click(screen.getByRole("button", { name: "Subir comprobante" }));
 
     await waitFor(() => {
@@ -177,66 +182,109 @@ describe("ExpenseReceiptUploadDialog", () => {
     });
   });
 
-  it("shows live upload progress percentage while submitting", async () => {
+  it("accepts a receipt file through drag and drop", async () => {
     const user = userEvent.setup();
-
-    renderExpenseReceiptUploadDialog({
-      isSubmitting: true,
-      uploadProgressPercent: 73,
-    });
-
+    const { onUpload } = renderExpenseReceiptUploadDialog();
     const file = new File(["invoice"], "factura.pdf", {
       type: "application/pdf",
     });
-    const fileInput = document.querySelector('input[type="file"]');
+    const dropZone = document.querySelector("[data-dropzone]");
 
-    if (!(fileInput instanceof HTMLInputElement)) {
-      throw new Error("File input not found");
+    if (!(dropZone instanceof HTMLDivElement)) {
+      throw new Error("Drop zone not found");
     }
 
-    await user.upload(fileInput, file);
+    fireEvent.drop(dropZone, {
+      dataTransfer: {
+        files: [file],
+      },
+    });
 
-    expect(screen.getByText("Subiendo... 73%")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Subir comprobante" }));
+
+    await waitFor(() => {
+      expect(onUpload).toHaveBeenCalledTimes(1);
+    });
+    expect(onUpload).toHaveBeenCalledWith({
+      coveredPayments: 3,
+      file,
+    });
   });
 
-  it("keeps selected file when remove is canceled", async () => {
+  it("shows live upload progress percentage while submitting", async () => {
     const user = userEvent.setup();
-
-    renderExpenseReceiptUploadDialog();
+    const onUpload = jest.fn<Promise<void>, [
+      {
+        coveredPayments: number;
+        file: File;
+      },
+    ]>().mockResolvedValue(undefined);
+    const baseProps: DialogProps = {
+      coveredPaymentsMax: 4,
+      coveredPaymentsRemaining: 3,
+      errorMessage: null,
+      expenseDescription: "Internet",
+      isOpen: true,
+      isSubmitting: false,
+      onClose: jest.fn(),
+      onUpload,
+      uploadProgressPercent: 0,
+    };
+    const { rerender } = render(<ExpenseReceiptUploadDialog {...baseProps} />);
 
     const file = new File(["invoice"], "factura.pdf", {
       type: "application/pdf",
     });
-    const fileInput = document.querySelector('input[type="file"]');
 
-    if (!(fileInput instanceof HTMLInputElement)) {
-      throw new Error("File input not found");
-    }
+    await user.upload(getReceiptFileInput(), file);
+    rerender(
+      <ExpenseReceiptUploadDialog
+        {...baseProps}
+        isSubmitting
+        uploadProgressPercent={73}
+      />,
+    );
 
-    await user.upload(fileInput, file);
+    expect(screen.getByText("73%")).toBeInTheDocument();
+  });
 
-    expect(screen.getByText("factura.pdf")).toBeInTheDocument();
+  it("shows uploader failed state when upload error message is present", async () => {
+    const user = userEvent.setup();
+    const baseProps: DialogProps = {
+      coveredPaymentsMax: 4,
+      coveredPaymentsRemaining: 3,
+      errorMessage: null,
+      expenseDescription: "Internet",
+      isOpen: true,
+      isSubmitting: false,
+      onClose: jest.fn(),
+      onUpload: jest.fn().mockResolvedValue(undefined),
+      uploadProgressPercent: 0,
+    };
+    const { rerender } = render(<ExpenseReceiptUploadDialog {...baseProps} />);
+    const file = new File(["invoice"], "factura.pdf", {
+      type: "application/pdf",
+    });
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Quitar archivo factura.pdf",
-      }),
+    await user.upload(getReceiptFileInput(), file);
+
+    rerender(
+      <ExpenseReceiptUploadDialog
+        {...baseProps}
+        errorMessage="No se pudo subir el comprobante"
+      />,
     );
 
     expect(
-      screen.getByText("¿Querés quitar este archivo seleccionado?"),
+      screen.getByText("Upload failed, please try again"),
     ).toBeInTheDocument();
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Cancelar quitar archivo factura.pdf",
-      }),
-    );
-
-    expect(screen.getByText("factura.pdf")).toBeInTheDocument();
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.getByRole("alert")).toHaveTextContent("No se pudo subir el comprobante");
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+    expect(screen.queryByText("100%")).not.toBeInTheDocument();
   });
 
-  it("clears selected file only after remove confirmation", async () => {
+  it("clears selected file when remove is clicked", async () => {
     const user = userEvent.setup();
 
     renderExpenseReceiptUploadDialog();
@@ -244,24 +292,11 @@ describe("ExpenseReceiptUploadDialog", () => {
     const file = new File(["invoice"], "factura.pdf", {
       type: "application/pdf",
     });
-    const fileInput = document.querySelector('input[type="file"]');
+    await user.upload(getReceiptFileInput(), file);
 
-    if (!(fileInput instanceof HTMLInputElement)) {
-      throw new Error("File input not found");
-    }
+    expect(screen.getByText("factura.pdf")).toBeInTheDocument();
 
-    await user.upload(fileInput, file);
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Quitar archivo factura.pdf",
-      }),
-    );
-    await user.click(
-      screen.getByRole("button", {
-        name: "Confirmar quitar archivo factura.pdf",
-      }),
-    );
+    await user.click(screen.getByRole("button", { name: "Delete" }));
 
     expect(screen.queryByText("factura.pdf")).not.toBeInTheDocument();
   });
@@ -289,13 +324,8 @@ describe("ExpenseReceiptUploadDialog", () => {
     const file = new File(["invoice"], "factura.pdf", {
       type: "application/pdf",
     });
-    const fileInput = document.querySelector('input[type="file"]');
 
-    if (!(fileInput instanceof HTMLInputElement)) {
-      throw new Error("File input not found");
-    }
-
-    await user.upload(fileInput, file);
+    await user.upload(getReceiptFileInput(), file);
     expect(screen.getByText("factura.pdf")).toBeInTheDocument();
 
     rerender(<ExpenseReceiptUploadDialog {...baseProps} isOpen={false} />);

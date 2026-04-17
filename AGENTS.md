@@ -151,6 +151,12 @@ npx shadcn@latest add button
 - Never hand-copy `shadcn/ui` components from documentation or other repositories.
 - Keep generated `shadcn/ui` components close to their defaults and customize behavior through composition first.
 
+### Receipt upload baseline
+
+- Every new or updated **receipt upload flow** must use the Untitled UI `file-upload-base` component (or the project wrapper built on top of it) as the upload interaction baseline.
+- Receipt uploads must support drag and drop plus click-to-select.
+- When the upload implementation exposes progress, the UI must render it with the file uploader progress UI instead of custom ad-hoc indicators.
+
 ### Toast notifications baseline
 
 - Use `Sonner` integrated with `shadcn/ui` as the standard notification system for user-facing events.

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { signIn, useSession } from "next-auth/react";
 import { toast } from "sonner";
 import Image from "next/image";
 
 import { FinanceAppShell } from "@/components/finance-app-shell/finance-app-shell";
+import { ReceiptFileUploader } from "@/components/monthly-expenses/receipt-file-uploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,6 +53,8 @@ const SHARE_ERROR_MESSAGES: Record<string, string> = {
   "missing-file": "No recibimos un archivo al compartir con Larry.",
   "unsupported-type": "Solo se admiten comprobantes PDF, JPG, PNG, WEBP, HEIC o HEIF.",
 };
+const MANUAL_RECEIPT_INVALID_TYPE_ERROR = SHARE_ERROR_MESSAGES["unsupported-type"];
+const MANUAL_RECEIPT_INVALID_SIZE_ERROR = SHARE_ERROR_MESSAGES["invalid-size"];
 
 type MonthlyExpenseCurrency = "ARS" | "USD";
 
@@ -192,7 +195,6 @@ export default function ReceiptShareTargetPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isIosDevice, setIsIosDevice] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sharedReceiptPayload =
     loadSharedReceiptState.status === "ready"
@@ -402,9 +404,7 @@ export default function ReceiptShareTargetPage() {
     setSaveError(null);
   };
 
-  const handleManualFilePick = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-
+  const handleManualFilePick = async (file: File | null) => {
     if (!file) {
       return;
     }
@@ -420,10 +420,6 @@ export default function ReceiptShareTargetPage() {
     setNewExpenseDescription(
       deriveExpenseSearchQueryFromFileName(result.payload.fileName),
     );
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
   };
 
   const handleDiscardSharedReceipt = async () => {
@@ -592,7 +588,7 @@ export default function ReceiptShareTargetPage() {
           <p className={styles.feedbackError}>{loadSharedReceiptState.message}</p>
         ) : null}
 
-        {loadSharedReceiptState.status === "empty" ? (
+        {loadSharedReceiptState.status !== "ready" ? (
           <div className={styles.authCard}>
             {isIosDevice ? (
               <p className={styles.feedbackNeutral}>
@@ -605,24 +601,28 @@ export default function ReceiptShareTargetPage() {
                 desde otra app, o seleccionalo manualmente.
               </p>
             )}
-            <div>
-              <input
-                accept="application/pdf,image/heic,image/heif,image/jpeg,image/png,image/webp"
-                className={styles.hiddenInput}
-                onChange={(event) => {
-                  void handleManualFilePick(event);
-                }}
-                ref={fileInputRef}
-                type="file"
-              />
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                type="button"
-                variant="outline"
-              >
-                Seleccionar comprobante
-              </Button>
-            </div>
+            <ReceiptFileUploader
+              errorMessage={null}
+              inputAriaLabel="Seleccionar comprobante"
+              isDisabled={isSubmitting}
+              isUploading={isSubmitting}
+              onFileChange={(file) => {
+                void handleManualFilePick(file);
+              }}
+              onInvalidFileSize={() => {
+                setLoadSharedReceiptState({
+                  message: MANUAL_RECEIPT_INVALID_SIZE_ERROR,
+                  status: "error",
+                });
+              }}
+              onInvalidFileType={() => {
+                setLoadSharedReceiptState({
+                  message: MANUAL_RECEIPT_INVALID_TYPE_ERROR,
+                  status: "error",
+                });
+              }}
+              selectedFile={null}
+            />
           </div>
         ) : null}
 

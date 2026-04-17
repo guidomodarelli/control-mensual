@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useMemo, useState } from "react";
 import { ExternalLink, MoreVertical, Paperclip, Trash2 } from "lucide-react";
 
+import { ReceiptFileUploader } from "@/components/monthly-expenses/receipt-file-uploader";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,15 +30,6 @@ import { Input } from "@/components/ui/input";
 
 import styles from "./expense-receipt-coverage-edit-dialog.module.scss";
 
-const RECEIPT_FILE_ACCEPT = [
-  "application/pdf",
-  "image/heic",
-  "image/heif",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-].join(",");
-
 interface ExpenseReceiptCoverageEditDialogProps {
   canManageReceipt: boolean;
   currentCoveredPayments: number;
@@ -55,6 +47,8 @@ interface ExpenseReceiptCoverageEditDialogProps {
   receiptFileName: string | null;
   receiptFileViewUrl: string | null;
 }
+
+const RECEIPT_REPLACEMENT_INPUT_ID = "receipt-replacement-file-input";
 
 export function ExpenseReceiptCoverageEditDialog({
   canManageReceipt,
@@ -77,7 +71,6 @@ export function ExpenseReceiptCoverageEditDialog({
   const [replacementFile, setReplacementFile] = useState<File | null>(null);
   const [isReceiptActionsMenuOpen, setIsReceiptActionsMenuOpen] = useState(false);
   const [isDeleteReceiptConfirmOpen, setIsDeleteReceiptConfirmOpen] = useState(false);
-  const replacementFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const parsedCoveredPayments = Number(coveredPaymentsValue);
   const hasValidCoveredPayments =
@@ -88,7 +81,6 @@ export function ExpenseReceiptCoverageEditDialog({
   const shouldShowReplacementInput = canManageReceipt && !hasReceipt;
   const normalizedExpenseDescription = expenseDescription.trim() || "gasto";
   const normalizedReceiptFileName = receiptFileName?.trim() || "comprobante";
-  const replacementFileName = replacementFile?.name ?? null;
 
   const receiptFileLink = useMemo(() => {
     if (!receiptFileViewUrl) {
@@ -114,16 +106,8 @@ export function ExpenseReceiptCoverageEditDialog({
     }
   };
 
-  const handleReplacementFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setReplacementFile(event.target.files?.[0] ?? null);
-  };
-
   const handleClearReplacementFile = () => {
     setReplacementFile(null);
-
-    if (replacementFileInputRef.current) {
-      replacementFileInputRef.current.value = "";
-    }
   };
 
   const handleDeleteReceipt = async () => {
@@ -224,22 +208,18 @@ export function ExpenseReceiptCoverageEditDialog({
 
             {shouldShowReplacementInput ? (
               <div className={styles.fieldGroup}>
-                <label htmlFor="receipt-replacement-file-input">
+                <label htmlFor={RECEIPT_REPLACEMENT_INPUT_ID}>
                   Adjuntar nuevo comprobante:
                 </label>
-                <Input
-                  accept={RECEIPT_FILE_ACCEPT}
-                  aria-label={`Seleccionar nuevo comprobante para ${normalizedExpenseDescription}`}
-                  id="receipt-replacement-file-input"
-                  onChange={handleReplacementFileChange}
-                  ref={replacementFileInputRef}
-                  type="file"
+                <ReceiptFileUploader
+                  errorMessage={null}
+                  inputId={RECEIPT_REPLACEMENT_INPUT_ID}
+                  inputAriaLabel={`Seleccionar nuevo comprobante para ${normalizedExpenseDescription}`}
+                  isDisabled={isSubmitting}
+                  isUploading={isSubmitting}
+                  onFileChange={setReplacementFile}
+                  selectedFile={replacementFile}
                 />
-                <p className={styles.hint}>
-                  {replacementFileName
-                    ? `Comprobante seleccionado: ${replacementFileName}`
-                    : "Sin comprobante seleccionado."}
-                </p>
               </div>
             ) : null}
 

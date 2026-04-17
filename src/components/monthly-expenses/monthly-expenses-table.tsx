@@ -79,6 +79,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { ExpenseRowActions } from "@/components/monthly-expenses/expense-row-actions";
+import { ReceiptFileUploader } from "@/components/monthly-expenses/receipt-file-uploader";
 import {
   ExpenseSheet,
   type ExpenseEditableFieldName,
@@ -123,14 +124,6 @@ const MONTHLY_EXPENSES_TABLE_PREFERENCES_STORAGE_KEY =
 const MONTHLY_EXPENSES_DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   usd: false,
 };
-const RECEIPT_FILE_ACCEPT = [
-  "application/pdf",
-  "image/heic",
-  "image/heif",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-].join(",");
 const SORTABLE_COLUMN_IDS = new Set([
   "description",
   "paymentsProgress",
@@ -1657,7 +1650,7 @@ function PaymentHistoryCell({
   const [isRegisterPaymentSubmitting, setIsRegisterPaymentSubmitting] =
     useState(false);
   const registerPaymentInputId = `${expenseId}-register-payments-input`;
-  const registerPaymentReceiptInputId = `${expenseId}-register-receipt-input`;
+  const registerPaymentReceiptInputId = `${expenseId}-register-payment-receipt-input`;
   const sortedPaymentRecords = [...paymentRecords].sort(
     sortPaymentRecordsByDateDescending,
   );
@@ -1673,7 +1666,6 @@ function PaymentHistoryCell({
     Number.isInteger(parsedManualCoveredPayments) &&
     parsedManualCoveredPayments >= 1 &&
     parsedManualCoveredPayments <= maxPaymentsPerRecord;
-  const selectedReceiptFileName = selectedReceiptFile?.name ?? "Sin comprobante";
 
   const resetRegisterPaymentForm = useCallback(() => {
     setManualRecordDraft("1");
@@ -1755,23 +1747,16 @@ function PaymentHistoryCell({
               type="number"
               value={manualRecordDraft}
             />
-            <Label htmlFor={registerPaymentReceiptInputId}>
-              Adjuntar comprobante (opcional):
-            </Label>
-            <Input
-              accept={RECEIPT_FILE_ACCEPT}
-              aria-label="Seleccionar comprobante"
-              disabled={actionDisabled || maxPaymentsPerRecord <= 0}
-              id={registerPaymentReceiptInputId}
-              onChange={(event) =>
-                setSelectedReceiptFile(event.target.files?.[0] ?? null)}
-              type="file"
+            <Label htmlFor={registerPaymentReceiptInputId}>Adjuntar comprobante (opcional):</Label>
+            <ReceiptFileUploader
+              errorMessage={null}
+              inputId={registerPaymentReceiptInputId}
+              inputAriaLabel="Seleccionar comprobante"
+              isDisabled={actionDisabled || maxPaymentsPerRecord <= 0}
+              isUploading={isRegisterPaymentSubmitting}
+              onFileChange={setSelectedReceiptFile}
+              selectedFile={selectedReceiptFile}
             />
-            <span className={styles.manualPaymentsHint}>
-              {selectedReceiptFile
-                ? `Comprobante seleccionado: ${selectedReceiptFileName}`
-                : "Sin comprobante seleccionado."}
-            </span>
             {paymentRegistrationError ? (
               <span className={styles.manualPaymentsHint}>{paymentRegistrationError}</span>
             ) : null}
