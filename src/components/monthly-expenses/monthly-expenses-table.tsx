@@ -2003,6 +2003,81 @@ export function MonthlyExpensesTable({
   const [receiptShareMessageDraftValue, setReceiptShareMessageDraftValue] = useState("");
   const [receiptShareDraftError, setReceiptShareDraftError] =
     useState<string | null>(null);
+  const handleDialogInputAutoFocus = useCallback(
+    (event: Event, inputId: string) => {
+      event.preventDefault();
+
+      window.requestAnimationFrame(() => {
+        const inputElement = document.getElementById(inputId);
+
+        if (
+          inputElement instanceof HTMLInputElement ||
+          inputElement instanceof HTMLTextAreaElement
+        ) {
+          inputElement.focus();
+
+          if (inputElement instanceof HTMLTextAreaElement) {
+            const selectionPosition = inputElement.value.length;
+            inputElement.setSelectionRange(selectionPosition, selectionPosition);
+          }
+        }
+      });
+    },
+    [],
+  );
+  const focusDialogInputById = useCallback((inputId: string) => {
+    const focusTimeoutId = window.setTimeout(() => {
+      const inputElement = document.getElementById(inputId);
+
+      if (
+        inputElement instanceof HTMLInputElement ||
+        inputElement instanceof HTMLTextAreaElement
+      ) {
+        inputElement.focus();
+
+        if (inputElement instanceof HTMLTextAreaElement) {
+          const selectionPosition = inputElement.value.length;
+          inputElement.setSelectionRange(selectionPosition, selectionPosition);
+        }
+      }
+    }, 0);
+
+    return () => {
+      window.clearTimeout(focusTimeoutId);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!subtotalDialogState) {
+      return;
+    }
+
+    return focusDialogInputById("subtotal-dialog-input");
+  }, [focusDialogInputById, subtotalDialogState]);
+
+  useEffect(() => {
+    if (!occurrencesDialogState) {
+      return;
+    }
+
+    return focusDialogInputById("occurrences-dialog-input");
+  }, [focusDialogInputById, occurrencesDialogState]);
+
+  useEffect(() => {
+    if (!receiptShareDialogState) {
+      return;
+    }
+
+    return focusDialogInputById("receipt-share-phone-dialog-input");
+  }, [focusDialogInputById, receiptShareDialogState]);
+
+  useEffect(() => {
+    if (!paymentLinkDialogState) {
+      return;
+    }
+
+    return focusDialogInputById("payment-link-dialog-input");
+  }, [focusDialogInputById, paymentLinkDialogState]);
 
   useEffect(() => {
     const persistedPreferences = getPersistedMonthlyExpensesTablePreferences();
@@ -3382,7 +3457,13 @@ export function MonthlyExpensesTable({
           }}
           open={subtotalDialogState != null}
         >
-          <AlertDialogContent className={styles.paymentLinkDialogContent} size="sm">
+          <AlertDialogContent
+            className={styles.paymentLinkDialogContent}
+            onOpenAutoFocus={(event) => {
+              handleDialogInputAutoFocus(event, "subtotal-dialog-input");
+            }}
+            size="sm"
+          >
             <AlertDialogHeader>
               <AlertDialogTitle>Editar subtotal</AlertDialogTitle>
               <AlertDialogDescription>
@@ -3460,7 +3541,13 @@ export function MonthlyExpensesTable({
           }}
           open={occurrencesDialogState != null}
         >
-          <AlertDialogContent className={styles.paymentLinkDialogContent} size="sm">
+          <AlertDialogContent
+            className={styles.paymentLinkDialogContent}
+            onOpenAutoFocus={(event) => {
+              handleDialogInputAutoFocus(event, "occurrences-dialog-input");
+            }}
+            size="sm"
+          >
             <AlertDialogHeader>
               <AlertDialogTitle>Editar pagos por mes</AlertDialogTitle>
               <AlertDialogDescription>
@@ -3530,7 +3617,13 @@ export function MonthlyExpensesTable({
           }}
           open={receiptShareDialogState != null}
         >
-          <AlertDialogContent className={styles.paymentLinkDialogContent} size="sm">
+          <AlertDialogContent
+            className={styles.paymentLinkDialogContent}
+            onOpenAutoFocus={(event) => {
+              handleDialogInputAutoFocus(event, "receipt-share-phone-dialog-input");
+            }}
+            size="sm"
+          >
             <AlertDialogHeader>
               <AlertDialogTitle>
                 {receiptShareDialogState?.mode === "create"
@@ -3613,7 +3706,13 @@ export function MonthlyExpensesTable({
           }}
           open={paymentLinkDialogState != null}
         >
-          <AlertDialogContent className={styles.paymentLinkDialogContent} size="sm">
+          <AlertDialogContent
+            className={styles.paymentLinkDialogContent}
+            onOpenAutoFocus={(event) => {
+              handleDialogInputAutoFocus(event, "payment-link-dialog-input");
+            }}
+            size="sm"
+          >
             <AlertDialogHeader>
               <AlertDialogTitle>
                 {paymentLinkDialogState?.mode === "edit"
