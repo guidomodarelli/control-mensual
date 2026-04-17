@@ -2,6 +2,19 @@ import type { StoredMonthlyExpensesDocument } from "../../domain/entities/stored
 
 export type StoredMonthlyExpensesDocumentResult = StoredMonthlyExpensesDocument;
 
+export interface MonthlyExpenseReceiptRenameWarningResult {
+  fileId: string;
+  nextFileName: string;
+  previousFileName: string;
+  reasonCode: "not_found" | "invalid_payload" | "insufficient_permissions" | "unexpected";
+}
+
+export interface SaveMonthlyExpensesDocumentResult {
+  receiptRenameWarnings: MonthlyExpenseReceiptRenameWarningResult[];
+  renamedReceiptFilesCount: number;
+  storedDocument: StoredMonthlyExpensesDocumentResult;
+}
+
 export function toStoredMonthlyExpensesDocumentResult(
   document: StoredMonthlyExpensesDocument,
 ): StoredMonthlyExpensesDocumentResult {

@@ -133,6 +133,10 @@ export function createMonthlyExpensesFetchMock(overrides?: {
   };
   reportEntries?: Array<Record<string, unknown>>;
   saveError?: string;
+  saveResponse?: {
+    body: Record<string, unknown>;
+    status: number;
+  };
 }) {
   return jest.fn().mockImplementation(async (input: RequestInfo | URL) => {
     if (input === "/api/storage/monthly-expenses") {
@@ -143,6 +147,14 @@ export function createMonthlyExpensesFetchMock(overrides?: {
           }),
           ok: false,
           status: 500,
+        };
+      }
+
+      if (overrides?.saveResponse) {
+        return {
+          json: async () => overrides.saveResponse?.body,
+          ok: true,
+          status: overrides.saveResponse.status,
         };
       }
 

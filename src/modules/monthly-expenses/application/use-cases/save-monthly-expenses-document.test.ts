@@ -65,10 +65,14 @@ describe("saveMonthlyExpensesDocument", () => {
       month: "2026-03",
     });
     expect(result).toEqual({
-      id: "monthly-expenses-file-id",
-      month: "2026-03",
-      name: "gastos-mensuales-2026-marzo.json",
-      viewUrl: "https://drive.google.com/file/d/monthly-expenses-file-id/view",
+      receiptRenameWarnings: [],
+      renamedReceiptFilesCount: 0,
+      storedDocument: {
+        id: "monthly-expenses-file-id",
+        month: "2026-03",
+        name: "gastos-mensuales-2026-marzo.json",
+        viewUrl: "https://drive.google.com/file/d/monthly-expenses-file-id/view",
+      },
     });
   });
 
@@ -568,10 +572,14 @@ describe("saveMonthlyExpensesDocument", () => {
         repository,
       }),
     ).resolves.toEqual({
-      id: "monthly-expenses-file-id",
-      month: "2026-03",
-      name: "gastos-mensuales-2026-marzo.json",
-      viewUrl: null,
+      receiptRenameWarnings: [],
+      renamedReceiptFilesCount: 0,
+      storedDocument: {
+        id: "monthly-expenses-file-id",
+        month: "2026-03",
+        name: "gastos-mensuales-2026-marzo.json",
+        viewUrl: null,
+      },
     });
 
     expect(repository.save).toHaveBeenCalledTimes(1);
@@ -678,6 +686,289 @@ describe("saveMonthlyExpensesDocument", () => {
             receipts: [
               expect.objectContaining({
                 fileName: "2026-03-16 - Internet - cubre 2 pagos.pdf",
+              }),
+            ],
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("renames all receipt files when expense description changes", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn().mockResolvedValue({
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: "expense-1",
+            occurrencesPerMonth: 2,
+            receipts: [
+              {
+                allReceiptsFolderId: "receipt-folder-id",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id",
+                coveredPayments: 1,
+                fileId: "receipt-file-id-1",
+                fileName: "2026-03-16 - Internet - cubre 1 pagos.pdf",
+                fileViewUrl:
+                  "https://drive.google.com/file/d/receipt-file-id-1/view",
+                monthlyFolderId: "receipt-month-folder-id",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id",
+              },
+              {
+                allReceiptsFolderId: "receipt-folder-id",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id",
+                coveredPayments: 1,
+                fileId: "receipt-file-id-2",
+                fileName: "2026-03-17 - Internet - cubre 1 pagos.pdf",
+                fileViewUrl:
+                  "https://drive.google.com/file/d/receipt-file-id-2/view",
+                monthlyFolderId: "receipt-month-folder-id",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id",
+              },
+            ],
+            subtotal: 100,
+            total: 200,
+          },
+        ],
+        month: "2026-03",
+      }),
+      listAll: jest.fn(),
+      save: jest.fn().mockResolvedValue({
+        id: "monthly-expenses-file-id",
+        month: "2026-03",
+        name: "gastos-mensuales-2026-marzo.json",
+        viewUrl: null,
+      }),
+    };
+    const receiptsRepository: MonthlyExpenseReceiptsRepository = {
+      deleteReceipt: jest.fn(),
+      renameExpenseFolder: jest.fn().mockResolvedValue(undefined),
+      renameReceiptFile: jest.fn().mockResolvedValue(undefined),
+      saveReceipt: jest.fn(),
+      verifyFolders: jest.fn(),
+      verifyReceipt: jest.fn(),
+    };
+
+    const result = await saveMonthlyExpensesDocument({
+      command: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Fibra",
+            id: "expense-1",
+            occurrencesPerMonth: 2,
+            receipts: [
+              {
+                allReceiptsFolderId: "receipt-folder-id",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id",
+                coveredPayments: 1,
+                fileId: "receipt-file-id-1",
+                fileName: "2026-03-16 - Internet - cubre 1 pagos.pdf",
+                fileViewUrl:
+                  "https://drive.google.com/file/d/receipt-file-id-1/view",
+                monthlyFolderId: "receipt-month-folder-id",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id",
+              },
+              {
+                allReceiptsFolderId: "receipt-folder-id",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id",
+                coveredPayments: 1,
+                fileId: "receipt-file-id-2",
+                fileName: "2026-03-17 - Internet - cubre 1 pagos.pdf",
+                fileViewUrl:
+                  "https://drive.google.com/file/d/receipt-file-id-2/view",
+                monthlyFolderId: "receipt-month-folder-id",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id",
+              },
+            ],
+            subtotal: 100,
+          },
+        ],
+        month: "2026-03",
+      },
+      getExchangeRateSnapshot: jest.fn().mockResolvedValue({
+        blueRate: 1290,
+        iibbRateDecimalUsed: 0.02,
+        month: "2026-03",
+        officialRate: 1200,
+        solidarityRate: 1476,
+        source: "ambito-historico-general",
+        sourceDateIso: "2026-03-31",
+        updatedAtIso: "2026-03-14T12:00:00.000Z",
+      }),
+      now: new Date("2026-04-03T09:30:00.000Z"),
+      receiptsRepository,
+      repository,
+    });
+
+    expect(receiptsRepository.renameReceiptFile).toHaveBeenCalledTimes(2);
+    expect(receiptsRepository.renameReceiptFile).toHaveBeenNthCalledWith(1, {
+      fileId: "receipt-file-id-1",
+      nextFileName: "2026-03-16 - Fibra - cubre 1 pagos.pdf",
+    });
+    expect(receiptsRepository.renameReceiptFile).toHaveBeenNthCalledWith(2, {
+      fileId: "receipt-file-id-2",
+      nextFileName: "2026-03-17 - Fibra - cubre 1 pagos.pdf",
+    });
+    expect(result.receiptRenameWarnings).toEqual([]);
+    expect(result.renamedReceiptFilesCount).toBe(2);
+  });
+
+  it("saves document and returns warnings when receipt file rename partially fails", async () => {
+    const repository: MonthlyExpensesRepository = {
+      getByMonth: jest.fn().mockResolvedValue({
+        items: [
+          {
+            currency: "ARS",
+            description: "Internet",
+            id: "expense-1",
+            occurrencesPerMonth: 2,
+            receipts: [
+              {
+                allReceiptsFolderId: "receipt-folder-id",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id",
+                coveredPayments: 1,
+                fileId: "receipt-file-id-1",
+                fileName: "2026-03-16 - Internet - cubre 1 pagos.pdf",
+                fileViewUrl:
+                  "https://drive.google.com/file/d/receipt-file-id-1/view",
+                monthlyFolderId: "receipt-month-folder-id",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id",
+              },
+              {
+                allReceiptsFolderId: "receipt-folder-id",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id",
+                coveredPayments: 1,
+                fileId: "receipt-file-id-2",
+                fileName: "2026-03-17 - Internet - cubre 1 pagos.pdf",
+                fileViewUrl:
+                  "https://drive.google.com/file/d/receipt-file-id-2/view",
+                monthlyFolderId: "receipt-month-folder-id",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id",
+              },
+            ],
+            subtotal: 100,
+            total: 200,
+          },
+        ],
+        month: "2026-03",
+      }),
+      listAll: jest.fn(),
+      save: jest.fn().mockResolvedValue({
+        id: "monthly-expenses-file-id",
+        month: "2026-03",
+        name: "gastos-mensuales-2026-marzo.json",
+        viewUrl: null,
+      }),
+    };
+    const receiptsRepository: MonthlyExpenseReceiptsRepository = {
+      deleteReceipt: jest.fn(),
+      renameExpenseFolder: jest.fn().mockResolvedValue(undefined),
+      renameReceiptFile: jest.fn().mockImplementation(async (input) => {
+        const { fileId } = input;
+
+        if (fileId === "receipt-file-id-2") {
+          throw {
+            code: "insufficient_permissions",
+          };
+        }
+      }),
+      saveReceipt: jest.fn(),
+      verifyFolders: jest.fn(),
+      verifyReceipt: jest.fn(),
+    };
+
+    const result = await saveMonthlyExpensesDocument({
+      command: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Fibra",
+            id: "expense-1",
+            occurrencesPerMonth: 2,
+            receipts: [
+              {
+                allReceiptsFolderId: "receipt-folder-id",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id",
+                coveredPayments: 1,
+                fileId: "receipt-file-id-1",
+                fileName: "2026-03-16 - Internet - cubre 1 pagos.pdf",
+                fileViewUrl:
+                  "https://drive.google.com/file/d/receipt-file-id-1/view",
+                monthlyFolderId: "receipt-month-folder-id",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id",
+              },
+              {
+                allReceiptsFolderId: "receipt-folder-id",
+                allReceiptsFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-folder-id",
+                coveredPayments: 1,
+                fileId: "receipt-file-id-2",
+                fileName: "2026-03-17 - Internet - cubre 1 pagos.pdf",
+                fileViewUrl:
+                  "https://drive.google.com/file/d/receipt-file-id-2/view",
+                monthlyFolderId: "receipt-month-folder-id",
+                monthlyFolderViewUrl:
+                  "https://drive.google.com/drive/folders/receipt-month-folder-id",
+              },
+            ],
+            subtotal: 100,
+          },
+        ],
+        month: "2026-03",
+      },
+      getExchangeRateSnapshot: jest.fn().mockResolvedValue({
+        blueRate: 1290,
+        iibbRateDecimalUsed: 0.02,
+        month: "2026-03",
+        officialRate: 1200,
+        solidarityRate: 1476,
+        source: "ambito-historico-general",
+        sourceDateIso: "2026-03-31",
+        updatedAtIso: "2026-03-14T12:00:00.000Z",
+      }),
+      now: new Date("2026-04-03T09:30:00.000Z"),
+      receiptsRepository,
+      repository,
+    });
+
+    expect(repository.save).toHaveBeenCalled();
+    expect(result.renamedReceiptFilesCount).toBe(1);
+    expect(result.receiptRenameWarnings).toEqual([
+      {
+        fileId: "receipt-file-id-2",
+        nextFileName: "2026-03-17 - Fibra - cubre 1 pagos.pdf",
+        previousFileName: "2026-03-17 - Internet - cubre 1 pagos.pdf",
+        reasonCode: "insufficient_permissions",
+      },
+    ]);
+    expect(repository.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({
+            receipts: [
+              expect.objectContaining({
+                fileId: "receipt-file-id-1",
+                fileName: "2026-03-16 - Fibra - cubre 1 pagos.pdf",
+              }),
+              expect.objectContaining({
+                fileId: "receipt-file-id-2",
+                fileName: "2026-03-17 - Internet - cubre 1 pagos.pdf",
               }),
             ],
           }),

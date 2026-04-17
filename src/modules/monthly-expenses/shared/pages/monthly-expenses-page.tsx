@@ -1757,7 +1757,7 @@ export default function MonthlyExpensesPage({
           success: toastMessages.success,
         },
       );
-      await savePromise;
+      const saveResult = await savePromise;
 
       updateFormState((currentState) => ({
         ...currentState,
@@ -1765,6 +1765,13 @@ export default function MonthlyExpensesPage({
         isSubmitting: false,
         rows,
       }));
+
+      if (saveResult.receiptRenameWarnings.length > 0) {
+        toast.warning(
+          `El gasto se guardó, pero ${saveResult.receiptRenameWarnings.length} comprobante(s) no se pudieron renombrar.`,
+        );
+      }
+
       await refreshLoansReport();
       return true;
     } catch (error) {

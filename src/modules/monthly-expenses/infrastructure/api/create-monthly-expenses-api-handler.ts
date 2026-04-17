@@ -377,15 +377,16 @@ export function createMonthlyExpensesApiHandler<TLoadResult, TSaveResult>({
     try {
       const userSubject = await getUserSubject(request);
       const database = await getDatabase();
-      await save({
+      const saveResult = await save({
         command: parsedBody.data,
         database,
         request,
         userSubject,
       });
 
-      response.status(204).end();
-      return;
+      return response.status(200).json({
+        data: saveResult,
+      });
     } catch (error) {
       appLogger.error("monthly-expenses API POST request failed", {
         context: {

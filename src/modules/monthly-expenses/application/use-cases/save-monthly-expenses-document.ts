@@ -8,8 +8,9 @@ import {
 import type { SaveMonthlyExpensesCommand } from "../commands/save-monthly-expenses-command";
 import { MonthlyExpenseCoverageValidationError } from "../errors/monthly-expense-coverage-validation-error";
 import {
+  type MonthlyExpenseReceiptRenameWarningResult,
+  type SaveMonthlyExpensesDocumentResult,
   toStoredMonthlyExpensesDocumentResult,
-  type StoredMonthlyExpensesDocumentResult,
 } from "../results/stored-monthly-expenses-document-result";
 import {
   buildMonthlyExpenseReceiptFileName,
@@ -108,7 +109,13 @@ async function syncReceiptFileRenames({
   nextDocument: MonthlyExpensesDocument;
   now: Date;
   receiptsRepository: MonthlyExpenseReceiptsRepository;
-}): Promise<MonthlyExpensesDocument> {
+}): Promise<{
+  document: MonthlyExpensesDocument;
+  receiptRenameWarnings: MonthlyExpenseReceiptRenameWarningResult[];
+  renamedReceiptFilesCount: number;
+}> {
+  const receiptRenameWarnings: MonthlyExpenseReceiptRenameWarningResult[] = [];
+  let renamedReceiptFilesCount = 0;
   const currentItemsById = new Map(
     currentDocument.items.map((item) => [item.id, item]),
   );
@@ -159,10 +166,35 @@ async function syncReceiptFileRenames({
             };
           }
 
-          await receiptsRepository.renameReceiptFile({
-            fileId: nextReceipt.fileId,
-            nextFileName,
-          });
+          try {
+            await receiptsRepository.renameReceiptFile({
+              fileId: nextReceipt.fileId,
+              nextFileName,
+            });
+            renamedReceiptFilesCount += 1;
+          } catch (error) {
+            const reasonCode =
+              typeof error === "object" &&
+              error &&
+              "code" in error &&
+              (error.code === "not_found" ||
+                error.code === "invalid_payload" ||
+                error.code === "insufficient_permissions")
+                ? error.code
+                : "unexpected";
+
+            receiptRenameWarnings.push({
+              fileId: nextReceipt.fileId,
+              nextFileName,
+              previousFileName: currentReceipt.fileName,
+              reasonCode,
+            });
+
+            return {
+              ...nextReceipt,
+              fileName: currentReceipt.fileName,
+            };
+          }
 
           return {
             ...nextReceipt,
@@ -179,8 +211,12 @@ async function syncReceiptFileRenames({
   );
 
   return {
-    ...nextDocument,
-    items: renamedItems,
+    document: {
+      ...nextDocument,
+      items: renamedItems,
+    },
+    receiptRenameWarnings,
+    renamedReceiptFilesCount,
   };
 }
 
@@ -190,7 +226,7 @@ export async function saveMonthlyExpensesDocument({
   now = new Date(),
   receiptsRepository,
   repository,
-}: SaveMonthlyExpensesDocumentDependencies): Promise<StoredMonthlyExpensesDocumentResult> {
+}: SaveMonthlyExpensesDocumentDependencies): Promise<SaveMonthlyExpensesDocumentResult> {
   const validatedBaseDocument: MonthlyExpensesDocument = createMonthlyExpensesDocument(
     command,
     "Saving monthly expenses",
@@ -217,6 +253,8 @@ export async function saveMonthlyExpensesDocument({
   validateCoverageConsistency(validatedDocument);
 
   let documentToSave = validatedDocument;
+  let receiptRenameWarnings: MonthlyExpenseReceiptRenameWarningResult[] = [];
+  let renamedReceiptFilesCount = 0;
 
   if (currentDocument && receiptsRepository) {
     await syncReceiptFolderRenames({
@@ -225,15 +263,22 @@ export async function saveMonthlyExpensesDocument({
       receiptsRepository,
     });
 
-    documentToSave = await syncReceiptFileRenames({
+    const receiptFileRenameResult = await syncReceiptFileRenames({
       currentDocument,
       nextDocument: documentToSave,
       now,
       receiptsRepository,
     });
+    documentToSave = receiptFileRenameResult.document;
+    receiptRenameWarnings = receiptFileRenameResult.receiptRenameWarnings;
+    renamedReceiptFilesCount = receiptFileRenameResult.renamedReceiptFilesCount;
   }
 
-  return toStoredMonthlyExpensesDocumentResult(
-    await repository.save(documentToSave),
-  );
+  return {
+    receiptRenameWarnings,
+    renamedReceiptFilesCount,
+    storedDocument: toStoredMonthlyExpensesDocumentResult(
+      await repository.save(documentToSave),
+    ),
+  };
 }

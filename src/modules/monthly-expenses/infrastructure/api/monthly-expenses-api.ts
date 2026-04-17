@@ -205,6 +205,31 @@ const monthlyExpensesErrorEnvelopeSchema = z.object({
   error: z.string().trim().min(1),
 }).strict();
 
+const monthlyExpensesSaveWarningSchema = z.object({
+  fileId: z.string().trim().min(1),
+  nextFileName: z.string().trim().min(1),
+  previousFileName: z.string().trim().min(1),
+  reasonCode: z.enum([
+    "not_found",
+    "invalid_payload",
+    "insufficient_permissions",
+    "unexpected",
+  ]),
+}).strict();
+
+const monthlyExpensesSaveEnvelopeSchema = z.object({
+  data: z.object({
+    receiptRenameWarnings: z.array(monthlyExpensesSaveWarningSchema),
+    renamedReceiptFilesCount: z.number().int().nonnegative(),
+    storedDocument: z.object({
+      id: z.string().trim().min(1),
+      month: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+      name: z.string().trim().min(1),
+      viewUrl: z.string().trim().nullable(),
+    }).strict(),
+  }).strict(),
+}).strict();
+
 const monthlyExpensesDocumentEnvelopeSchema = z.object({
   data: z.object({
     exchangeRateLoadError: z.string().nullable().optional(),
@@ -273,10 +298,26 @@ export class MonthlyExpensesApiError extends Error {
   }
 }
 
+export interface SaveMonthlyExpensesDocumentApiResult {
+  receiptRenameWarnings: Array<{
+    fileId: string;
+    nextFileName: string;
+    previousFileName: string;
+    reasonCode: "not_found" | "invalid_payload" | "insufficient_permissions" | "unexpected";
+  }>;
+  renamedReceiptFilesCount: number;
+  storedDocument: {
+    id: string;
+    month: string;
+    name: string;
+    viewUrl: string | null;
+  };
+}
+
 export async function saveMonthlyExpensesDocumentViaApi(
   payload: SaveMonthlyExpensesCommand,
   fetchImplementation?: typeof fetch,
-): Promise<void> {
+): Promise<SaveMonthlyExpensesDocumentApiResult> {
   const resolvedFetchImplementation = fetchImplementation ?? globalThis.fetch;
 
   if (!resolvedFetchImplementation) {
@@ -303,6 +344,23 @@ export async function saveMonthlyExpensesDocumentViaApi(
         : "monthly-expenses-api:/api/storage/monthly-expenses returned an unexpected error response.",
     );
   }
+
+  if (response.status === 204) {
+    return {
+      receiptRenameWarnings: [],
+      renamedReceiptFilesCount: 0,
+      storedDocument: {
+        id: "unknown",
+        month: normalizedPayload.month,
+        name: "unknown",
+        viewUrl: null,
+      },
+    };
+  }
+
+  const responseJson = await response.json();
+
+  return monthlyExpensesSaveEnvelopeSchema.parse(responseJson).data;
 }
 
 export async function getMonthlyExpensesDocumentViaApi(

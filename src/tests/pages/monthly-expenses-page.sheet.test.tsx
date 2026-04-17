@@ -206,6 +206,68 @@ registerMonthlyExpensesPageDefaultHooks({
     ).not.toBeInTheDocument();
   });
 
+  it("shows warning toast when save returns receipt rename warnings", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock({
+      saveResponse: {
+        body: {
+          data: {
+            receiptRenameWarnings: [
+              {
+                fileId: "receipt-file-id",
+                nextFileName: "2026-03-16 - Fibra - cubre 1 pagos.pdf",
+                previousFileName: "2026-03-16 - Internet - cubre 1 pagos.pdf",
+                reasonCode: "insufficient_permissions",
+              },
+            ],
+            renamedReceiptFilesCount: 0,
+            storedDocument: {
+              id: "monthly-expenses-file-id",
+              month: "2026-03",
+              name: "gastos-mensuales-2026-marzo.json",
+              viewUrl: null,
+            },
+          },
+        },
+        status: 200,
+      },
+    });
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Agregar gasto" }));
+    await user.type(screen.getByLabelText("Descripción"), "Fibra");
+    await user.type(screen.getByLabelText("Subtotal"), "15000");
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => {
+      expect(mockedToast.warning).toHaveBeenCalledWith(
+        "El gasto se guardó, pero 1 comprobante(s) no se pudieron renombrar.",
+      );
+    });
+  });
+
   it("shows the occurrences input only for multiple monthly payments", async () => {
     const user = userEvent.setup();
 

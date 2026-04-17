@@ -170,4 +170,64 @@ describe("monthly-expenses-api client", () => {
 
     expect(fetchImplementation).not.toHaveBeenCalled();
   });
+
+  it("returns receipt rename warnings from POST responses", async () => {
+    const fetchImplementation = jest.fn().mockResolvedValue({
+      json: async () => ({
+        data: {
+          receiptRenameWarnings: [
+            {
+              fileId: "receipt-file-id",
+              nextFileName: "2026-03-16 - Fibra - cubre 1 pagos.pdf",
+              previousFileName: "2026-03-16 - Internet - cubre 1 pagos.pdf",
+              reasonCode: "insufficient_permissions",
+            },
+          ],
+          renamedReceiptFilesCount: 1,
+          storedDocument: {
+            id: "monthly-expenses-file-id",
+            month: "2026-03",
+            name: "gastos-mensuales-2026-marzo.json",
+            viewUrl: null,
+          },
+        },
+      }),
+      ok: true,
+      status: 200,
+    });
+
+    await expect(
+      saveMonthlyExpensesDocumentViaApi(
+        {
+          items: [
+            {
+              currency: "ARS",
+              description: "Fibra",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 45,
+            },
+          ],
+          month: "2026-03",
+        },
+        fetchImplementation,
+      ),
+    ).resolves.toEqual({
+      receiptRenameWarnings: [
+        {
+          fileId: "receipt-file-id",
+          nextFileName: "2026-03-16 - Fibra - cubre 1 pagos.pdf",
+          previousFileName: "2026-03-16 - Internet - cubre 1 pagos.pdf",
+          reasonCode: "insufficient_permissions",
+        },
+      ],
+      renamedReceiptFilesCount: 1,
+      storedDocument: {
+        id: "monthly-expenses-file-id",
+        month: "2026-03",
+        name: "gastos-mensuales-2026-marzo.json",
+        viewUrl: null,
+      },
+    });
+  });
 });

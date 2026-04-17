@@ -226,7 +226,7 @@ describe("createMonthlyExpensesApiHandler", () => {
     });
   });
 
-  it("returns 204 without exposing the saved document when the request succeeds", async () => {
+  it("returns 200 with the save result when the request succeeds", async () => {
     const database = {} as TursoDatabase;
     const save = jest.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
@@ -277,9 +277,15 @@ describe("createMonthlyExpensesApiHandler", () => {
       request,
       userSubject: "google-user-123",
     });
-    expect(response.statusCode).toBe(204);
-    expect(response.ended).toBe(true);
-    expect(response.body).toBeUndefined();
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual({
+      data: {
+        id: "monthly-expenses-file-id",
+        month: "2026-03",
+        name: "gastos-mensuales-2026-marzo.json",
+        viewUrl: null,
+      },
+    });
   });
 
   it("passes loan metadata to the save use case when a debt is included", async () => {
@@ -343,9 +349,15 @@ describe("createMonthlyExpensesApiHandler", () => {
       request,
       userSubject: "google-user-123",
     });
-    expect(response.statusCode).toBe(204);
-    expect(response.ended).toBe(true);
-    expect(response.body).toBeUndefined();
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual({
+      data: {
+        id: "monthly-expenses-file-id",
+        month: "2026-03",
+        name: "gastos-mensuales-2026-marzo.json",
+        viewUrl: null,
+      },
+    });
   });
 
   it("passes paymentLink to the save use case when provided", async () => {
@@ -403,8 +415,7 @@ describe("createMonthlyExpensesApiHandler", () => {
       request,
       userSubject: "google-user-123",
     });
-    expect(response.statusCode).toBe(204);
-    expect(response.ended).toBe(true);
+    expect(response.statusCode).toBe(200);
   });
 
   it("passes receipt sharing metadata to the save use case when provided", async () => {
@@ -466,8 +477,7 @@ describe("createMonthlyExpensesApiHandler", () => {
       request,
       userSubject: "google-user-123",
     });
-    expect(response.statusCode).toBe(204);
-    expect(response.ended).toBe(true);
+    expect(response.statusCode).toBe(200);
   });
 
   it("returns 400 when receipt sharing is enabled without a valid phone", async () => {
@@ -582,8 +592,7 @@ describe("createMonthlyExpensesApiHandler", () => {
       request,
       userSubject: "google-user-123",
     });
-    expect(response.statusCode).toBe(204);
-    expect(response.ended).toBe(true);
+    expect(response.statusCode).toBe(200);
   });
 
   it("passes shared folder metadata to save even when monthly folder metadata is blank", async () => {
@@ -651,8 +660,74 @@ describe("createMonthlyExpensesApiHandler", () => {
       request,
       userSubject: "google-user-123",
     });
-    expect(response.statusCode).toBe(204);
-    expect(response.ended).toBe(true);
+    expect(response.statusCode).toBe(200);
+  });
+
+  it("returns save warnings payload when receipt renames fail", async () => {
+    const database = {} as TursoDatabase;
+    const save = jest.fn().mockResolvedValue({
+      receiptRenameWarnings: [
+        {
+          fileId: "receipt-file-id",
+          nextFileName: "2026-03-16 - Fibra - cubre 1 pagos.pdf",
+          previousFileName: "2026-03-16 - Internet - cubre 1 pagos.pdf",
+          reasonCode: "insufficient_permissions",
+        },
+      ],
+      renamedReceiptFilesCount: 1,
+      storedDocument: {
+        id: "monthly-expenses-file-id",
+        month: "2026-03",
+        name: "gastos-mensuales-2026-marzo.json",
+        viewUrl: null,
+      },
+    });
+    const handler = createMonthlyExpensesApiHandler({
+      load: jest.fn(),
+      getDatabase: jest.fn().mockReturnValue(database),
+      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      save,
+    });
+
+    const request = {
+      body: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Fibra",
+            id: "expense-1",
+            occurrencesPerMonth: 1,
+            subtotal: 45,
+          },
+        ],
+        month: "2026-03",
+      },
+      method: "POST",
+    } as NextApiRequest;
+    const response = createMockResponse();
+
+    await handler(request, response);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual({
+      data: {
+        receiptRenameWarnings: [
+          {
+            fileId: "receipt-file-id",
+            nextFileName: "2026-03-16 - Fibra - cubre 1 pagos.pdf",
+            previousFileName: "2026-03-16 - Internet - cubre 1 pagos.pdf",
+            reasonCode: "insufficient_permissions",
+          },
+        ],
+        renamedReceiptFilesCount: 1,
+        storedDocument: {
+          id: "monthly-expenses-file-id",
+          month: "2026-03",
+          name: "gastos-mensuales-2026-marzo.json",
+          viewUrl: null,
+        },
+      },
+    });
   });
 
   it("returns 401 when Google authentication is missing", async () => {
