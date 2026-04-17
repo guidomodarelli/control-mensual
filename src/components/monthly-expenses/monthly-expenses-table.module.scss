@@ -428,7 +428,16 @@
 
 .manualPaymentsCell {
   display: grid;
-  gap: 0.2rem;
+  gap: 0.55rem;
+  margin-top: 0.15rem;
+}
+
+.manualPaymentsCell > :global(label) {
+  line-height: 1.35;
+}
+
+.manualPaymentsCell > :global(label):not(:first-of-type) {
+  margin-top: 0.2rem;
 }
 
 .manualPaymentsControls {
@@ -449,7 +458,7 @@
 }
 
 .manualPaymentsHint {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: var(--muted-foreground);
   line-height: 1.2;
 }
