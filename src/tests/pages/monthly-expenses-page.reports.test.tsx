@@ -568,17 +568,18 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await user.click(screen.getByRole("button", { name: /registros/i }));
 
+    await user.click(
+      screen.getByRole("button", {
+        name: "Registrar nuevo pago para Internet",
+      }),
+    );
     const manualPaymentsInput = screen.getByRole("spinbutton", {
-      name: "Pagos sin comprobante de Internet",
+      name: "Cantidad de pagos a cubrir",
     });
 
     await user.clear(manualPaymentsInput);
     await user.type(manualPaymentsInput, "5");
-    await user.click(
-      screen.getByRole("button", {
-        name: "Agregar pago sin comprobante para Internet",
-      }),
-    );
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
 
     await waitFor(() => {
       const payload = getMonthlyExpensesSavePayload(fetchMock);
@@ -587,7 +588,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
   });
 
-  it("does not persist manual payment draft changes until add is confirmed", async () => {
+  it("does not persist manual payment draft changes until confirm is clicked", async () => {
     const user = userEvent.setup();
     const fetchMock = createMonthlyExpensesFetchMock();
 
@@ -626,8 +627,13 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await user.click(screen.getByRole("button", { name: /registros/i }));
 
+    await user.click(
+      screen.getByRole("button", {
+        name: "Registrar nuevo pago para Internet",
+      }),
+    );
     const manualPaymentsInput = screen.getByRole("spinbutton", {
-      name: "Pagos sin comprobante de Internet",
+      name: "Cantidad de pagos a cubrir",
     });
 
     await user.clear(manualPaymentsInput);
@@ -641,7 +647,7 @@ registerMonthlyExpensesPageDefaultHooks({
     ).toBe(false);
   });
 
-  it("limits manual payment additions by existing manual payment records", async () => {
+  it("blocks manual payment confirmation when requested coverage exceeds pending payments", async () => {
     const user = userEvent.setup();
     const fetchMock = createMonthlyExpensesFetchMock();
 
@@ -691,25 +697,24 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await user.click(screen.getByRole("button", { name: /registros/i }));
 
+    await user.click(
+      screen.getByRole("button", {
+        name: "Registrar nuevo pago para Internet",
+      }),
+    );
     const manualPaymentsInput = screen.getByRole("spinbutton", {
-      name: "Pagos sin comprobante de Internet",
+      name: "Cantidad de pagos a cubrir",
     });
 
     await user.clear(manualPaymentsInput);
     await user.type(manualPaymentsInput, "2");
-    await user.click(
-      screen.getByRole("button", {
-        name: "Agregar pago sin comprobante para Internet",
-      }),
-    );
 
-    await waitFor(() => {
-      const payload = getMonthlyExpensesSavePayload(fetchMock);
-
-      expect(payload.items[0]?.manualCoveredPayments).toBe(3);
-      expect(payload.items[0]?.paymentRecords).toHaveLength(3);
-      expect(payload.items[0]?.paymentRecords[2]?.coveredPayments).toBe(1);
-    });
+    expect(screen.getByRole("button", { name: "Confirmar" })).toBeDisabled();
+    expect(
+      fetchMock.mock.calls.some(
+        ([url]) => url === "/api/storage/monthly-expenses",
+      ),
+    ).toBe(false);
   });
 
   it("recalculates progress when deleting the last receipt without legacy confirmation", async () => {
@@ -1087,12 +1092,14 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await user.click(screen.getByRole("button", { name: /registros/i }));
 
-    const attachReceiptButton = screen.getByRole("button", {
-      name: "Adjuntar comprobante",
+    const registerPaymentButton = screen.getByRole("button", {
+      name: "Registrar nuevo pago para Internet",
     });
 
-    expect(attachReceiptButton).toBeDisabled();
-    expect(screen.queryByText("Subir comprobante")).not.toBeInTheDocument();
+    expect(registerPaymentButton).toBeDisabled();
+    expect(
+      screen.queryByText("Cantidad de pagos a cubrir"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders Estado de envío, Enviar, Pagos, and Registro de pagos columns after Link", () => {

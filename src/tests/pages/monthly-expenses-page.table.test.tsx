@@ -1872,16 +1872,17 @@ registerMonthlyExpensesPageDefaultHooks({
       }),
     );
 
+    await user.click(
+      screen.getByRole("button", {
+        name: "Registrar nuevo pago para Internet abril",
+      }),
+    );
     const manualPaymentsInput = screen.getByRole("spinbutton", {
-      name: "Pagos sin comprobante de Internet abril",
+      name: "Cantidad de pagos a cubrir",
     });
     await user.clear(manualPaymentsInput);
     await user.type(manualPaymentsInput, "1");
-    await user.click(
-      screen.getByRole("button", {
-        name: "Agregar pago sin comprobante para Internet abril",
-      }),
-    );
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
 
     await waitFor(() => {
       const payload = getMonthlyExpensesSavePayload(fetchMock);

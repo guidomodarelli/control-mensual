@@ -2319,17 +2319,17 @@ export default function MonthlyExpensesPage({
   }: {
     coveredPayments: number;
     expenseId: string;
-  }) => {
+  }): Promise<boolean> => {
     if (!isOAuthConfigured || !isAuthenticated) {
       toast.warning("Conectate con Google para actualizar pagos sin comprobante.");
-      return;
+      return false;
     }
 
     const expenseRow = formState.rows.find((row) => row.id === expenseId);
 
     if (!expenseRow) {
       toast.warning("No pudimos encontrar el gasto seleccionado.");
-      return;
+      return false;
     }
 
     const maxManualCoveredPayments = getMaxManualCoveredPayments({
@@ -2344,7 +2344,7 @@ export default function MonthlyExpensesPage({
       toast.warning(
         `Ingresá una cantidad válida entre 1 y ${maxManualCoveredPayments}.`,
       );
-      return;
+      return false;
     }
 
     const nextRows = formState.rows.map((row) =>
@@ -2363,10 +2363,119 @@ export default function MonthlyExpensesPage({
         : row,
     );
 
-    await persistMonthlyExpensesRows(nextRows, {
+    return await persistMonthlyExpensesRows(nextRows, {
       loading: "Actualizando pagos sin comprobante...",
       success: "Pagos sin comprobante actualizados.",
     });
+  };
+
+  const handleRegisterPaymentRecord = async ({
+    coveredPayments,
+    expenseId,
+    file,
+  }: {
+    coveredPayments: number;
+    expenseId: string;
+    file: File | null;
+  }): Promise<boolean> => {
+    if (!file) {
+      return await handleAddManualPaymentRecord({
+        coveredPayments,
+        expenseId,
+      });
+    }
+
+    if (!isOAuthConfigured || !isAuthenticated) {
+      toast.warning("Conectate con Google para subir comprobantes.");
+      return false;
+    }
+
+    const expenseRow = formState.rows.find((row) => row.id === expenseId);
+
+    if (!expenseRow) {
+      toast.warning("No pudimos encontrar el gasto seleccionado.");
+      return false;
+    }
+
+    const remainingPaymentsForReceipts = getRemainingPaymentsForReceipts(
+      expenseRow,
+    );
+
+    if (
+      !Number.isInteger(coveredPayments) ||
+      coveredPayments <= 0 ||
+      coveredPayments > remainingPaymentsForReceipts
+    ) {
+      toast.warning(
+        `Ingresá una cantidad de pagos válida entre 1 y ${remainingPaymentsForReceipts}.`,
+      );
+      return false;
+    }
+
+    const receiptMimeType = getValidReceiptMimeType(file);
+
+    if (!receiptMimeType) {
+      toast.warning("Solo se permiten comprobantes PDF, JPG, PNG, WEBP, HEIC o HEIF.");
+      return false;
+    }
+
+    if (file.size > MAX_RECEIPT_FILE_SIZE_BYTES) {
+      toast.warning("El comprobante supera los 5MB. Elegí un archivo más liviano.");
+      return false;
+    }
+
+    try {
+      const contentBase64 = await fileToBase64WithProgress(file, () => undefined);
+      const receiptUpload = await uploadMonthlyExpenseReceiptViaApi({
+        contentBase64,
+        coveredPayments,
+        expenseDescription: expenseRow.description,
+        fileName: file.name,
+        month: formState.month,
+        mimeType: receiptMimeType,
+      });
+
+      const nextRows = formState.rows.map((row) =>
+        row.id === expenseRow.id
+          ? synchronizeRowPaymentCoverage({
+              ...row,
+              allReceiptsFolderId: receiptUpload.allReceiptsFolderId,
+              allReceiptsFolderStatus: undefined,
+              allReceiptsFolderViewUrl: receiptUpload.allReceiptsFolderViewUrl,
+              monthlyFolderId: receiptUpload.monthlyFolderId,
+              monthlyFolderStatus: undefined,
+              monthlyFolderViewUrl: receiptUpload.monthlyFolderViewUrl,
+              paymentRecords: [
+                ...(row.paymentRecords ?? []),
+                {
+                  coveredPayments: receiptUpload.coveredPayments,
+                  id: createPaymentRecordId(),
+                  receipt: {
+                    allReceiptsFolderId: receiptUpload.allReceiptsFolderId,
+                    allReceiptsFolderViewUrl:
+                      receiptUpload.allReceiptsFolderViewUrl,
+                    coveredPayments: receiptUpload.coveredPayments,
+                    fileId: receiptUpload.fileId,
+                    fileName: receiptUpload.fileName,
+                    fileViewUrl: receiptUpload.fileViewUrl,
+                    monthlyFolderId: receiptUpload.monthlyFolderId,
+                    monthlyFolderViewUrl: receiptUpload.monthlyFolderViewUrl,
+                  },
+                  registeredAt: receiptUpload.registeredAt,
+                },
+              ],
+            })
+          : row,
+      );
+
+      return await persistMonthlyExpensesRows(nextRows, {
+        loading: "Guardando comprobante...",
+        success: "Comprobante subido correctamente.",
+      });
+    } catch (error) {
+      toast.error(getSafeMonthlyExpensesErrorMessage(error));
+      return false;
+    }
   };
 
   const handleEditManualPaymentRecord = async ({
@@ -3286,7 +3395,7 @@ export default function MonthlyExpensesPage({
                 onRequestCloseExpenseSheet={handleRequestCloseExpenseSheet}
                 onSaveExpense={handleSaveExpense}
                 onSaveUnsavedChanges={handleSaveUnsavedChanges}
-                onAddManualPaymentRecord={handleAddManualPaymentRecord}
+                onRegisterPaymentRecord={handleRegisterPaymentRecord}
                 onDeleteManualPaymentRecord={handleDeleteManualPaymentRecord}
                 onEditManualPaymentRecord={handleEditManualPaymentRecord}
                 onUpdatePaymentLink={handleUpdatePaymentLink}
@@ -3294,7 +3403,6 @@ export default function MonthlyExpensesPage({
                 onUpdateExpenseReceiptShare={handleUpdateExpenseReceiptShare}
                 onUpdateExpenseSubtotal={handleUpdateExpenseSubtotal}
                 onUpdateReceiptShareStatus={handleUpdateReceiptShareStatus}
-                onUploadReceipt={handleOpenReceiptUpload}
                 onUnsavedChangesClose={handleUnsavedChangesClose}
                 onUnsavedChangesDiscard={handleUnsavedChangesDiscard}
                 rows={formState.rows}

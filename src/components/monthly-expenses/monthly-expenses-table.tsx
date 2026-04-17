@@ -39,6 +39,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -65,7 +73,6 @@ import {
   ExternalLink,
   Mail,
   MoreVertical,
-  Paperclip,
   Plus,
   Pencil,
   Trash2,
@@ -115,6 +122,14 @@ const MONTHLY_EXPENSES_TABLE_PREFERENCES_STORAGE_KEY =
 const MONTHLY_EXPENSES_DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   usd: false,
 };
+const RECEIPT_FILE_ACCEPT = [
+  "application/pdf",
+  "image/heic",
+  "image/heif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+].join(",");
 const SORTABLE_COLUMN_IDS = new Set([
   "description",
   "paymentsProgress",
@@ -860,10 +875,11 @@ interface MonthlyExpensesTableProps {
     expenseId: string;
     receiptFileId: string;
   }) => void;
-  onAddManualPaymentRecord: (args: {
-    expenseId: string;
+  onRegisterPaymentRecord: (args: {
     coveredPayments: number;
-  }) => void;
+    expenseId: string;
+    file: File | null;
+  }) => Promise<boolean>;
   onEditManualPaymentRecord: (args: {
     coveredPayments: number;
     expenseId: string;
@@ -894,7 +910,6 @@ interface MonthlyExpensesTableProps {
     expenseId: string;
     receiptShareStatus: MonthlyExpenseReceiptShareStatus;
   }) => void | Promise<void>;
-  onUploadReceipt: (expenseId: string) => void;
   onRequestCloseExpenseSheet: () => void;
   onSaveExpense: () => void;
   onSaveUnsavedChanges: () => void;
@@ -1443,24 +1458,6 @@ function parsePositiveInteger(value: string): number {
   return numericValue;
 }
 
-function clampManualCoveredPaymentsValue({
-  fallbackValue,
-  maxManualCoveredPayments,
-  value,
-}: {
-  fallbackValue: number;
-  maxManualCoveredPayments: number;
-  value: string;
-}): number {
-  const parsedValue = Number(value.replace(/[^\d]/g, ""));
-
-  if (!Number.isInteger(parsedValue)) {
-    return fallbackValue;
-  }
-
-  return Math.min(Math.max(parsedValue, 0), maxManualCoveredPayments);
-}
-
 function getCoveredPaymentsByReceipts(receipts: MonthlyExpensesEditableReceipt[]): number {
   return receipts.reduce(
     (coveredPayments, receipt) => coveredPayments + receipt.coveredPayments,
@@ -1585,22 +1582,22 @@ function PaymentHistoryCell({
   expenseDescription,
   expenseId,
   maxPaymentsPerRecord,
-  onAddManualPaymentRecord,
+  onRegisterPaymentRecord,
   onDeleteManualPaymentRecord,
   onDeleteReceipt,
   onEditManualPaymentRecord,
   onEditReceiptCoverage,
-  onUploadReceipt,
   paymentRecords,
 }: {
   actionDisabled: boolean;
   expenseDescription: string;
   expenseId: string;
   maxPaymentsPerRecord: number;
-  onAddManualPaymentRecord: (args: {
+  onRegisterPaymentRecord: (args: {
     coveredPayments: number;
     expenseId: string;
-  }) => void;
+    file: File | null;
+  }) => Promise<boolean>;
   onDeleteManualPaymentRecord: (args: {
     expenseId: string;
     paymentRecordId: string;
@@ -1618,15 +1615,18 @@ function PaymentHistoryCell({
     expenseId: string;
     receiptFileId: string;
   }) => void;
-  onUploadReceipt: (expenseId: string) => void;
   paymentRecords: MonthlyExpensesEditablePaymentRecord[];
 }) {
   const [manualRecordDraft, setManualRecordDraft] = useState("1");
-  const normalizedPaymentsByDraft = clampManualCoveredPaymentsValue({
-    fallbackValue: 1,
-    maxManualCoveredPayments: maxPaymentsPerRecord,
-    value: manualRecordDraft,
-  });
+  const [selectedReceiptFile, setSelectedReceiptFile] = useState<File | null>(null);
+  const [paymentRegistrationError, setPaymentRegistrationError] =
+    useState<string | null>(null);
+  const [isRegisterPaymentDialogOpen, setIsRegisterPaymentDialogOpen] =
+    useState(false);
+  const [isRegisterPaymentSubmitting, setIsRegisterPaymentSubmitting] =
+    useState(false);
+  const registerPaymentInputId = `${expenseId}-register-payments-input`;
+  const registerPaymentReceiptInputId = `${expenseId}-register-receipt-input`;
   const sortedPaymentRecords = [...paymentRecords].sort(
     sortPaymentRecordsByDateDescending,
   );
@@ -1639,9 +1639,139 @@ function PaymentHistoryCell({
   const recordsCountLabel = paymentRecords.length === 1
     ? "registro"
     : "registros";
+  const parsedManualCoveredPayments = Number(manualRecordDraft);
+  const hasValidManualDraft =
+    Number.isInteger(parsedManualCoveredPayments) &&
+    parsedManualCoveredPayments >= 1 &&
+    parsedManualCoveredPayments <= maxPaymentsPerRecord;
+  const selectedReceiptFileName = selectedReceiptFile?.name ?? "Sin comprobante";
+
+  const resetRegisterPaymentForm = useCallback(() => {
+    setManualRecordDraft("1");
+    setSelectedReceiptFile(null);
+    setPaymentRegistrationError(null);
+    setIsRegisterPaymentSubmitting(false);
+  }, []);
+
+  const handleRegisterPaymentDialogOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      setIsRegisterPaymentDialogOpen(nextOpen);
+
+      if (!nextOpen) {
+        resetRegisterPaymentForm();
+      }
+    },
+    [resetRegisterPaymentForm],
+  );
+
+  const handleRegisterPaymentRecord = useCallback(async () => {
+    if (!hasValidManualDraft) {
+      setPaymentRegistrationError(
+        `Ingresá una cantidad de pagos válida entre 1 y ${maxPaymentsPerRecord}.`,
+      );
+      return;
+    }
+
+    setIsRegisterPaymentSubmitting(true);
+    setPaymentRegistrationError(null);
+
+    const wasRegistered = await onRegisterPaymentRecord({
+      coveredPayments: parsedManualCoveredPayments,
+      expenseId,
+      file: selectedReceiptFile,
+    });
+
+    if (!wasRegistered) {
+      setIsRegisterPaymentSubmitting(false);
+      setPaymentRegistrationError("No pudimos registrar el pago. Volvé a intentar.");
+      return;
+    }
+
+    setIsRegisterPaymentDialogOpen(false);
+    resetRegisterPaymentForm();
+  }, [
+    expenseId,
+    hasValidManualDraft,
+    maxPaymentsPerRecord,
+    onRegisterPaymentRecord,
+    parsedManualCoveredPayments,
+    resetRegisterPaymentForm,
+    selectedReceiptFile,
+  ]);
 
   return (
     <div className={styles.receiptActionsCell}>
+      <Dialog
+        onOpenChange={handleRegisterPaymentDialogOpenChange}
+        open={isRegisterPaymentDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar nuevo pago</DialogTitle>
+            <DialogDescription>
+              Elegí la cantidad de pagos y, si querés, adjuntá un comprobante.
+            </DialogDescription>
+          </DialogHeader>
+          <div className={styles.manualPaymentsCell}>
+            <Label htmlFor={registerPaymentInputId}>Cantidad de pagos a cubrir:</Label>
+            <Input
+              aria-label="Cantidad de pagos a cubrir"
+              className={styles.manualPaymentsInput}
+              disabled={actionDisabled || maxPaymentsPerRecord <= 0}
+              id={registerPaymentInputId}
+              inputMode="numeric"
+              max={maxPaymentsPerRecord}
+              min={1}
+              onChange={(event) => setManualRecordDraft(event.target.value)}
+              type="number"
+              value={manualRecordDraft}
+            />
+            <Label htmlFor={registerPaymentReceiptInputId}>
+              Adjuntar comprobante (opcional):
+            </Label>
+            <Input
+              accept={RECEIPT_FILE_ACCEPT}
+              aria-label="Seleccionar comprobante"
+              disabled={actionDisabled || maxPaymentsPerRecord <= 0}
+              id={registerPaymentReceiptInputId}
+              onChange={(event) =>
+                setSelectedReceiptFile(event.target.files?.[0] ?? null)}
+              type="file"
+            />
+            <span className={styles.manualPaymentsHint}>
+              {selectedReceiptFile
+                ? `Comprobante seleccionado: ${selectedReceiptFileName}`
+                : "Sin comprobante seleccionado."}
+            </span>
+            {paymentRegistrationError ? (
+              <span className={styles.manualPaymentsHint}>{paymentRegistrationError}</span>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => handleRegisterPaymentDialogOpenChange(false)}
+              type="button"
+              variant="outline"
+            >
+              Cancelar
+            </Button>
+            <Button
+              disabled={
+                actionDisabled ||
+                isRegisterPaymentSubmitting ||
+                maxPaymentsPerRecord <= 0 ||
+                !hasValidManualDraft
+              }
+              onClick={() => {
+                void handleRegisterPaymentRecord();
+              }}
+              type="button"
+            >
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Popover>
         <PopoverTrigger asChild>
           <Button className={styles.extraReceiptsTrigger} type="button" variant="link">
@@ -1653,40 +1783,15 @@ function PaymentHistoryCell({
         <PopoverContent align="start" className={styles.extraReceiptsPopover}>
           <div className={styles.extraReceiptsList}>
             <div className={styles.manualPaymentsControls}>
-              <Input
-                aria-label={`Pagos sin comprobante de ${expenseDescription}`}
-                className={styles.manualPaymentsInput}
-                disabled={actionDisabled || maxPaymentsPerRecord <= 0}
-                inputMode="numeric"
-                max={maxPaymentsPerRecord}
-                min={1}
-                onChange={(event) => setManualRecordDraft(event.target.value)}
-                type="number"
-                value={manualRecordDraft}
-              />
               <Button
-                aria-label="Adjuntar comprobante"
+                aria-label={`Registrar nuevo pago para ${expenseDescription}`}
                 disabled={actionDisabled || maxPaymentsPerRecord <= 0}
-                onClick={() => onUploadReceipt(expenseId)}
+                onClick={() => setIsRegisterPaymentDialogOpen(true)}
                 size="sm"
                 type="button"
                 variant="outline"
               >
-                <Paperclip aria-hidden="true" />
-              </Button>
-              <Button
-                aria-label={`Agregar pago sin comprobante para ${expenseDescription}`}
-                disabled={actionDisabled || maxPaymentsPerRecord <= 0}
-                onClick={() =>
-                  onAddManualPaymentRecord({
-                    coveredPayments: normalizedPaymentsByDraft,
-                    expenseId,
-                  })}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                Agregar pago
+                Registrar nuevo pago
               </Button>
             </div>
             {sortedPaymentRecords.map((paymentRecord) => {
@@ -1848,7 +1953,7 @@ export function MonthlyExpensesTable({
   onExpenseReceiptShareToggle,
   onDeleteReceipt,
   onEditReceiptCoverage,
-  onAddManualPaymentRecord,
+  onRegisterPaymentRecord,
   onDeleteManualPaymentRecord,
   onEditManualPaymentRecord,
   onUpdatePaymentLink,
@@ -1857,7 +1962,6 @@ export function MonthlyExpensesTable({
   onUpdateExpenseSubtotal,
   onUpdateReceiptShareStatus,
   onMonthChange,
-  onUploadReceipt,
   onRequestCloseExpenseSheet,
   onSaveExpense,
   onSaveUnsavedChanges,
@@ -2798,12 +2902,11 @@ export function MonthlyExpensesTable({
               expenseDescription={expenseDescription}
               expenseId={row.original.id}
               maxPaymentsPerRecord={maxManualCoveredPayments}
-              onAddManualPaymentRecord={onAddManualPaymentRecord}
+              onRegisterPaymentRecord={onRegisterPaymentRecord}
               onDeleteManualPaymentRecord={onDeleteManualPaymentRecord}
               onDeleteReceipt={onDeleteReceipt}
               onEditManualPaymentRecord={onEditManualPaymentRecord}
               onEditReceiptCoverage={onEditReceiptCoverage}
-              onUploadReceipt={onUploadReceipt}
               paymentRecords={row.original.paymentRecords ?? []}
             />
           );
@@ -3008,8 +3111,7 @@ export function MonthlyExpensesTable({
       onEditReceiptCoverage,
       onEditManualPaymentRecord,
       onEditExpense,
-      onAddManualPaymentRecord,
-      onUploadReceipt,
+      onRegisterPaymentRecord,
       onUpdateReceiptShareStatus,
       handleOpenSubtotalDialog,
       handleOpenOccurrencesDialog,
