@@ -10,6 +10,7 @@ import {
   basePageProps,
   createMockRouter,
   createMonthlyExpensesFetchMock,
+  getMonthlyExpensesDescriptionsOrder,
   getMonthlyExpensesSavePayload,
   registerMonthlyExpensesPageDefaultHooks,
   renderWithProviders,
@@ -2322,7 +2323,7 @@ registerMonthlyExpensesPageDefaultHooks({
     ).not.toBeInTheDocument();
   });
 
-  it("does not match non-contiguous text when filtering by exact description", async () => {
+  it("applies fuzzy matching in main search but keeps exclusion filters exact", async () => {
     const user = userEvent.setup();
 
     renderWithProviders(
@@ -2332,19 +2333,39 @@ registerMonthlyExpensesPageDefaultHooks({
           items: [
             {
               currency: "ARS",
-              description: "AxxBxxC gasto",
+              description: "Pijama + Pantuflas (Regalo July Cumple)",
               id: "expense-1",
-              occurrencesPerMonth: 1,
+              manualCoveredPayments: 2,
+              occurrencesPerMonth: 3,
               subtotal: 10000,
               total: 10000,
             },
             {
               currency: "ARS",
-              description: "Abc gasto",
+              description: "[VH] Alquiler Espensas",
               id: "expense-2",
-              occurrencesPerMonth: 1,
+              manualCoveredPayments: 1,
+              occurrencesPerMonth: 3,
               subtotal: 12000,
               total: 12000,
+            },
+            {
+              currency: "ARS",
+              description: "Iphone",
+              id: "expense-3",
+              manualCoveredPayments: 3,
+              occurrencesPerMonth: 3,
+              subtotal: 14000,
+              total: 14000,
+            },
+            {
+              currency: "ARS",
+              description: "Limpieza Doméstica (Yesi)",
+              id: "expense-4",
+              manualCoveredPayments: 0,
+              occurrencesPerMonth: 3,
+              subtotal: 11000,
+              total: 11000,
             },
           ],
           month: "2026-03",
@@ -2352,12 +2373,36 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "abc");
+    await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "ipe");
+    await user.click(screen.getByRole("button", { name: "Ordenar Pagos" }));
 
     expect(
-      screen.getByText((_, element) => element?.textContent === "Abc gasto"),
+      screen.getByText((_, element) => element?.textContent === "Iphone"),
     ).toBeInTheDocument();
-    expect(screen.queryByText("AxxBxxC gasto")).not.toBeInTheDocument();
+    expect(
+      screen.getByText((_, element) => element?.textContent === "Limpieza Doméstica (Yesi)"),
+    ).toBeInTheDocument();
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
+      "Iphone",
+      "Limpieza Doméstica (Yesi)",
+      "[VH] Alquiler Espensas",
+      "Pijama + Pantuflas (Regalo July Cumple)",
+    ]);
+
+    await user.click(
+      screen.getByRole("button", { name: "Mostrar filtros de exclusión" }),
+    );
+
+    const exclusionInput = screen.getByRole("textbox", {
+      name: "Excluir resultados",
+    });
+
+    await user.type(exclusionInput, "ipe{enter}");
+
+    expect(screen.queryByText("Iphone")).not.toBeInTheDocument();
+    expect(
+      screen.getByText((_, element) => element?.textContent === "Limpieza Doméstica (Yesi)"),
+    ).toBeInTheDocument();
   });
 
   it("applies multiple negative filters and refreshes rows when removing a badge", async () => {
@@ -2433,6 +2478,84 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(
       screen.queryByText("No hay resultados para los filtros actuales."),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows exclusion counters per tag and a unique global excluded rows summary", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Préstamo auto y tarjeta",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 10000,
+              total: 10000,
+            },
+            {
+              currency: "ARS",
+              description: "Préstamo auto",
+              id: "expense-2",
+              occurrencesPerMonth: 1,
+              subtotal: 12000,
+              total: 12000,
+            },
+            {
+              currency: "ARS",
+              description: "Préstamo tarjeta",
+              id: "expense-3",
+              occurrencesPerMonth: 1,
+              subtotal: 15000,
+              total: 15000,
+            },
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-4",
+              occurrencesPerMonth: 1,
+              subtotal: 20000,
+              total: 20000,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "PRESTAMO");
+
+    await user.click(
+      screen.getByRole("button", { name: "Mostrar filtros de exclusión" }),
+    );
+
+    const exclusionInput = screen.getByRole("textbox", {
+      name: "Excluir resultados",
+    });
+
+    await user.type(exclusionInput, "auto{enter}");
+
+    expect(
+      screen.getByLabelText("Filas excluidas por auto: 2"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Total de filas excluidas únicas: 2"),
+    ).toBeInTheDocument();
+
+    await user.type(exclusionInput, "tarjeta{enter}");
+
+    expect(
+      screen.getByLabelText("Filas excluidas por auto: 2"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Filas excluidas por tarjeta: 2"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Total de filas excluidas únicas: 3"),
+    ).toBeInTheDocument();
   });
 
   it("keeps exclusions active even when the main filter is empty", async () => {

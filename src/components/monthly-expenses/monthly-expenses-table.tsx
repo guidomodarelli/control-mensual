@@ -87,6 +87,9 @@ import {
 
 import {
   getExactMatchIndices,
+  getFuzzyMatchRank,
+  getFuzzyMatchIndices,
+  normalizeSearchValue,
   renderHighlightedText,
 } from "./fuzzy-search";
 import {
@@ -1278,6 +1281,10 @@ function hasExactDescriptionMatch(value: string, query: string): boolean {
   return getExactMatchIndices(value, query) !== null;
 }
 
+function hasFuzzyDescriptionMatch(value: string, query: string): boolean {
+  return getFuzzyMatchIndices(value, query) !== null;
+}
+
 function includesExcludedDescription(
   description: string,
   excludedDescriptionFilters: string[],
@@ -1292,6 +1299,52 @@ function getNonEmptyDescriptionFilters(descriptionFilters: string[]): string[] {
   return descriptionFilters
     .map((descriptionFilter) => descriptionFilter.trim())
     .filter((descriptionFilter) => descriptionFilter.length > 0);
+}
+
+function getRowsMatchingDescriptionFilter(
+  rows: MonthlyExpensesEditableRow[],
+  descriptionFilter: string,
+): MonthlyExpensesEditableRow[] {
+  const normalizedDescriptionFilter = descriptionFilter.trim();
+
+  if (!normalizedDescriptionFilter) {
+    return rows;
+  }
+
+  return rows.filter((row) =>
+    hasFuzzyDescriptionMatch(row.description, normalizedDescriptionFilter),
+  );
+}
+
+function getExcludeFilterMetrics(
+  rows: MonthlyExpensesEditableRow[],
+  excludedDescriptionFilters: string[],
+): {
+  excludeFilterRowsCountByValue: Record<string, number>;
+  excludeFilterUniqueRowsCount: number;
+} {
+  const excludeFilterRowsCountByValue: Record<string, number> = {};
+  const excludedRowIds = new Set<string>();
+
+  for (const excludedDescriptionFilter of excludedDescriptionFilters) {
+    let excludedRowsCount = 0;
+
+    for (const row of rows) {
+      if (!hasExactDescriptionMatch(row.description, excludedDescriptionFilter)) {
+        continue;
+      }
+
+      excludedRowsCount += 1;
+      excludedRowIds.add(row.id);
+    }
+
+    excludeFilterRowsCountByValue[excludedDescriptionFilter] = excludedRowsCount;
+  }
+
+  return {
+    excludeFilterRowsCountByValue,
+    excludeFilterUniqueRowsCount: excludedRowIds.size,
+  };
 }
 
 function formatCurrencyAmount(
@@ -2129,6 +2182,18 @@ export function MonthlyExpensesTable({
     () => getNonEmptyDescriptionFilters(excludedDescriptionFilters),
     [excludedDescriptionFilters],
   );
+  const rowsMatchingDescriptionFilter = useMemo(
+    () => getRowsMatchingDescriptionFilter(rows, descriptionFilter),
+    [descriptionFilter, rows],
+  );
+  const excludeFilterMetrics = useMemo(
+    () =>
+      getExcludeFilterMetrics(
+        rowsMatchingDescriptionFilter,
+        nonEmptyExcludedDescriptionFilters,
+      ),
+    [nonEmptyExcludedDescriptionFilters, rowsMatchingDescriptionFilter],
+  );
   const hasActiveDescriptionFiltering =
     descriptionFilter.trim().length > 0 ||
     nonEmptyExcludedDescriptionFilters.length > 0;
@@ -2399,6 +2464,81 @@ export function MonthlyExpensesTable({
     handleCloseReceiptShareDialog();
   };
 
+  const compareRowsByDescriptionFilterRelevance = useCallback(
+    (
+      leftRow: MonthlyExpensesEditableRow,
+      rightRow: MonthlyExpensesEditableRow,
+    ): number => {
+      const normalizedFilterValue = descriptionFilter.trim();
+
+      if (!normalizedFilterValue) {
+        return 0;
+      }
+
+      const normalizedFilterToken = normalizeSearchValue(normalizedFilterValue);
+      const normalizedPrefixToken = normalizedFilterToken.slice(
+        0,
+        Math.min(2, normalizedFilterToken.length),
+      );
+      const normalizedLeftDescription = normalizeSearchValue(leftRow.description);
+      const normalizedRightDescription = normalizeSearchValue(rightRow.description);
+      const leftHasPrefixMatch =
+        normalizedPrefixToken.length > 0 &&
+        normalizedLeftDescription.startsWith(normalizedPrefixToken);
+      const rightHasPrefixMatch =
+        normalizedPrefixToken.length > 0 &&
+        normalizedRightDescription.startsWith(normalizedPrefixToken);
+
+      const leftRank = getFuzzyMatchRank(
+        leftRow.description,
+        normalizedFilterValue,
+      );
+      const rightRank = getFuzzyMatchRank(
+        rightRow.description,
+        normalizedFilterValue,
+      );
+
+      if (!leftRank && !rightRank) {
+        return 0;
+      }
+
+      if (!leftRank && rightRank) {
+        return 1;
+      }
+
+      if (leftRank && !rightRank) {
+        return -1;
+      }
+
+      if (leftHasPrefixMatch !== rightHasPrefixMatch) {
+        return leftHasPrefixMatch ? -1 : 1;
+      }
+
+      if (leftRank.span !== rightRank.span) {
+        return leftRank.span - rightRank.span;
+      }
+
+      if (leftRank.gapCount !== rightRank.gapCount) {
+        return leftRank.gapCount - rightRank.gapCount;
+      }
+
+      if (leftRank.maxGap !== rightRank.maxGap) {
+        return leftRank.maxGap - rightRank.maxGap;
+      }
+
+      if (leftRank.startIndex !== rightRank.startIndex) {
+        return leftRank.startIndex - rightRank.startIndex;
+      }
+
+      if (leftRank.longestRun !== rightRank.longestRun) {
+        return rightRank.longestRun - leftRank.longestRun;
+      }
+
+      return 0;
+    },
+    [descriptionFilter],
+  );
+
   const columns = useMemo<ColumnDef<MonthlyExpensesEditableRow>[]>(
     () => [
       {
@@ -2413,7 +2553,7 @@ export function MonthlyExpensesTable({
           const filterValue = String(
             table.getColumn("description")?.getFilterValue() ?? "",
           );
-          const matchIndices = getExactMatchIndices(description, filterValue);
+          const matchIndices = getFuzzyMatchIndices(description, filterValue);
 
           if (!matchIndices || matchIndices.length === 0) {
             return description;
@@ -2430,7 +2570,7 @@ export function MonthlyExpensesTable({
         filterFn: (row, columnId, filterValue) => {
           const description = String(row.getValue(columnId) ?? "");
           const query = String(filterValue ?? "");
-          const matchesDescriptionFilter = hasExactDescriptionMatch(
+          const matchesDescriptionFilter = hasFuzzyDescriptionMatch(
             description,
             query,
           );
@@ -2445,8 +2585,17 @@ export function MonthlyExpensesTable({
           cellClassName: styles.stickyDescriptionCell,
           label: "Descripción",
         },
-        sortingFn: (rowA, rowB) =>
-          compareValuesKeepingInvalidLast({
+        sortingFn: (rowA, rowB) => {
+          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
+            rowA.original,
+            rowB.original,
+          );
+
+          if (relevanceComparison !== 0) {
+            return relevanceComparison;
+          }
+
+          return compareValuesKeepingInvalidLast({
             compareValidValues: (leftValue, rightValue) =>
               leftValue.localeCompare(rightValue, "es", {
                 sensitivity: "base",
@@ -2454,7 +2603,8 @@ export function MonthlyExpensesTable({
             leftValue: rowA.original.description,
             rightValue: rowB.original.description,
             sortDirection: getSortDirection("description"),
-          }),
+          });
+        },
       },
       {
         accessorKey: "subtotal",
@@ -2488,8 +2638,17 @@ export function MonthlyExpensesTable({
         },
         header: getSortableHeader("Subtotal"),
         meta: { label: "Subtotal" },
-        sortingFn: (rowA, rowB) =>
-          compareValuesKeepingInvalidLast({
+        sortingFn: (rowA, rowB) => {
+          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
+            rowA.original,
+            rowB.original,
+          );
+
+          if (relevanceComparison !== 0) {
+            return relevanceComparison;
+          }
+
+          return compareValuesKeepingInvalidLast({
             compareValidValues: (leftValue, rightValue) => leftValue - rightValue,
             leftValue: getArsComparableAmount({
               exchangeRateSnapshot,
@@ -2502,7 +2661,8 @@ export function MonthlyExpensesTable({
               value: rowB.original.subtotal,
             }),
             sortDirection: getSortDirection("subtotal"),
-          }),
+          });
+        },
       },
       {
         accessorKey: "occurrencesPerMonth",
@@ -2529,13 +2689,23 @@ export function MonthlyExpensesTable({
         },
         header: getSortableHeader("por mes"),
         meta: { label: "por mes" },
-        sortingFn: (rowA, rowB) =>
-          compareValuesKeepingInvalidLast({
+        sortingFn: (rowA, rowB) => {
+          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
+            rowA.original,
+            rowB.original,
+          );
+
+          if (relevanceComparison !== 0) {
+            return relevanceComparison;
+          }
+
+          return compareValuesKeepingInvalidLast({
             compareValidValues: (leftValue, rightValue) => leftValue - rightValue,
             leftValue: Number(rowA.original.occurrencesPerMonth),
             rightValue: Number(rowB.original.occurrencesPerMonth),
             sortDirection: getSortDirection("occurrencesPerMonth"),
-          }),
+          });
+        },
       },
       {
         accessorKey: "total",
@@ -2563,8 +2733,17 @@ export function MonthlyExpensesTable({
         },
         header: getSortableHeader("Total"),
         meta: { label: "Total" },
-        sortingFn: (rowA, rowB) =>
-          compareValuesKeepingInvalidLast({
+        sortingFn: (rowA, rowB) => {
+          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
+            rowA.original,
+            rowB.original,
+          );
+
+          if (relevanceComparison !== 0) {
+            return relevanceComparison;
+          }
+
+          return compareValuesKeepingInvalidLast({
             compareValidValues: (leftValue, rightValue) => leftValue - rightValue,
             leftValue: getArsComparableAmount({
               exchangeRateSnapshot,
@@ -2577,7 +2756,8 @@ export function MonthlyExpensesTable({
               value: rowB.original.total,
             }),
             sortDirection: getSortDirection("total"),
-          }),
+          });
+        },
       },
       {
         accessorKey: "usd",
@@ -2608,6 +2788,15 @@ export function MonthlyExpensesTable({
         header: getSortableHeader("USD"),
         meta: { label: "USD" },
         sortingFn: (rowA, rowB) => {
+          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
+            rowA.original,
+            rowB.original,
+          );
+
+          if (relevanceComparison !== 0) {
+            return relevanceComparison;
+          }
+
           const leftAmount = getConvertedAmountForCurrency({
             currency: "USD",
             exchangeRateSnapshot,
@@ -2697,6 +2886,15 @@ export function MonthlyExpensesTable({
         header: getSortableHeader("Link"),
         meta: { label: "Link" },
         sortingFn: (rowA, rowB) => {
+          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
+            rowA.original,
+            rowB.original,
+          );
+
+          if (relevanceComparison !== 0) {
+            return relevanceComparison;
+          }
+
           const leftPaymentLink = getValidPaymentLinkUrl(rowA.original.paymentLink);
           const rightPaymentLink = getValidPaymentLinkUrl(rowB.original.paymentLink);
 
@@ -2793,6 +2991,15 @@ export function MonthlyExpensesTable({
         header: getSortableHeader("Estado de envío"),
         meta: { label: "Estado de envío" },
         sortingFn: (rowA, rowB) => {
+          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
+            rowA.original,
+            rowB.original,
+          );
+
+          if (relevanceComparison !== 0) {
+            return relevanceComparison;
+          }
+
           const leftStatus = getNormalizedReceiptShareStatus(rowA.original);
           const rightStatus = getNormalizedReceiptShareStatus(rowB.original);
 
@@ -2897,6 +3104,15 @@ export function MonthlyExpensesTable({
         header: getSortableHeader("Enviar"),
         meta: { label: "Enviar" },
         sortingFn: (rowA, rowB) => {
+          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
+            rowA.original,
+            rowB.original,
+          );
+
+          if (relevanceComparison !== 0) {
+            return relevanceComparison;
+          }
+
           const leftLink = getReceiptShareWhatsAppLink(rowA.original);
           const rightLink = getReceiptShareWhatsAppLink(rowB.original);
 
@@ -2951,6 +3167,15 @@ export function MonthlyExpensesTable({
         header: getSortableHeader("Pagos"),
         meta: { label: "Pagos" },
         sortingFn: (rowA, rowB) => {
+          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
+            rowA.original,
+            rowB.original,
+          );
+
+          if (relevanceComparison !== 0) {
+            return relevanceComparison;
+          }
+
           const leftProgress = getPaymentProgress(rowA.original);
           const rightProgress = getPaymentProgress(rowB.original);
 
@@ -3002,9 +3227,21 @@ export function MonthlyExpensesTable({
         },
         header: getSortableHeader("Registro de pagos"),
         meta: { label: "Registro de pagos" },
-        sortingFn: (rowA, rowB) =>
-          (rowA.original.paymentRecords ?? []).length -
-          (rowB.original.paymentRecords ?? []).length,
+        sortingFn: (rowA, rowB) => {
+          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
+            rowA.original,
+            rowB.original,
+          );
+
+          if (relevanceComparison !== 0) {
+            return relevanceComparison;
+          }
+
+          return (
+            (rowA.original.paymentRecords ?? []).length -
+            (rowB.original.paymentRecords ?? []).length
+          );
+        },
       },
       {
         accessorKey: "loanProgress",
@@ -3038,6 +3275,15 @@ export function MonthlyExpensesTable({
         ),
         meta: { label: "Deuda / cuotas" },
         sortingFn: (rowA, rowB) => {
+          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
+            rowA.original,
+            rowB.original,
+          );
+
+          if (relevanceComparison !== 0) {
+            return relevanceComparison;
+          }
+
           const leftValue = rowA.original.isLoan
             ? getLoanSortValue(rowA.original, loanSortMode)
             : null;
@@ -3073,8 +3319,17 @@ export function MonthlyExpensesTable({
         },
         header: getSortableHeader("Prestamista"),
         meta: { label: "Prestamista" },
-        sortingFn: (rowA, rowB) =>
-          compareValuesKeepingInvalidLast({
+        sortingFn: (rowA, rowB) => {
+          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
+            rowA.original,
+            rowB.original,
+          );
+
+          if (relevanceComparison !== 0) {
+            return relevanceComparison;
+          }
+
+          return compareValuesKeepingInvalidLast({
             compareValidValues: (leftValue, rightValue) =>
               leftValue.localeCompare(rightValue, "es", {
                 sensitivity: "base",
@@ -3082,7 +3337,8 @@ export function MonthlyExpensesTable({
             leftValue: rowA.original.lenderName.trim(),
             rightValue: rowB.original.lenderName.trim(),
             sortDirection: getSortDirection("lenderName"),
-          }),
+          });
+        },
       },
       {
         id: LOAN_INSTALLMENT_START_COLUMN_ID,
@@ -3091,6 +3347,15 @@ export function MonthlyExpensesTable({
         header: getSortableHeader("Inicio cuota"),
         meta: { label: "Inicio cuota" },
         sortingFn: (rowA, rowB) => {
+          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
+            rowA.original,
+            rowB.original,
+          );
+
+          if (relevanceComparison !== 0) {
+            return relevanceComparison;
+          }
+
           const leftValue = getYearMonthSortValue(rowA.original.startMonth);
           const rightValue = getYearMonthSortValue(rowB.original.startMonth);
 
@@ -3120,6 +3385,15 @@ export function MonthlyExpensesTable({
         header: getSortableHeader("Fin cuota"),
         meta: { label: "Fin cuota" },
         sortingFn: (rowA, rowB) => {
+          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
+            rowA.original,
+            rowB.original,
+          );
+
+          if (relevanceComparison !== 0) {
+            return relevanceComparison;
+          }
+
           const leftValue = getYearMonthSortValue(rowA.original.loanEndMonth);
           const rightValue = getYearMonthSortValue(rowB.original.loanEndMonth);
 
@@ -3202,6 +3476,7 @@ export function MonthlyExpensesTable({
       onEditExpense,
       onRegisterPaymentRecord,
       onUpdateReceiptShareStatus,
+      compareRowsByDescriptionFilterRelevance,
       handleOpenSubtotalDialog,
       handleOpenOccurrencesDialog,
       handleOpenReceiptShareDialog,
@@ -3413,6 +3688,12 @@ export function MonthlyExpensesTable({
               }
               excludeFilterLabel="Excluir resultados"
               excludeFilterPlaceholder="Excluir gastos por descripción"
+              excludeFilterRowsCountByValue={
+                excludeFilterMetrics.excludeFilterRowsCountByValue
+              }
+              excludeFilterUniqueRowsCount={
+                excludeFilterMetrics.excludeFilterUniqueRowsCount
+              }
               excludeFilterValues={excludedDescriptionFilters}
               filterColumnId="description"
               filterLabel="Filtrar gastos"

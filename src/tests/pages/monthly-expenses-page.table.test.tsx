@@ -656,6 +656,42 @@ registerMonthlyExpensesPageDefaultHooks({
     ]);
   });
 
+  it("keeps active subtotal sorting when description relevance ties", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Aaa",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 200,
+              total: 200,
+            },
+            {
+              currency: "ARS",
+              description: "Aab",
+              id: "expense-2",
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "aa");
+    await user.click(screen.getByRole("button", { name: "Ordenar Subtotal" }));
+
+    expect(getMonthlyExpensesDescriptionsOrder()).toEqual(["Aab", "Aaa"]);
+  });
+
   it("sorts total numerically in ascending and descending order", async () => {
     const user = userEvent.setup();
 

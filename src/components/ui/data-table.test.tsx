@@ -105,11 +105,151 @@ describe("DataTable", () => {
       screen.queryByText("Esa exclusión ya está activa."),
     ).not.toBeInTheDocument();
 
+    await user.click(
+      screen.getByRole("button", { name: "Limpiar filtros excluidos" }),
+    );
+
+    expect(screen.queryByText("− Agua")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Filtros de exclusión activos"),
+    ).not.toBeInTheDocument();
+
+    await user.type(exclusionInput, "Agua{enter}");
+
     await user.click(screen.getByRole("button", { name: "Quitar exclusión Agua" }));
 
     expect(screen.queryByText("− Agua")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Filtros de exclusión activos"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders per-tag excluded rows counters and unique excluded rows summary", () => {
+    const rows: TableRow[] = [
+      { label: "Préstamo auto", paid: false },
+      { label: "Préstamo tarjeta", paid: true },
+    ];
+    const columns: ColumnDef<TableRow>[] = [
+      {
+        accessorKey: "label",
+        header: "Estado",
+      },
+    ];
+
+    render(
+      <DataTable
+        columns={columns}
+        data={rows}
+        emptyMessage="Sin datos"
+        excludeFilterRowsCountByValue={{
+          auto: 2,
+          tarjeta: 2,
+        }}
+        excludeFilterUniqueRowsCount={3}
+        excludeFilterValues={["auto", "tarjeta"]}
+        filterColumnId="label"
+        showExcludeFilterToggle
+      />,
+    );
+
+    expect(
+      screen.getByLabelText("Filas excluidas por auto: 2"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Filas excluidas por tarjeta: 2"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Total de filas excluidas únicas: 3"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Total excluidas:")).toBeInTheDocument();
+  });
+
+  it("clears all exclusions from the summary badge action", async () => {
+    const user = userEvent.setup();
+    const rows: TableRow[] = [
+      { label: "Préstamo auto", paid: false },
+      { label: "Préstamo tarjeta", paid: true },
+    ];
+    const columns: ColumnDef<TableRow>[] = [
+      {
+        accessorKey: "label",
+        header: "Estado",
+      },
+    ];
+
+    function DataTableWithSummaryAndExclusions() {
+      const [excludeFilterValues, setExcludeFilterValues] = useState<string[]>([
+        "auto",
+        "tarjeta",
+      ]);
+
+      return (
+        <DataTable
+          columns={columns}
+          data={rows}
+          emptyMessage="Sin datos"
+          excludeFilterRowsCountByValue={{
+            auto: 2,
+            tarjeta: 2,
+          }}
+          excludeFilterUniqueRowsCount={3}
+          excludeFilterValues={excludeFilterValues}
+          filterColumnId="label"
+          onExcludeFilterValuesChange={setExcludeFilterValues}
+          showExcludeFilterToggle
+        />
+      );
+    }
+
+    render(<DataTableWithSummaryAndExclusions />);
+
+    expect(screen.getByText("− auto")).toBeInTheDocument();
+    expect(screen.getByText("− tarjeta")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Total de filas excluidas únicas: 3"),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Quitar todas las exclusiones" }),
+    );
+
+    expect(screen.queryByText("− auto")).not.toBeInTheDocument();
+    expect(screen.queryByText("− tarjeta")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Total de filas excluidas únicas: 3"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not render per-tag excluded rows counters when metrics are not provided", () => {
+    const rows: TableRow[] = [
+      { label: "Préstamo auto", paid: false },
+      { label: "Préstamo tarjeta", paid: true },
+    ];
+    const columns: ColumnDef<TableRow>[] = [
+      {
+        accessorKey: "label",
+        header: "Estado",
+      },
+    ];
+
+    render(
+      <DataTable
+        columns={columns}
+        data={rows}
+        emptyMessage="Sin datos"
+        excludeFilterValues={["auto", "tarjeta"]}
+        filterColumnId="label"
+        showExcludeFilterToggle
+      />,
+    );
+
+    expect(screen.getByText("− auto")).toBeInTheDocument();
+    expect(screen.getByText("− tarjeta")).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(/Filas excluidas por auto:/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(/Filas excluidas por tarjeta:/),
     ).not.toBeInTheDocument();
   });
 });

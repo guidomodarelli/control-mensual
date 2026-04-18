@@ -15,7 +15,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown, Ellipsis, X } from "lucide-react";
+import { ChevronDown, Ellipsis, Eraser, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -59,6 +59,8 @@ interface DataTableProps<TData, TValue> {
   excludeFilterPlaceholder?: string;
   excludeFilterLabel?: string;
   excludeFilterToggleLabel?: string;
+  excludeFilterRowsCountByValue?: Record<string, number>;
+  excludeFilterUniqueRowsCount?: number;
   showColumnVisibilityToggle?: boolean;
   columnVisibilityButtonLabel?: string;
   columnVisibilityMenuLabel?: string;
@@ -79,6 +81,9 @@ const ACTIVE_EXCLUSIONS_SR_LABEL = "Filtros de exclusión activos";
 const HIDE_EXCLUDE_FILTERS_ARIA_LABEL = "Ocultar filtros de exclusión";
 const EMPTY_EXCLUDE_FILTER_ERROR_MESSAGE = "Ingresá un texto para excluir.";
 const DUPLICATE_EXCLUDE_FILTER_ERROR_MESSAGE = "Esa exclusión ya está activa.";
+const EXCLUDED_ROWS_SUMMARY_LABEL = "Total excluidas";
+const CLEAR_ALL_EXCLUSIONS_ARIA_LABEL = "Quitar todas las exclusiones";
+const CLEAR_ALL_EXCLUSIONS_FROM_INPUT_ARIA_LABEL = "Limpiar filtros excluidos";
 
 function normalizeFilterToken(value: string): string {
   return value
@@ -108,6 +113,8 @@ export function DataTable<TData, TValue>({
   excludeFilterPlaceholder = "Excluir por descripción",
   excludeFilterLabel = "Filtro de exclusión",
   excludeFilterToggleLabel = "Mostrar filtros de exclusión",
+  excludeFilterRowsCountByValue,
+  excludeFilterUniqueRowsCount,
   showColumnVisibilityToggle = false,
   columnVisibilityButtonLabel = "Columnas",
   columnVisibilityMenuLabel = "Mostrar columnas",
@@ -192,6 +199,12 @@ export function DataTable<TData, TValue>({
     },
     [handleExcludeFilterValuesChange, resolvedExcludeFilterValues],
   );
+
+  const handleClearAllExcludeFilters = React.useCallback(() => {
+    handleExcludeFilterValuesChange([]);
+    setExcludeFilterInputValue("");
+    setExcludeFilterErrorMessage(null);
+  }, [handleExcludeFilterValuesChange]);
 
   const handleSortingChange = React.useCallback(
     (updater: SortingState | ((previousState: SortingState) => SortingState)) => {
@@ -394,28 +407,41 @@ export function DataTable<TData, TValue>({
                 </div>
                 {showExcludeFilterToggle && isExcludeFilterInputVisible ? (
                   <div className="grid gap-1">
-                    <Input
-                      aria-invalid={excludeFilterErrorMessage != null}
-                      aria-label={excludeFilterLabel}
-                      onChange={(event) => {
-                        setExcludeFilterInputValue(event.target.value);
+                    <div className="flex items-center gap-1">
+                      <Input
+                        aria-invalid={excludeFilterErrorMessage != null}
+                        aria-label={excludeFilterLabel}
+                        onChange={(event) => {
+                          setExcludeFilterInputValue(event.target.value);
 
-                        if (excludeFilterErrorMessage != null) {
-                          setExcludeFilterErrorMessage(null);
-                        }
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Enter") {
-                          return;
-                        }
+                          if (excludeFilterErrorMessage != null) {
+                            setExcludeFilterErrorMessage(null);
+                          }
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Enter") {
+                            return;
+                          }
 
-                        event.preventDefault();
-                        addExcludeFilterValue();
-                      }}
-                      placeholder={excludeFilterPlaceholder}
-                      type="text"
-                      value={excludeFilterInputValue}
-                    />
+                          event.preventDefault();
+                          addExcludeFilterValue();
+                        }}
+                        placeholder={excludeFilterPlaceholder}
+                        type="text"
+                        value={excludeFilterInputValue}
+                      />
+                      <Button
+                        aria-label={CLEAR_ALL_EXCLUSIONS_FROM_INPUT_ARIA_LABEL}
+                        className="shrink-0"
+                        disabled={!hasActiveExcludeFilterValues}
+                        onClick={handleClearAllExcludeFilters}
+                        size="icon-xs"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <Eraser aria-hidden="true" />
+                      </Button>
+                    </div>
                     {excludeFilterErrorMessage ? (
                       <p aria-live="polite" className="text-sm text-destructive">
                         {excludeFilterErrorMessage}
@@ -425,13 +451,45 @@ export function DataTable<TData, TValue>({
                 ) : null}
                 {showExcludeFilterToggle && resolvedExcludeFilterValues.length > 0 ? (
                   <div className="flex flex-wrap items-center gap-2">
-                    {resolvedExcludeFilterValues.map((excludeFilterValue) => (
+                    {excludeFilterUniqueRowsCount != null ? (
+                      <Badge
+                        aria-label={`Total de filas excluidas únicas: ${excludeFilterUniqueRowsCount}`}
+                        className="inline-flex h-6 items-center gap-1.5 px-2.5"
+                        variant="destructive"
+                      >
+                        <span>{`${EXCLUDED_ROWS_SUMMARY_LABEL}:`}</span>
+                        <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-destructive/20 px-1.5 text-[10px] leading-4 font-semibold">
+                          {excludeFilterUniqueRowsCount}
+                        </span>
+                        <button
+                          aria-label={CLEAR_ALL_EXCLUSIONS_ARIA_LABEL}
+                          className="inline-flex size-4 items-center justify-center rounded-sm text-destructive transition-colors hover:bg-destructive/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
+                          onClick={handleClearAllExcludeFilters}
+                          type="button"
+                        >
+                          <X aria-hidden="true" className="size-3" />
+                        </button>
+                      </Badge>
+                    ) : null}
+                    {resolvedExcludeFilterValues.map((excludeFilterValue) => {
+                      const excludedRowsCount =
+                        excludeFilterRowsCountByValue?.[excludeFilterValue];
+
+                      return (
                       <Badge
                         className="inline-flex h-6 items-center gap-1.5 px-2.5"
                         key={excludeFilterValue}
                         variant="destructive"
                       >
                         <span>{`− ${excludeFilterValue}`}</span>
+                        {excludedRowsCount != null ? (
+                          <span
+                            aria-label={`Filas excluidas por ${excludeFilterValue}: ${excludedRowsCount}`}
+                            className="inline-flex min-w-5 items-center justify-center rounded-full bg-destructive/20 px-1.5 text-[10px] leading-4 font-semibold"
+                          >
+                            {excludedRowsCount}
+                          </span>
+                        ) : null}
                         <button
                           aria-label={`Quitar exclusión ${excludeFilterValue}`}
                           className="inline-flex size-4 items-center justify-center rounded-sm text-destructive transition-colors hover:bg-destructive/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
@@ -441,7 +499,8 @@ export function DataTable<TData, TValue>({
                           <X aria-hidden="true" className="size-3" />
                         </button>
                       </Badge>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : null}
                 {shouldShowSortingBadge ? (
