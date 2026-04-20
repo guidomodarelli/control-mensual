@@ -2270,7 +2270,7 @@ registerMonthlyExpensesPageDefaultHooks({
         {
           currency: "ARS",
           description: "Internet",
-          id: expect.any(String),
+          id: "expense-source-1",
           occurrencesPerMonth: 1,
           paymentLink: null,
           subtotal: 12000,
@@ -2434,7 +2434,7 @@ registerMonthlyExpensesPageDefaultHooks({
             monthlyFolderId: "",
             monthlyFolderViewUrl: "",
           },
-          id: expect.any(String),
+          id: "expense-source-1",
           occurrencesPerMonth: 1,
           paymentLink: null,
           subtotal: 12000,
@@ -2567,7 +2567,7 @@ registerMonthlyExpensesPageDefaultHooks({
         "https://drive.google.com/drive/folders/all-folder-1",
       currency: "USD",
       description: "Tarjeta",
-      id: expect.any(String),
+      id: "expense-source-1",
       installmentCount: "12",
       isLoan: true,
       lenderId: "lender-1",
@@ -2593,7 +2593,6 @@ registerMonthlyExpensesPageDefaultHooks({
       subtotal: "10",
       total: "30.00",
     });
-    expect(copiedRows[0]?.id).not.toBe("expense-source-1");
     expect(copiedRows[0]?.allReceiptsFolderStatus).toBeUndefined();
     expect(copiedRows[0]?.monthlyFolderStatus).toBeUndefined();
     expect(copiedRows[0]?.receipts).toEqual([]);

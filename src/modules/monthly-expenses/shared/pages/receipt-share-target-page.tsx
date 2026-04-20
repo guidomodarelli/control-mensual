@@ -43,6 +43,7 @@ import {
   buildPayloadFromFile,
   isIosShareTargetUnsupported,
 } from "./receipt-share-target-support";
+import { createMonthlyExpenseId } from "../utils/monthly-expenses-id";
 import styles from "./receipt-share-target-page.module.scss";
 
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -66,11 +67,7 @@ type LoadSharedReceiptState =
   | { message: string; status: "error" };
 
 function createExpenseId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return `expense-${Math.random().toString(36).slice(2, 10)}`;
+  return createMonthlyExpenseId();
 }
 
 function getCoveredPaymentsByReceipts(item: MonthlyExpenseItemResult): number {

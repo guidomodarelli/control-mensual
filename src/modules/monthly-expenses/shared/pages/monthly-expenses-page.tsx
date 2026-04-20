@@ -73,6 +73,7 @@ import {
   uploadMonthlyExpenseReceiptViaApi,
 } from "@/modules/monthly-expenses/infrastructure/api/monthly-expenses-receipts-api";
 import type { StorageBootstrapResult } from "@/modules/storage/application/results/storage-bootstrap";
+import { createMonthlyExpenseId } from "../utils/monthly-expenses-id";
 
 export type MonthlyExpensesPageProps = {
   bootstrap: StorageBootstrapResult;
@@ -281,11 +282,7 @@ function getPageHeadingByTab(tab: MonthlyExpensesTabKey): string {
 }
 
 function createExpenseRowId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return `expense-${Math.random().toString(36).slice(2, 10)}`;
+  return createMonthlyExpenseId();
 }
 
 function createLenderId(): string {
@@ -937,7 +934,6 @@ export function copyMonthlyExpenseTemplatesToMonth(
     rows.map((row) => ({
       ...row,
       allReceiptsFolderStatus: undefined,
-      id: createExpenseRowId(),
       manualCoveredPayments: "0",
       monthlyFolderId: "",
       monthlyFolderStatus: undefined,

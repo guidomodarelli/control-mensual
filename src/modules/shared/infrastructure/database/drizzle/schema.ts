@@ -1,4 +1,10 @@
-import { primaryKey, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+  integer,
+  primaryKey,
+  real,
+  sqliteTable,
+  text,
+} from "drizzle-orm/sqlite-core";
 
 export const monthlyExpensesDocumentsTable = sqliteTable(
   "monthly_expenses_documents",
@@ -11,6 +17,100 @@ export const monthlyExpensesDocumentsTable = sqliteTable(
   (table) => [
     primaryKey({
       columns: [table.userSubject, table.month],
+    }),
+  ],
+);
+
+export const expensesTable = sqliteTable(
+  "expenses",
+  {
+    allReceiptsFolderId: text("all_receipts_folder_id"),
+    allReceiptsFolderViewUrl: text("all_receipts_folder_view_url"),
+    createdAtIso: text("created_at_iso").notNull(),
+    currency: text("currency").notNull(),
+    description: text("description").notNull(),
+    expenseId: text("expense_id").notNull(),
+    loanInstallmentCount: integer("loan_installment_count"),
+    loanLenderId: text("loan_lender_id"),
+    loanLenderName: text("loan_lender_name"),
+    loanStartMonth: text("loan_start_month"),
+    paymentLink: text("payment_link"),
+    receiptShareMessage: text("receipt_share_message"),
+    receiptSharePhoneDigits: text("receipt_share_phone_digits"),
+    requiresReceiptShare: integer("requires_receipt_share").notNull().default(0),
+    updatedAtIso: text("updated_at_iso").notNull(),
+    userSubject: text("user_subject").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.userSubject, table.expenseId],
+    }),
+  ],
+);
+
+export const expenseMonthsTable = sqliteTable(
+  "expense_months",
+  {
+    exchangeRateMonth: text("exchange_rate_month"),
+    exchangeRateBlueRate: real("exchange_rate_blue_rate"),
+    exchangeRateOfficialRate: real("exchange_rate_official_rate"),
+    exchangeRateSolidarityRate: real("exchange_rate_solidarity_rate"),
+    expenseId: text("expense_id").notNull(),
+    isPaid: integer("is_paid").notNull().default(0),
+    manualCoveredPayments: integer("manual_covered_payments").notNull().default(0),
+    month: text("month").notNull(),
+    monthlyFolderId: text("monthly_folder_id"),
+    monthlyFolderViewUrl: text("monthly_folder_view_url"),
+    occurrencesPerMonth: integer("occurrences_per_month").notNull(),
+    receiptShareStatus: text("receipt_share_status"),
+    subtotal: real("subtotal").notNull(),
+    updatedAtIso: text("updated_at_iso").notNull(),
+    userSubject: text("user_subject").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.userSubject, table.expenseId, table.month],
+    }),
+  ],
+);
+
+export const expenseReceiptsTable = sqliteTable(
+  "expense_receipts",
+  {
+    allReceiptsFolderId: text("all_receipts_folder_id").notNull(),
+    allReceiptsFolderViewUrl: text("all_receipts_folder_view_url").notNull(),
+    coveredPayments: integer("covered_payments").notNull(),
+    expenseId: text("expense_id").notNull(),
+    fileId: text("file_id").notNull(),
+    fileName: text("file_name").notNull(),
+    fileViewUrl: text("file_view_url").notNull(),
+    month: text("month").notNull(),
+    monthlyFolderId: text("monthly_folder_id").notNull(),
+    monthlyFolderViewUrl: text("monthly_folder_view_url").notNull(),
+    registeredAtIso: text("registered_at_iso"),
+    userSubject: text("user_subject").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.userSubject, table.expenseId, table.month, table.fileId],
+    }),
+  ],
+);
+
+export const expensePaymentRecordsTable = sqliteTable(
+  "expense_payment_records",
+  {
+    coveredPayments: integer("covered_payments").notNull(),
+    expenseId: text("expense_id").notNull(),
+    month: text("month").notNull(),
+    paymentRecordId: text("payment_record_id").notNull(),
+    receiptFileId: text("receipt_file_id"),
+    registeredAtIso: text("registered_at_iso"),
+    userSubject: text("user_subject").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.userSubject, table.expenseId, table.month, table.paymentRecordId],
     }),
   ],
 );
