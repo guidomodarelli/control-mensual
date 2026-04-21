@@ -71,6 +71,7 @@ function renderMonthlyExpensesTable(rows: MonthlyExpensesEditableRow[]) {
         onDeleteMonthlyFolderReference={jest.fn()}
         onDeletePaymentLink={jest.fn()}
         onDeleteReceipt={jest.fn()}
+        onDeleteManualPaymentRecord={jest.fn()}
         onEditExpense={jest.fn()}
         onEditManualPaymentRecord={jest.fn()}
         onEditReceiptCoverage={jest.fn()}

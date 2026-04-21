@@ -11,15 +11,20 @@ repos:
 
   - repo: local
     hooks:
-      - id: eslint-staged
-        name: eslint (staged js/ts)
-        entry: npx eslint --max-warnings=0
+      - id: lint
+        name: lint (pre-commit)
+        entry: npm run lint
         language: system
-        types_or: [javascript, jsx, ts, tsx]
+        pass_filenames: false
 
       - id: typecheck
-        name: typecheck (pre-push)
+        name: typecheck (pre-commit)
         entry: npm run typecheck
         language: system
         pass_filenames: false
-        stages: [pre-push]
+
+      - id: test
+        name: test (pre-commit)
+        entry: npm run test
+        language: system
+        pass_filenames: false

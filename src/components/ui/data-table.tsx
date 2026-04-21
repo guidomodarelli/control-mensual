@@ -1191,18 +1191,22 @@ export function DataTable<TData, TValue>({
                           onChange={(event) => {
                             const nextValue = event.target.value;
 
-                            setAdvancedFiltersDraftByColumn((previousState) => ({
-                              ...previousState,
-                              [advancedFilterConfig.columnId]: {
-                                kind: "numberRange",
-                                max:
-                                  previousState[advancedFilterConfig.columnId]?.kind ===
-                                  "numberRange"
-                                    ? previousState[advancedFilterConfig.columnId].max
-                                    : "",
-                                min: nextValue,
-                              },
-                            }));
+                            setAdvancedFiltersDraftByColumn((previousState) => {
+                              const previousDraftValue =
+                                previousState[advancedFilterConfig.columnId];
+
+                              return {
+                                ...previousState,
+                                [advancedFilterConfig.columnId]: {
+                                  kind: "numberRange",
+                                  max:
+                                    previousDraftValue?.kind === "numberRange"
+                                      ? previousDraftValue.max
+                                      : "",
+                                  min: nextValue,
+                                },
+                              };
+                            });
                           }}
                           placeholder={ADVANCED_FILTERS_NUMBER_MIN_LABEL}
                           type="number"
@@ -1213,18 +1217,22 @@ export function DataTable<TData, TValue>({
                           onChange={(event) => {
                             const nextValue = event.target.value;
 
-                            setAdvancedFiltersDraftByColumn((previousState) => ({
-                              ...previousState,
-                              [advancedFilterConfig.columnId]: {
-                                kind: "numberRange",
-                                max: nextValue,
-                                min:
-                                  previousState[advancedFilterConfig.columnId]?.kind ===
-                                  "numberRange"
-                                    ? previousState[advancedFilterConfig.columnId].min
-                                    : "",
-                              },
-                            }));
+                            setAdvancedFiltersDraftByColumn((previousState) => {
+                              const previousDraftValue =
+                                previousState[advancedFilterConfig.columnId];
+
+                              return {
+                                ...previousState,
+                                [advancedFilterConfig.columnId]: {
+                                  kind: "numberRange",
+                                  max: nextValue,
+                                  min:
+                                    previousDraftValue?.kind === "numberRange"
+                                      ? previousDraftValue.min
+                                      : "",
+                                },
+                              };
+                            });
                           }}
                           placeholder={ADVANCED_FILTERS_NUMBER_MAX_LABEL}
                           type="number"

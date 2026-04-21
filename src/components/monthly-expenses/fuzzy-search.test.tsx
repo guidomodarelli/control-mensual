@@ -38,7 +38,12 @@ describe("renderHighlightedText", () => {
 
     render(
       <div>
-        {renderHighlightedText("Préstamo tarjeta", matchIndices, "exact-highlight")}
+        {renderHighlightedText(
+          "Préstamo tarjeta",
+          matchIndices,
+          "exact-highlight",
+          "exact-match",
+        )}
       </div>,
     );
 

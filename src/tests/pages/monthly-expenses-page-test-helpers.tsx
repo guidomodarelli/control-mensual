@@ -1,4 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
+import type { useRouter } from "next/router";
+import type { useSession } from "next-auth/react";
 import type { ReactElement } from "react";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -287,7 +289,7 @@ export function getPersistedTablePreferences():
 }
 
 type RegisterDefaultHooksOptions = {
-  createDefaultRouter: () => unknown;
+  createDefaultRouter: () => ReturnType<typeof useRouter>;
   mockedSignIn: jest.Mock;
   mockedSignOut: jest.Mock;
   mockedToast: jest.Mock & {
@@ -297,12 +299,8 @@ type RegisterDefaultHooksOptions = {
     success: jest.Mock;
     warning: jest.Mock;
   };
-  mockedUseRouter: {
-    mockReturnValue: (value: unknown) => unknown;
-  };
-  mockedUseSession: {
-    mockReturnValue: (value: unknown) => unknown;
-  };
+  mockedUseRouter: jest.MockedFunction<typeof useRouter>;
+  mockedUseSession: jest.MockedFunction<typeof useSession>;
   originalFetch: typeof fetch;
 };
 
