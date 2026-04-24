@@ -64,6 +64,7 @@ export type ExpenseEditableFieldName =
   | "currency"
   | "description"
   | "installmentCount"
+  | "loanDirection"
   | "manualCoveredPayments"
   | "occurrencesPerMonth"
   | "receiptShareMessage"
@@ -99,7 +100,7 @@ type ExpenseSheetContentProps = Omit<ExpenseSheetProps, "draft"> & {
 
 type ExpenseSheetFormFieldName = Exclude<
   ExpenseEditableFieldName,
-  "manualCoveredPayments"
+  "loanDirection" | "manualCoveredPayments"
 >;
 type ExpenseFieldErrorMap = Partial<Record<ExpenseSheetFormFieldName, string>>;
 type ExpenseSheetFormValues = Record<ExpenseSheetFormFieldName, string>;
@@ -246,7 +247,7 @@ function ExpenseSheetContent({
       ? "Completá y guardá este compromiso mensual."
       : "Editá y guardá los cambios de este compromiso.";
   const loanHelpMessage =
-    "Marcá esta opción si el compromiso corresponde a una deuda.";
+    "Marcá esta opción si el compromiso corresponde a una deuda o a dinero que te deben.";
   const hasPendingChanges = changedFields.size > 0;
   const currencyPrefix = draft.currency === "USD" ? "US$" : "$";
   const totalFormulaSubtotalAmount =
@@ -570,8 +571,34 @@ function ExpenseSheetContent({
                 {draft.isLoan ? (
                   <>
                     <div className={styles.fieldGroup}>
+                      <Label htmlFor="expense-loan-direction">
+                        {getFieldLabel(
+                          "Dirección",
+                          changedFields.has("loanDirection"),
+                        )}
+                      </Label>
+                      <Select
+                        onValueChange={(value) =>
+                          onFieldChange("loanDirection", value)
+                        }
+                        value={draft.loanDirection ?? "payable"}
+                      >
+                        <SelectTrigger
+                          aria-label="Dirección del préstamo"
+                          id="expense-loan-direction"
+                        >
+                          <SelectValue placeholder="Dirección del préstamo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="payable">Yo debo</SelectItem>
+                          <SelectItem value="receivable">Me deben</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className={styles.fieldGroup}>
                       <Label>
-                        {getFieldLabel("Prestamista", changedFields.has("lender"))}
+                        {getFieldLabel("Contraparte", changedFields.has("lender"))}
                       </Label>
                       <div className={styles.fieldControlWrapper}>
                         <LenderPicker

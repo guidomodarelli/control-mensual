@@ -117,10 +117,12 @@ import {
 import styles from "./monthly-expenses-table.module.scss";
 
 type MonthlyExpenseCurrency = "ARS" | "USD";
+export type MonthlyExpenseLoanDirection = "payable" | "receivable";
 type MonthlyExpenseReceiptShareStatus = "pending" | "sent";
 const YEAR_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
 type LoanSortMode = "paidInstallments" | "remainingInstallments" | "totalInstallments";
 const DEFAULT_LOAN_SORT_MODE: LoanSortMode = "paidInstallments";
+const LOAN_DIRECTION_COLUMN_ID = "loanDirection";
 const LOAN_SORT_COLUMN_ID = "loanProgress";
 const LOAN_INSTALLMENT_START_COLUMN_ID = "loanInstallmentStart";
 const LOAN_INSTALLMENT_END_COLUMN_ID = "loanInstallmentEnd";
@@ -150,6 +152,7 @@ const SORTABLE_COLUMN_IDS = new Set([
   "lenderName",
   LOAN_INSTALLMENT_START_COLUMN_ID,
   LOAN_INSTALLMENT_END_COLUMN_ID,
+  LOAN_DIRECTION_COLUMN_ID,
 ]);
 const PERSISTABLE_COLUMN_VISIBILITY_IDS = new Set([
   "paymentsProgress",
@@ -165,6 +168,7 @@ const PERSISTABLE_COLUMN_VISIBILITY_IDS = new Set([
   "lenderName",
   LOAN_INSTALLMENT_START_COLUMN_ID,
   LOAN_INSTALLMENT_END_COLUMN_ID,
+  LOAN_DIRECTION_COLUMN_ID,
 ]);
 const LOAN_SORT_OPTIONS: Array<{ label: string; value: LoanSortMode }> = [
   {
@@ -282,6 +286,25 @@ const MONTHLY_EXPENSES_ADVANCED_FILTERS_CONFIG: DataTableAdvancedFilterConfig[] 
     columnId: LOAN_INSTALLMENT_END_COLUMN_ID,
     label: "Fin cuota",
     type: "presence",
+  },
+  {
+    columnId: LOAN_DIRECTION_COLUMN_ID,
+    enumOptions: [
+      {
+        label: "Yo debo",
+        value: "payable",
+      },
+      {
+        label: "Me deben",
+        value: "receivable",
+      },
+      {
+        label: "Sin deuda/préstamo",
+        value: "none",
+      },
+    ],
+    label: "Dirección",
+    type: "enum",
   },
 ];
 
@@ -902,6 +925,7 @@ export interface MonthlyExpensesEditableRow {
   isLoan: boolean;
   lenderId: string;
   lenderName: string;
+  loanDirection?: MonthlyExpenseLoanDirection;
   loanEndMonth: string;
   loanPaidInstallments: number | null;
   loanProgress: string;
@@ -1420,6 +1444,22 @@ function formatYearMonth(value: string): string {
   }
 
   return `${parsedValue.month}/${parsedValue.year}`;
+}
+
+function getLoanDirectionLabel(
+  direction: MonthlyExpenseLoanDirection,
+): string {
+  return direction === "payable" ? "Yo debo" : "Me deben";
+}
+
+function getLoanDirectionSortValue(
+  row: MonthlyExpensesEditableRow,
+): string | null {
+  if (!row.isLoan) {
+    return null;
+  }
+
+  return row.loanDirection ?? "payable";
 }
 
 function getYearMonthSortValue(value: string): number | null {
@@ -3709,6 +3749,50 @@ export function MonthlyExpensesTable({
             leftValue,
             rightValue,
             sortDirection: loanInstallmentEndSortDirection,
+          });
+        },
+      },
+      {
+        id: LOAN_DIRECTION_COLUMN_ID,
+        accessorFn: (row) => getLoanDirectionSortValue(row),
+        cell: ({ row }) => {
+          if (!row.original.isLoan) {
+            return "-";
+          }
+
+          return (
+            <Badge variant="outline">
+              {getLoanDirectionLabel(row.original.loanDirection ?? "payable")}
+            </Badge>
+          );
+        },
+        filterFn: (row, _columnId, filterValue) =>
+          matchesAdvancedEnumFilter(
+            filterValue,
+            row.original.isLoan
+              ? row.original.loanDirection ?? "payable"
+              : "none",
+          ),
+        header: getSortableHeader("Dirección"),
+        meta: { label: "Dirección" },
+        sortingFn: (rowA, rowB) => {
+          const relevanceComparison = compareRowsByDescriptionFilterRelevance(
+            rowA.original,
+            rowB.original,
+          );
+
+          if (relevanceComparison !== 0) {
+            return relevanceComparison;
+          }
+
+          return compareValuesKeepingInvalidLast({
+            compareValidValues: (leftValue, rightValue) =>
+              leftValue.localeCompare(rightValue, "es", {
+                sensitivity: "base",
+              }),
+            leftValue: getLoanDirectionSortValue(rowA.original),
+            rightValue: getLoanDirectionSortValue(rowB.original),
+            sortDirection: getSortDirection(LOAN_DIRECTION_COLUMN_ID),
           });
         },
       },

@@ -110,6 +110,7 @@ function normalizeExpenseItemsForSave(
     ...(item.loan
       ? {
           loan: {
+            direction: item.loan.direction ?? "payable",
             installmentCount: item.loan.installmentCount,
             ...(item.loan.lenderId ? { lenderId: item.loan.lenderId } : {}),
             ...(item.loan.lenderName ? { lenderName: item.loan.lenderName } : {}),

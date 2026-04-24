@@ -43,6 +43,13 @@
       "when": 1776985123194,
       "tag": "0005_smiling_saracen",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1776996098127,
+      "tag": "0006_light_lenny_balinger",
+      "breakpoints": true
     }
   ]
 }

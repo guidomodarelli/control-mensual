@@ -33,6 +33,7 @@ export const expensesTable = sqliteTable(
     currency: text("currency").notNull(),
     description: text("description").notNull(),
     expenseId: text("expense_id").notNull(),
+    loanDirection: text("loan_direction").notNull().default("payable"),
     loanInstallmentCount: integer("loan_installment_count"),
     loanLenderId: text("loan_lender_id"),
     loanLenderName: text("loan_lender_name"),

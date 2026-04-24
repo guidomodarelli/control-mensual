@@ -201,7 +201,10 @@ describe("toSerializableMonthlyExpensesPageProps", () => {
         summary: {
           activeLoanCount: 0,
           lenderCount: 0,
-          remainingAmount: 0,
+          netRemainingAmount: 0,
+        payableRemainingAmount: 0,
+        receivableRemainingAmount: 0,
+        remainingAmount: 0,
           trackedLoanCount: 0,
         },
       },
@@ -263,6 +266,9 @@ describe("getMonthlyExpensesServerSidePropsForTab", () => {
       summary: {
         activeLoanCount: 0,
         lenderCount: 0,
+        netRemainingAmount: 0,
+        payableRemainingAmount: 0,
+        receivableRemainingAmount: 0,
         remainingAmount: 0,
         trackedLoanCount: 0,
       },

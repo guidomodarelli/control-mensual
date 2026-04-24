@@ -13,6 +13,10 @@ const RECEIPT_VIEW_URL_SCHEMA = z.url({
 });
 
 export const MONTHLY_EXPENSE_CURRENCIES = ["ARS", "USD"] as const;
+export const MONTHLY_EXPENSE_LOAN_DIRECTIONS = [
+  "payable",
+  "receivable",
+] as const;
 export const MONTHLY_EXPENSE_RECEIPT_SHARE_STATUSES = [
   "pending",
   "sent",
@@ -20,11 +24,14 @@ export const MONTHLY_EXPENSE_RECEIPT_SHARE_STATUSES = [
 
 export type MonthlyExpenseCurrency =
   (typeof MONTHLY_EXPENSE_CURRENCIES)[number];
+export type MonthlyExpenseLoanDirection =
+  (typeof MONTHLY_EXPENSE_LOAN_DIRECTIONS)[number];
 
 export type MonthlyExpenseReceiptShareStatus =
   (typeof MONTHLY_EXPENSE_RECEIPT_SHARE_STATUSES)[number];
 
 export interface MonthlyExpenseLoanInput {
+  direction?: MonthlyExpenseLoanDirection;
   installmentCount: number;
   lenderId?: string;
   lenderName?: string;
@@ -160,6 +167,14 @@ function isValidCurrency(currency: string): currency is MonthlyExpenseCurrency {
   );
 }
 
+function isValidLoanDirection(
+  direction: string,
+): direction is MonthlyExpenseLoanDirection {
+  return MONTHLY_EXPENSE_LOAN_DIRECTIONS.includes(
+    direction as MonthlyExpenseLoanDirection,
+  );
+}
+
 function isValidReceiptShareStatus(
   status: string,
 ): status is MonthlyExpenseReceiptShareStatus {
@@ -266,10 +281,18 @@ function validateLoan(
     operationName,
     "a loan installment count",
   );
+  const direction = loan.direction ?? "payable";
   const lenderName = loan.lenderName?.trim();
   const lenderId = loan.lenderId?.trim();
 
+  if (!isValidLoanDirection(direction)) {
+    throw new Error(
+      `${operationName} requires every loan direction to be payable or receivable.`,
+    );
+  }
+
   return {
+    direction,
     ...(lenderId ? { lenderId } : {}),
     ...(lenderName ? { lenderName } : {}),
     endMonth: calculateLoanEndMonth({
@@ -871,6 +894,7 @@ export function toMonthlyExpensesDocumentInput(
       ...(item.loan
         ? {
             loan: {
+              direction: item.loan.direction,
               installmentCount: item.loan.installmentCount,
               ...(item.loan.lenderId ? { lenderId: item.loan.lenderId } : {}),
               ...(item.loan.lenderName

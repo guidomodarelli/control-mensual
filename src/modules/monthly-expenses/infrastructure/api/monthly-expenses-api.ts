@@ -16,6 +16,7 @@ const RECEIPT_VIEW_URL_SCHEMA = z.url({
   hostname: z.regexes.domain,
 });
 const RECEIPT_SHARE_STATUSES = ["pending", "sent"] as const;
+const LOAN_DIRECTIONS = ["payable", "receivable"] as const;
 
 function normalizeHttpPaymentLink(value: string): string {
   const normalizedValue = value.trim();
@@ -163,6 +164,7 @@ const monthlyExpenseItemSchema = z.object({
   isPaid: z.boolean().optional(),
   loan: z
     .object({
+      direction: z.enum(LOAN_DIRECTIONS).optional(),
       installmentCount: z.number().int().positive(),
       lenderId: z.string().optional(),
       lenderName: z.string().optional(),
@@ -251,6 +253,7 @@ const monthlyExpensesDocumentEnvelopeSchema = z.object({
         isPaid: z.boolean().optional(),
         loan: z
           .object({
+            direction: z.enum(LOAN_DIRECTIONS).optional(),
             endMonth: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
             installmentCount: z.number().int().positive(),
             lenderId: z.string().optional(),

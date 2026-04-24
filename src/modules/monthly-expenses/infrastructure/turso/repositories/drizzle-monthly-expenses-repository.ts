@@ -32,6 +32,7 @@ interface NormalizedExpenseRow {
   exchangeRateSolidarityRate: number | null;
   expenseId: string;
   isPaid: number;
+  loanDirection: string | null;
   loanInstallmentCount: number | null;
   loanLenderId: string | null;
   loanLenderName: string | null;
@@ -347,6 +348,7 @@ export class DrizzleMonthlyExpensesRepository
           currency: item.currency,
           description: item.description,
           expenseId: item.id,
+          loanDirection: item.loan?.direction ?? "payable",
           loanInstallmentCount: item.loan?.installmentCount ?? null,
           loanLenderId: item.loan?.lenderId ?? null,
           loanLenderName: item.loan?.lenderName ?? null,
@@ -364,6 +366,7 @@ export class DrizzleMonthlyExpensesRepository
             allReceiptsFolderViewUrl: allReceiptsFolder.viewUrl,
             currency: item.currency,
             description: item.description,
+            loanDirection: item.loan?.direction ?? "payable",
             loanInstallmentCount: item.loan?.installmentCount ?? null,
             loanLenderId: item.loan?.lenderId ?? null,
             loanLenderName: item.loan?.lenderName ?? null,
@@ -545,6 +548,7 @@ export class DrizzleMonthlyExpensesRepository
         exchangeRateSolidarityRate: expenseMonthsTable.exchangeRateSolidarityRate,
         expenseId: expenseMonthsTable.expenseId,
         isPaid: expenseMonthsTable.isPaid,
+        loanDirection: expensesTable.loanDirection,
         loanInstallmentCount: expensesTable.loanInstallmentCount,
         loanLenderId: expensesTable.loanLenderId,
         loanLenderName: expensesTable.loanLenderName,
@@ -766,6 +770,10 @@ export class DrizzleMonthlyExpensesRepository
           ...(row.loanInstallmentCount && row.loanStartMonth
             ? {
                 loan: {
+                  direction:
+                    row.loanDirection === "receivable"
+                      ? "receivable"
+                      : "payable",
                   installmentCount: row.loanInstallmentCount,
                   ...(row.loanLenderId ? { lenderId: row.loanLenderId } : {}),
                   ...(row.loanLenderName ? { lenderName: row.loanLenderName } : {}),

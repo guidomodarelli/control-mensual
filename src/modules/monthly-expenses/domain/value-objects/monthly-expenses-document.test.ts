@@ -35,6 +35,7 @@ describe("monthlyExpensesDocument", () => {
           description: "Empleada domestica",
           id: "expense-1",
           loan: {
+            direction: "payable",
             endMonth: "2026-12",
             installmentCount: 12,
             lenderName: "Papa",
@@ -112,6 +113,32 @@ describe("monthlyExpensesDocument", () => {
     ).toThrow(
       "Saving monthly expenses requires a loan start month in YYYY-MM format.",
     );
+  });
+
+  it("normalizes receivable loan direction when another person owes money", () => {
+    const result = createMonthlyExpensesDocument(
+      {
+        items: [
+          {
+            currency: "ARS",
+            description: "Prestamo a proveedor",
+            id: "expense-1",
+            loan: {
+              direction: "receivable",
+              installmentCount: 4,
+              lenderName: "Proveedor",
+              startMonth: "2026-01",
+            },
+            occurrencesPerMonth: 1,
+            subtotal: 10000,
+          },
+        ],
+        month: "2026-02",
+      },
+      "Saving monthly expenses",
+    );
+
+    expect(result.items[0]?.loan?.direction).toBe("receivable");
   });
 
   it("keeps currency totals stable for decimal subtotals", () => {

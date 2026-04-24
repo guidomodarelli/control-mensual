@@ -360,6 +360,72 @@ describe("createMonthlyExpensesApiHandler", () => {
     });
   });
 
+  it("passes receivable loan direction to the save use case", async () => {
+    const database = {} as TursoDatabase;
+    const save = jest.fn().mockResolvedValue({
+      id: "monthly-expenses-file-id",
+      month: "2026-03",
+      name: "compromisos-mensuales-2026-marzo.json",
+      viewUrl: null,
+    });
+    const handler = createMonthlyExpensesApiHandler({
+      load: jest.fn(),
+      getDatabase: jest.fn().mockReturnValue(database),
+      getUserSubject: jest.fn().mockResolvedValue("google-user-123"),
+      save,
+    });
+
+    const request = {
+      body: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Prestamo a proveedor",
+            id: "expense-1",
+            loan: {
+              direction: "receivable",
+              installmentCount: 3,
+              lenderName: "Proveedor",
+              startMonth: "2026-01",
+            },
+            occurrencesPerMonth: 1,
+            subtotal: 10000,
+          },
+        ],
+        month: "2026-03",
+      },
+      method: "POST",
+    } as NextApiRequest;
+    const response = createMockResponse();
+
+    await handler(request, response);
+
+    expect(save).toHaveBeenCalledWith({
+      command: {
+        items: [
+          {
+            currency: "ARS",
+            description: "Prestamo a proveedor",
+            id: "expense-1",
+            loan: {
+              direction: "receivable",
+              installmentCount: 3,
+              lenderName: "Proveedor",
+              startMonth: "2026-01",
+            },
+            occurrencesPerMonth: 1,
+            subtotal: 10000,
+          },
+        ],
+        month: "2026-03",
+      },
+      database,
+      request,
+      userSubject: "google-user-123",
+    });
+    expect(response.statusCode).toBe(200);
+  });
+
   it("passes paymentLink to the save use case when provided", async () => {
     const database = {} as TursoDatabase;
     const save = jest.fn().mockResolvedValue({

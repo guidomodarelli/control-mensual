@@ -9,6 +9,7 @@ describe("MonthlyExpensesLoansReport", () => {
         entries={[
           {
             activeLoanCount: 2,
+            direction: "receivable",
             expenseDescriptions: ["Tarjeta", "Seguro"],
             firstDebtMonth: "2025-12",
             latestRecordedMonth: "2026-03",
@@ -21,14 +22,19 @@ describe("MonthlyExpensesLoansReport", () => {
         ]}
         feedbackMessage={null}
         onLenderFilterChange={jest.fn()}
+        onDirectionFilterChange={jest.fn()}
         onResetFilters={jest.fn()}
         onTypeFilterChange={jest.fn()}
         providerFilterOptions={[]}
+        selectedDirectionFilter="all"
         selectedLenderFilter="all"
         selectedTypeFilter="all"
         summary={{
           activeLoanCount: 2,
           lenderCount: 1,
+          netRemainingAmount: -120500.75,
+          payableRemainingAmount: 0,
+          receivableRemainingAmount: 120500.75,
           remainingAmount: 660000,
           trackedLoanCount: 2,
         }}
@@ -36,6 +42,7 @@ describe("MonthlyExpensesLoansReport", () => {
     );
 
     expect(screen.getByText("$ 660.000")).toBeInTheDocument();
-    expect(screen.getByText("$ 120.500,75")).toBeInTheDocument();
+    expect(screen.getAllByText("$ 120.500,75")).toHaveLength(2);
+    expect(screen.getByText("Me deben · Banco")).toBeInTheDocument();
   });
 });

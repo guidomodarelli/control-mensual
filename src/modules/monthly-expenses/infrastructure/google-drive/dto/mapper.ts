@@ -168,6 +168,7 @@ const googleDriveMonthlyExpenseItemSchema = z.object({
   isPaid: z.boolean().optional(),
   loan: z
     .object({
+      direction: z.enum(["payable", "receivable"]).optional(),
       installmentCount: z.number().int().positive(),
       lenderId: z.string().optional(),
       lenderName: z.string().optional(),
@@ -300,6 +301,7 @@ export function mapMonthlyExpensesDocumentToGoogleDriveFile(
             ...(loan
               ? {
                   loan: {
+                    direction: loan.direction ?? "payable",
                     installmentCount: loan.installmentCount,
                     ...(loan.lenderId ? { lenderId: loan.lenderId } : {}),
                     ...(loan.lenderName ? { lenderName: loan.lenderName } : {}),

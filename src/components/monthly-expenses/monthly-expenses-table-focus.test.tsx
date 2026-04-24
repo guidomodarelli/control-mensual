@@ -116,6 +116,28 @@ async function openQuickEditDialog({
 }
 
 describe("MonthlyExpensesTable dialog autofocus", () => {
+  it("renders loan direction as its own column", () => {
+    renderMonthlyExpensesTable([
+      createRow({
+        description: "Prestamo a proveedor",
+        installmentCount: "3",
+        isLoan: true,
+        lenderId: "lender-1",
+        lenderName: "Proveedor",
+        loanDirection: "receivable",
+        loanProgress: "1 de 3 cuotas abonadas",
+        loanRemainingInstallments: 2,
+        loanTotalInstallments: 3,
+        startMonth: "2026-01",
+      }),
+    ]);
+
+    expect(
+      screen.getByRole("columnheader", { name: "Dirección" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Me deben")).toBeInTheDocument();
+  });
+
   it("associates receipt label with the file input in register payment dialog", async () => {
     renderMonthlyExpensesTable([createRow()]);
 

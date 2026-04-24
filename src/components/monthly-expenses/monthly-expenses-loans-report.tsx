@@ -17,6 +17,7 @@ const arsCurrencyFormatter = new Intl.NumberFormat("es-AR", {
 
 interface MonthlyExpensesLoanReportView {
   activeLoanCount: number;
+  direction: "payable" | "receivable";
   expenseDescriptions: string[];
   firstDebtMonth: string | null;
   lenderId: string | null;
@@ -35,14 +36,19 @@ interface MonthlyExpensesLoansReportProps {
     label: string;
   }>;
   selectedLenderFilter: string;
+  selectedDirectionFilter: string;
   selectedTypeFilter: string;
   summary: {
     activeLoanCount: number;
     lenderCount: number;
+    netRemainingAmount: number;
+    payableRemainingAmount: number;
+    receivableRemainingAmount: number;
     remainingAmount: number;
     trackedLoanCount: number;
   };
   onLenderFilterChange: (value: string) => void;
+  onDirectionFilterChange: (value: string) => void;
   onResetFilters: () => void;
   onTypeFilterChange: (value: string) => void;
 }
@@ -70,13 +76,19 @@ function formatArsAmount(value: number): string {
   return `$ ${arsCurrencyFormatter.format(value)}`;
 }
 
+function getDirectionLabel(direction: MonthlyExpensesLoanReportView["direction"]): string {
+  return direction === "payable" ? "Yo debo" : "Me deben";
+}
+
 export function MonthlyExpensesLoansReport({
   entries,
   feedbackMessage,
   providerFilterOptions,
   selectedLenderFilter,
+  selectedDirectionFilter,
   selectedTypeFilter,
   summary,
+  onDirectionFilterChange,
   onLenderFilterChange,
   onResetFilters,
   onTypeFilterChange,
@@ -84,7 +96,7 @@ export function MonthlyExpensesLoansReport({
   return (
     <section className={styles.content}>
       <p className={styles.description}>
-        Revisá cuánto debés por prestamista y qué compromisos están asociados.
+        Revisá cuánto debés, cuánto te deben y qué compromisos están asociados.
       </p>
 
       <div className={styles.summaryGrid}>
@@ -100,9 +112,45 @@ export function MonthlyExpensesLoansReport({
           <p className={styles.summaryLabel}>Monto pendiente estimado</p>
           <p className={styles.summaryValue}>{formatArsAmount(summary.remainingAmount)}</p>
         </div>
+        <div className={styles.summaryCard}>
+          <p className={styles.summaryLabel}>Total que debés</p>
+          <p className={styles.summaryValue}>
+            {formatArsAmount(summary.payableRemainingAmount)}
+          </p>
+        </div>
+        <div className={styles.summaryCard}>
+          <p className={styles.summaryLabel}>Total que te deben</p>
+          <p className={styles.summaryValue}>
+            {formatArsAmount(summary.receivableRemainingAmount)}
+          </p>
+        </div>
+        <div className={styles.summaryCard}>
+          <p className={styles.summaryLabel}>Balance neto</p>
+          <p className={styles.summaryValue}>{formatArsAmount(summary.netRemainingAmount)}</p>
+        </div>
       </div>
 
       <div className={styles.filters}>
+        <div className={styles.filterField}>
+          <Label htmlFor="loan-report-direction-filter">Dirección</Label>
+          <Select
+            onValueChange={onDirectionFilterChange}
+            value={selectedDirectionFilter}
+          >
+            <SelectTrigger
+              aria-label="Filtrar por dirección"
+              id="loan-report-direction-filter"
+            >
+              <SelectValue placeholder="Todas las direcciones" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las direcciones</SelectItem>
+              <SelectItem value="payable">Yo debo</SelectItem>
+              <SelectItem value="receivable">Me deben</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className={styles.filterField}>
           <Label htmlFor="loan-report-type-filter">Tipo</Label>
           <Select onValueChange={onTypeFilterChange} value={selectedTypeFilter}>
@@ -170,7 +218,9 @@ export function MonthlyExpensesLoansReport({
               <div className={styles.entryHeader}>
                 <div>
                   <h3 className={styles.entryTitle}>{entry.lenderName}</h3>
-                  <p className={styles.entryMeta}>{getTypeLabel(entry.lenderType)}</p>
+                  <p className={styles.entryMeta}>
+                    {getDirectionLabel(entry.direction)} · {getTypeLabel(entry.lenderType)}
+                  </p>
                 </div>
                 <p className={styles.entryAmount}>{formatArsAmount(entry.remainingAmount)}</p>
               </div>

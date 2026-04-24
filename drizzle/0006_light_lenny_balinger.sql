@@ -1,0 +1,1 @@
+ALTER TABLE `expenses` ADD `loan_direction` text DEFAULT 'payable' NOT NULL;

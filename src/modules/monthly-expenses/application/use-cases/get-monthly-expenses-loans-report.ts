@@ -1,9 +1,15 @@
+/**
+ * Builds the monthly expenses loans report from stored loan snapshots.
+ *
+ * @module getMonthlyExpensesLoansReport
+ */
 import type { LenderType } from "@/modules/lenders/domain/value-objects/lenders-catalog-document";
 
 import type { MonthlyExpensesRepository } from "../../domain/repositories/monthly-expenses-repository";
 import type { MonthlyExpensesDocument } from "../../domain/value-objects/monthly-expenses-document";
 import type {
   MonthlyExpensesLoanReportEntry,
+  MonthlyExpensesLoanReportDirection,
   MonthlyExpensesLoanReportLenderType,
   MonthlyExpensesLoansReportResult,
 } from "../results/monthly-expenses-loans-report-result";
@@ -21,6 +27,8 @@ interface GetMonthlyExpensesLoansReportDependencies {
 
 interface LoanSnapshot {
   description: string;
+  direction: MonthlyExpensesLoanReportDirection;
+  expenseId: string;
   lenderId: string | null;
   lenderName: string | null;
   monthlyAmount: number;
@@ -30,14 +38,14 @@ interface LoanSnapshot {
   totalInstallments: number;
 }
 
+/**
+ * Gets the stable identity used to keep only the newest state of one loan.
+ *
+ * @param snapshot - Loan snapshot collected from one monthly document.
+ * @returns Stable expense identifier shared by the same loan across months.
+ */
 function getLoanSnapshotKey(snapshot: LoanSnapshot): string {
-  return [
-    snapshot.lenderId ?? snapshot.lenderName ?? "unassigned",
-    snapshot.description.toLocaleLowerCase(),
-    snapshot.startMonth,
-    snapshot.totalInstallments,
-    snapshot.monthlyAmount,
-  ].join("|");
+  return snapshot.expenseId;
 }
 
 function resolveLender(
@@ -95,6 +103,12 @@ function compareMonthIdentifiers(left: string, right: string): number {
   return left.localeCompare(right);
 }
 
+/**
+ * Creates report snapshots from every loan item stored in monthly documents.
+ *
+ * @param documents - Monthly expenses documents to scan for loan items.
+ * @returns Loan snapshots ready to deduplicate by stable expense identity.
+ */
 function createLoanSnapshots(documents: MonthlyExpensesDocument[]): LoanSnapshot[] {
   return documents.flatMap((document) =>
     document.items.flatMap((item) =>
@@ -102,6 +116,8 @@ function createLoanSnapshots(documents: MonthlyExpensesDocument[]): LoanSnapshot
         ? [
             {
               description: item.description,
+              direction: item.loan.direction ?? "payable",
+              expenseId: item.id,
               lenderId: item.loan.lenderId ?? null,
               lenderName: item.loan.lenderName ?? null,
               month: document.month,
@@ -142,7 +158,7 @@ export async function getMonthlyExpensesLoansReport({
 
   for (const snapshot of latestSnapshotsByLoan.values()) {
     const { lenderId, lenderName, lenderType } = resolveLender(snapshot, lenders);
-    const entryKey = `${lenderId ?? lenderName}|${lenderType}`;
+    const entryKey = `${snapshot.direction}|${lenderId ?? lenderName}|${lenderType}`;
     const remainingInstallments = Math.max(
       snapshot.totalInstallments - snapshot.paidInstallments,
       0,
@@ -155,6 +171,7 @@ export async function getMonthlyExpensesLoansReport({
     if (!currentEntry) {
       entriesByLender.set(entryKey, {
         activeLoanCount: remainingAmount > 0 ? 1 : 0,
+        direction: snapshot.direction,
         expenseDescriptions: [snapshot.description],
         firstDebtMonth: snapshot.startMonth,
         lenderId,
@@ -194,6 +211,9 @@ export async function getMonthlyExpensesLoansReport({
 
     return left.lenderName.localeCompare(right.lenderName, "es");
   });
+  const uniqueLenders = new Set(
+    entries.map((entry) => `${entry.lenderId ?? entry.lenderName}|${entry.lenderType}`),
+  );
 
   return {
     entries,
@@ -202,7 +222,31 @@ export async function getMonthlyExpensesLoansReport({
         (total, entry) => total + entry.activeLoanCount,
         0,
       ),
-      lenderCount: entries.length,
+      lenderCount: uniqueLenders.size,
+      netRemainingAmount: Number(
+        (
+          entries.reduce(
+            (total, entry) =>
+              total +
+              (entry.direction === "payable"
+                ? entry.remainingAmount
+                : -entry.remainingAmount),
+            0,
+          )
+        ).toFixed(2),
+      ),
+      payableRemainingAmount: Number(
+        entries
+          .filter((entry) => entry.direction === "payable")
+          .reduce((total, entry) => total + entry.remainingAmount, 0)
+          .toFixed(2),
+      ),
+      receivableRemainingAmount: Number(
+        entries
+          .filter((entry) => entry.direction === "receivable")
+          .reduce((total, entry) => total + entry.remainingAmount, 0)
+          .toFixed(2),
+      ),
       remainingAmount: Number(
         entries
           .reduce((total, entry) => total + entry.remainingAmount, 0)

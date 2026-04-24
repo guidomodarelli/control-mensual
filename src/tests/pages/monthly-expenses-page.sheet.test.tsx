@@ -2199,7 +2199,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     expect(
       screen.queryByText(
-        "Marcá esta opción si el compromiso corresponde a una deuda.",
+        "Marcá esta opción si el compromiso corresponde a una deuda o a dinero que te deben.",
       ),
     ).not.toBeInTheDocument();
 
@@ -2217,7 +2217,7 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(loanInfoTooltip).toBeInTheDocument();
     expect(positionedLoanInfoTooltip).not.toBeNull();
     expect(positionedLoanInfoTooltip).toHaveTextContent(
-      "Marcá esta opción si el compromiso corresponde a una deuda.",
+      "Marcá esta opción si el compromiso corresponde a una deuda o a dinero que te deben.",
     );
 
     const positionedTooltipCloseButton = (
@@ -2232,7 +2232,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     expect(
       screen.queryByText(
-        "Marcá esta opción si el compromiso corresponde a una deuda.",
+        "Marcá esta opción si el compromiso corresponde a una deuda o a dinero que te deben.",
       ),
     ).not.toBeInTheDocument();
 
@@ -2905,6 +2905,77 @@ registerMonthlyExpensesPageDefaultHooks({
           },
         ],
         month: "2026-03",
+      });
+    });
+  });
+
+  it("saves receivable loan direction from the expense sheet", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock();
+
+    mockedUseSession.mockReturnValue({
+      data: {
+        expires: "2099-01-01T00:00:00.000Z",
+        user: {
+          email: "gus@example.com",
+          name: "Gus",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as ReturnType<typeof useSession>);
+    global.fetch = fetchMock as typeof fetch;
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialLendersCatalog={{
+          lenders: [
+            {
+              id: "lender-1",
+              name: "Proveedor",
+              type: "other",
+            },
+          ],
+        }}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Prestamo a proveedor",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 10000,
+              total: 10000,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Abrir acciones para Prestamo a proveedor" }),
+    );
+    await user.click(await screen.findByRole("menuitem", { name: "Editar" }));
+    await user.click(screen.getByLabelText("Es deuda/préstamo"));
+    await user.click(screen.getByRole("combobox", { name: "Dirección del préstamo" }));
+    await user.click(screen.getByRole("option", { name: "Me deben" }));
+    await user.type(screen.getByLabelText("Cantidad total de cuotas"), "3");
+    fireEvent.change(screen.getByLabelText("Inicio de la deuda"), {
+      target: { value: "2026-01" },
+    });
+    await user.click(screen.getByRole("button", { name: "Seleccioná un prestamista" }));
+    await user.click(screen.getByRole("button", { name: /Proveedor/i }));
+    await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => {
+      expect(getMonthlyExpensesSavePayload(fetchMock).items[0]?.loan).toEqual({
+        direction: "receivable",
+        installmentCount: 3,
+        lenderId: "lender-1",
+        lenderName: "Proveedor",
+        startMonth: "2026-01",
       });
     });
   });

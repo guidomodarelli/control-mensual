@@ -6,6 +6,7 @@ import type { MonthlyExpensesLoansReportResult } from "../../application/results
 
 const monthlyExpensesReportEntrySchema = z.object({
   activeLoanCount: z.number().int().nonnegative(),
+  direction: z.enum(["payable", "receivable"]),
   expenseDescriptions: z.array(z.string()),
   firstDebtMonth: z.string().nullable(),
   lenderId: z.string().nullable(),
@@ -22,6 +23,9 @@ const monthlyExpensesReportSchema = z.object({
     summary: z.object({
       activeLoanCount: z.number().int().nonnegative(),
       lenderCount: z.number().int().nonnegative(),
+      netRemainingAmount: z.number(),
+      payableRemainingAmount: z.number().nonnegative(),
+      receivableRemainingAmount: z.number().nonnegative(),
       remainingAmount: z.number().nonnegative(),
       trackedLoanCount: z.number().int().nonnegative(),
     }),

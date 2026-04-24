@@ -2632,7 +2632,7 @@ registerMonthlyExpensesPageDefaultHooks({
     }
   });
 
-  it("renders Prestamista followed by Inicio cuota and Fin cuota, and keeps actions header at the end", () => {
+  it("renders Prestamista followed by Inicio cuota and Fin cuota, then Dirección before actions", () => {
     renderWithProviders(
       <MonthlyExpensesPage
         {...basePageProps}
@@ -2659,12 +2659,14 @@ registerMonthlyExpensesPageDefaultHooks({
     const lenderHeaderIndex = headers.indexOf("Prestamista");
     const installmentStartHeaderIndex = headers.indexOf("Inicio cuota");
     const installmentEndHeaderIndex = headers.indexOf("Fin cuota");
+    const loanDirectionHeaderIndex = headers.indexOf("Dirección");
 
     expect(loanHeaderIndex).toBeGreaterThanOrEqual(0);
     expect(lenderHeaderIndex).toBe(loanHeaderIndex + 1);
     expect(installmentStartHeaderIndex).toBe(lenderHeaderIndex + 1);
     expect(installmentEndHeaderIndex).toBe(installmentStartHeaderIndex + 1);
-    expect(headers.at(installmentEndHeaderIndex + 1)).toBe("");
+    expect(loanDirectionHeaderIndex).toBe(installmentEndHeaderIndex + 1);
+    expect(headers.at(loanDirectionHeaderIndex + 1)).toBe("");
 
     const expenseRow = screen.getByRole("row", { name: /Prestamo tarjeta/i });
     const expenseCells = within(expenseRow).getAllByRole("cell");
@@ -2674,6 +2676,9 @@ registerMonthlyExpensesPageDefaultHooks({
       "-",
     );
     expect(expenseCells.at(installmentEndHeaderIndex)?.textContent?.trim()).toBe(
+      "-",
+    );
+    expect(expenseCells.at(loanDirectionHeaderIndex)?.textContent?.trim()).toBe(
       "-",
     );
   });

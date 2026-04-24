@@ -58,6 +58,7 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
           description: "Prestamo familiar",
           id: "expense-1",
           loan: {
+            direction: "payable",
             endMonth: "2026-12",
             installmentCount: 12,
             lenderName: "Papa",
@@ -84,6 +85,7 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
               description: "Prestamo familiar",
               id: "expense-1",
               loan: {
+                direction: "payable",
                 installmentCount: 12,
                 lenderName: "Papa",
                 startMonth: "2026-01",
@@ -146,6 +148,7 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
             description: "Prestamo tarjeta",
             id: "expense-1",
             loan: {
+              direction: "receivable",
               installmentCount: 12,
               lenderName: "Papa",
               startMonth: "2026-01",
@@ -166,6 +169,7 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
           description: "Prestamo tarjeta",
           id: "expense-1",
           loan: {
+            direction: "receivable",
             endMonth: "2026-12",
             installmentCount: 12,
             lenderName: "Papa",

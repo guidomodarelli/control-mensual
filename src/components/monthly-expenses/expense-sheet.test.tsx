@@ -109,4 +109,22 @@ describe("ExpenseSheet", () => {
       screen.queryByLabelText("Mensaje personalizado (opcional)"),
     ).not.toBeInTheDocument();
   });
+
+  it("shows the loan direction selector for loans", () => {
+    renderExpenseSheet({
+      draft: {
+        ...createDraftRow(),
+        installmentCount: "3",
+        isLoan: true,
+        lenderId: "lender-1",
+        lenderName: "Cliente",
+        loanDirection: "receivable",
+        startMonth: "2026-01",
+      },
+    });
+
+    expect(screen.getByLabelText("Dirección del préstamo")).toHaveTextContent(
+      "Me deben",
+    );
+  });
 });

@@ -31,6 +31,7 @@ const RECEIPT_VIEW_URL_SCHEMA = z.url({
   hostname: z.regexes.domain,
 });
 const RECEIPT_SHARE_STATUSES = ["pending", "sent"] as const;
+const LOAN_DIRECTIONS = ["payable", "receivable"] as const;
 
 const monthlyExpenseReceiptSchema = z.object({
   allReceiptsFolderId: z.string().trim().min(1),
@@ -167,6 +168,7 @@ const monthlyExpenseItemSchema = z.object({
   isPaid: z.boolean().optional(),
   loan: z
     .object({
+      direction: z.enum(LOAN_DIRECTIONS).optional(),
       installmentCount: z.number().int().positive(),
       lenderId: z.string().optional(),
       lenderName: z.string().optional(),

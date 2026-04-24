@@ -25,6 +25,7 @@ import {
   MonthlyExpensesTable,
   type MonthlyExpensesEditablePaymentRecord,
   type MonthlyExpensesEditableReceipt,
+  type MonthlyExpenseLoanDirection,
   type MonthlyExpensesEditableRow,
 } from "@/components/monthly-expenses/monthly-expenses-table";
 import {
@@ -53,6 +54,7 @@ import {
   type MonthlyExpensesCopyableMonthsResult,
 } from "@/modules/monthly-expenses/application/results/monthly-expenses-copyable-months-result";
 import {
+  type MonthlyExpensesLoanReportDirection,
   type MonthlyExpensesLoansReportResult,
 } from "@/modules/monthly-expenses/application/results/monthly-expenses-loans-report-result";
 import {
@@ -111,12 +113,22 @@ interface LendersCatalogState {
 }
 
 interface LoansReportState {
-  entries: MonthlyExpensesLoansReportResult["entries"];
+  directionFilter: string;
+  entries: NormalizedLoansReportEntry[];
   error: string | null;
   lenderFilter: string;
   typeFilter: string;
-  summary: MonthlyExpensesLoansReportResult["summary"];
+  summary: NormalizedLoansReportSummary;
 }
+
+type NormalizedLoansReportEntry =
+  MonthlyExpensesLoansReportResult["entries"][number] & {
+    direction: MonthlyExpensesLoanReportDirection;
+  };
+
+type NormalizedLoansReportSummary = Required<
+  MonthlyExpensesLoansReportResult["summary"]
+>;
 
 interface ExpenseSheetState {
   draft: MonthlyExpensesEditableRow | null;
@@ -340,6 +352,7 @@ function createEmptyRow(): MonthlyExpensesEditableRow {
     isLoan: false,
     lenderId: "",
     lenderName: "",
+    loanDirection: "payable",
     loanEndMonth: "",
     loanPaidInstallments: null,
     loanProgress: "",
@@ -593,6 +606,7 @@ export function toEditableRows(
     isLoan: Boolean(item.loan),
     lenderId: item.loan?.lenderId ?? "",
     lenderName: item.loan?.lenderName ?? "",
+    loanDirection: item.loan?.direction ?? "payable",
     loanEndMonth: item.loan?.endMonth ?? "",
     loanProgress: item.loan
       ? `${item.loan.paidInstallments} de ${item.loan.installmentCount} cuotas abonadas`
@@ -836,15 +850,37 @@ function createLendersCatalogState(
   };
 }
 
+function normalizeLoansReportEntries(
+  entries: MonthlyExpensesLoansReportResult["entries"],
+): NormalizedLoansReportEntry[] {
+  return entries.map((entry) => ({
+    ...entry,
+    direction: entry.direction ?? "payable",
+  }));
+}
+
+function normalizeLoansReportSummary(
+  summary: MonthlyExpensesLoansReportResult["summary"],
+): NormalizedLoansReportSummary {
+  return {
+    ...summary,
+    netRemainingAmount: summary.netRemainingAmount ?? summary.remainingAmount,
+    payableRemainingAmount:
+      summary.payableRemainingAmount ?? summary.remainingAmount,
+    receivableRemainingAmount: summary.receivableRemainingAmount ?? 0,
+  };
+}
+
 function createLoansReportState(
   report: MonthlyExpensesLoansReportResult,
   error: string | null,
 ): LoansReportState {
   return {
-    entries: report.entries,
+    directionFilter: "all",
+    entries: normalizeLoansReportEntries(report.entries),
     error: error ? getSafeLoansReportErrorMessage(error) : null,
     lenderFilter: "all",
-    summary: report.summary,
+    summary: normalizeLoansReportSummary(report.summary),
     typeFilter: "all",
   };
 }
@@ -914,6 +950,7 @@ function normalizeEditableRows(
           installmentCount: "",
           lenderId: "",
           lenderName: "",
+          loanDirection: "payable",
           loanEndMonth: "",
           loanPaidInstallments: null,
           loanProgress: "",
@@ -1011,6 +1048,8 @@ export function getExpenseValidationMessage(
   if (
     row.isLoan &&
     (!row.lenderId.trim() ||
+      ((row.loanDirection ?? "payable") !== "payable" &&
+        row.loanDirection !== "receivable") ||
       !MONTH_PATTERN.test(row.startMonth.trim()) ||
       !Number.isInteger(installmentCount) ||
       installmentCount <= 0)
@@ -1064,6 +1103,10 @@ function getChangedExpenseFields(
     originalRow.lenderName !== draft.lenderName
   ) {
     changedFields.add("lender");
+  }
+
+  if (originalRow.loanDirection !== draft.loanDirection) {
+    changedFields.add("loanDirection");
   }
 
   if (originalRow.startMonth !== draft.startMonth) {
@@ -1234,6 +1277,9 @@ export function toSaveMonthlyExpensesCommand(
         ...(row.isLoan
           ? {
               loan: {
+                ...((row.loanDirection ?? "payable") === "receivable"
+                  ? { direction: "receivable" as const }
+                  : {}),
                 installmentCount: Number(row.installmentCount),
                 ...(row.lenderId ? { lenderId: row.lenderId } : {}),
                 ...(row.lenderName.trim()
@@ -1270,8 +1316,8 @@ export function getRequestedMonthlyExpensesTab(
 function mapReportEntriesToCurrentLenders(
   entries: MonthlyExpensesLoansReportResult["entries"],
   lenders: LenderOption[],
-): MonthlyExpensesLoansReportResult["entries"] {
-  return entries.map((entry) => {
+): NormalizedLoansReportEntry[] {
+  return normalizeLoansReportEntries(entries).map((entry) => {
     if (!entry.lenderId) {
       return entry;
     }
@@ -1290,15 +1336,18 @@ function mapReportEntriesToCurrentLenders(
 
 function getFilteredLoansReportEntries(
   reportState: LoansReportState,
-): MonthlyExpensesLoansReportResult["entries"] {
+): NormalizedLoansReportEntry[] {
   return reportState.entries.filter((entry) => {
     const matchesType =
       reportState.typeFilter === "all" || entry.lenderType === reportState.typeFilter;
     const matchesLender =
       reportState.lenderFilter === "all" ||
       entry.lenderId === reportState.lenderFilter;
+    const matchesDirection =
+      reportState.directionFilter === "all" ||
+      entry.direction === reportState.directionFilter;
 
-    return matchesType && matchesLender;
+    return matchesType && matchesLender && matchesDirection;
   });
 }
 
@@ -1499,7 +1548,7 @@ export default function MonthlyExpensesPage({
         ...currentState,
         entries: mapReportEntriesToCurrentLenders(report.entries, lenders),
         error: null,
-        summary: report.summary,
+        summary: normalizeLoansReportSummary(report.summary),
       }));
     } catch (error) {
       updateReportState((currentState) => ({
@@ -1810,6 +1859,8 @@ export default function MonthlyExpensesPage({
             [fieldName]:
               fieldName === "currency"
                 ? (value as MonthlyExpenseCurrency)
+                : fieldName === "loanDirection"
+                ? (value as MonthlyExpenseLoanDirection)
                 : fieldName === "manualCoveredPayments"
                 ? value || "0"
                 : fieldName === "receiptSharePhoneDigits"
@@ -1861,6 +1912,7 @@ export default function MonthlyExpensesPage({
                 isLoan: false,
                 lenderId: "",
                 lenderName: "",
+                loanDirection: "payable",
                 loanEndMonth: "",
                 loanProgress: "",
                 startMonth: "",
@@ -3573,6 +3625,13 @@ export default function MonthlyExpensesPage({
     }));
   };
 
+  const handleReportDirectionFilterChange = (value: string) => {
+    updateReportState((currentState) => ({
+      ...currentState,
+      directionFilter: value,
+    }));
+  };
+
   const handleReportLenderFilterChange = (value: string) => {
     updateReportState((currentState) => ({
       ...currentState,
@@ -3583,6 +3642,7 @@ export default function MonthlyExpensesPage({
   const handleReportFiltersReset = () => {
     updateReportState((currentState) => ({
       ...currentState,
+      directionFilter: "all",
       lenderFilter: "all",
       typeFilter: "all",
     }));
@@ -3681,9 +3741,11 @@ export default function MonthlyExpensesPage({
                 entries={filteredReportEntries}
                 feedbackMessage={reportState.error}
                 providerFilterOptions={reportProviderFilterOptions}
+                selectedDirectionFilter={reportState.directionFilter}
                 selectedLenderFilter={reportState.lenderFilter}
                 selectedTypeFilter={reportState.typeFilter}
                 summary={reportState.summary}
+                onDirectionFilterChange={handleReportDirectionFilterChange}
                 onLenderFilterChange={handleReportLenderFilterChange}
                 onResetFilters={handleReportFiltersReset}
                 onTypeFilterChange={handleReportTypeFilterChange}
