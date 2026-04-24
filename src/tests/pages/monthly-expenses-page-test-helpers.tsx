@@ -270,6 +270,7 @@ export function getPersistedTablePreferences():
   | {
       columnVisibility: Record<string, boolean>;
       loanSortMode: string;
+      moveCompletedToEnd?: boolean;
       sorting: Array<{ desc: boolean; id: string }>;
     }
   | null {
@@ -284,6 +285,7 @@ export function getPersistedTablePreferences():
   return JSON.parse(serializedPreferences) as {
     columnVisibility: Record<string, boolean>;
     loanSortMode: string;
+    moveCompletedToEnd?: boolean;
     sorting: Array<{ desc: boolean; id: string }>;
   };
 }

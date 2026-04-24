@@ -23,8 +23,24 @@ repos:
         language: system
         pass_filenames: false
 
-      - id: test
-        name: test (pre-commit)
-        entry: npm run test
+      - id: test-related
+        name: test related staged files (pre-commit)
+        entry: >-
+          bash -lc '
+          related_files=();
+          for file in "$@"; do
+            case "$file" in
+              *.js|*.jsx|*.ts|*.tsx)
+                related_files+=("$file")
+                ;;
+            esac
+          done;
+
+          if [ ${#related_files[@]} -eq 0 ]; then
+            echo "No JS/TS staged files; skipping Jest related tests.";
+            exit 0;
+          fi;
+
+          npm run test -- --bail --findRelatedTests --passWithNoTests "${related_files[@]}"'
         language: system
-        pass_filenames: false
+        pass_filenames: true

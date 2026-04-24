@@ -112,6 +112,7 @@ interface DataTableProps<TData, TValue> {
   filterColumnId?: string;
   filterLabel?: string;
   filterPlaceholder?: string;
+  filterExtraContent?: React.ReactNode;
   filterValue?: string;
   onFilterValueChange?: (value: string) => void;
   showExcludeFilterToggle?: boolean;
@@ -265,6 +266,7 @@ export function DataTable<TData, TValue>({
   filterColumnId,
   filterLabel = "Filtrar",
   filterPlaceholder = "Filtrar...",
+  filterExtraContent,
   filterValue: controlledFilterValue,
   onFilterValueChange,
   showExcludeFilterToggle = false,
@@ -971,6 +973,9 @@ export function DataTable<TData, TValue>({
                       <X aria-hidden="true" className="size-3" />
                     </button>
                   </Badge>
+                ) : null}
+                {filterExtraContent ? (
+                  <div className="grid gap-1">{filterExtraContent}</div>
                 ) : null}
               </div>
             ) : null}

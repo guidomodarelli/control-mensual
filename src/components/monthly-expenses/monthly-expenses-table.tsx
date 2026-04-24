@@ -126,6 +126,9 @@ const LOAN_INSTALLMENT_START_COLUMN_ID = "loanInstallmentStart";
 const LOAN_INSTALLMENT_END_COLUMN_ID = "loanInstallmentEnd";
 const MONTHLY_EXPENSES_TABLE_PREFERENCES_STORAGE_KEY =
   "mes-en-regla.monthly-expenses.table-preferences";
+const MOVE_COMPLETED_TO_END_LABEL = "Mover completados al final";
+const MOVE_COMPLETED_TO_END_WITH_SORTING_HELPER_TEXT =
+  "Desactivado mientras haya un orden manual.";
 const MONTHLY_EXPENSES_DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   usd: false,
 };
@@ -294,6 +297,7 @@ function buildLoanSortingState(direction: "asc" | "desc"): SortingState {
 interface MonthlyExpensesTablePreferences {
   columnVisibility: VisibilityState;
   loanSortMode: LoanSortMode;
+  moveCompletedToEnd: boolean;
   sorting: SortingState;
 }
 
@@ -311,6 +315,10 @@ function parsePersistedLoanSortMode(value: unknown): LoanSortMode | null {
   }
 
   return value;
+}
+
+function parsePersistedMoveCompletedToEnd(value: unknown): boolean {
+  return value === true;
 }
 
 function parsePersistedSorting(value: unknown): SortingState | null {
@@ -389,6 +397,9 @@ function getPersistedMonthlyExpensesTablePreferences(): MonthlyExpensesTablePref
     const loanSortMode =
       parsePersistedLoanSortMode(parsedPreferences.loanSortMode) ??
       DEFAULT_LOAN_SORT_MODE;
+    const moveCompletedToEnd = parsePersistedMoveCompletedToEnd(
+      parsedPreferences.moveCompletedToEnd,
+    );
     const sorting = parsePersistedSorting(parsedPreferences.sorting) ?? [];
     const parsedColumnVisibility =
       parsePersistedColumnVisibility(parsedPreferences.columnVisibility) ?? {};
@@ -400,6 +411,7 @@ function getPersistedMonthlyExpensesTablePreferences(): MonthlyExpensesTablePref
     return {
       columnVisibility,
       loanSortMode,
+      moveCompletedToEnd,
       sorting,
     };
   } catch {
@@ -1483,6 +1495,24 @@ function getRowsMatchingDescriptionFilter(
   );
 }
 
+function getRowsWithCompletedAtEnd(
+  rows: MonthlyExpensesEditableRow[],
+): MonthlyExpensesEditableRow[] {
+  const pendingRows: MonthlyExpensesEditableRow[] = [];
+  const completedRows: MonthlyExpensesEditableRow[] = [];
+
+  for (const row of rows) {
+    if (isPaymentCompleted(row)) {
+      completedRows.push(row);
+      continue;
+    }
+
+    pendingRows.push(row);
+  }
+
+  return pendingRows.concat(completedRows);
+}
+
 function getExcludeFilterMetrics(
   rows: MonthlyExpensesEditableRow[],
   excludedDescriptionFilters: string[],
@@ -2200,6 +2230,7 @@ export function MonthlyExpensesTable({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
     MONTHLY_EXPENSES_DEFAULT_COLUMN_VISIBILITY,
   );
+  const [moveCompletedToEnd, setMoveCompletedToEnd] = useState(false);
   const [isRestoringTablePreferences, setIsRestoringTablePreferences] =
     useState(true);
   const [descriptionFilter, setDescriptionFilter] = useState("");
@@ -2308,6 +2339,7 @@ export function MonthlyExpensesTable({
     const restoreFrameId = window.requestAnimationFrame(() => {
       if (persistedPreferences) {
         setLoanSortMode(persistedPreferences.loanSortMode);
+        setMoveCompletedToEnd(persistedPreferences.moveCompletedToEnd);
         setSorting(persistedPreferences.sorting);
         setColumnVisibility(persistedPreferences.columnVisibility);
       }
@@ -2329,9 +2361,10 @@ export function MonthlyExpensesTable({
     persistMonthlyExpensesTablePreferences({
       columnVisibility,
       loanSortMode,
+      moveCompletedToEnd,
       sorting,
     });
-  }, [columnVisibility, loanSortMode, sorting]);
+  }, [columnVisibility, loanSortMode, moveCompletedToEnd, sorting]);
 
   const getSortDirection = useCallback(
     (columnId: string) => getColumnSortDirection(sorting, columnId),
@@ -2379,6 +2412,14 @@ export function MonthlyExpensesTable({
       ),
     [nonEmptyExcludedDescriptionFilters, rows],
   );
+  const hasManualSorting = sorting.length > 0;
+  const rowsForTable = useMemo(() => {
+    if (!moveCompletedToEnd || hasManualSorting) {
+      return rowsExcludingDescriptions;
+    }
+
+    return getRowsWithCompletedAtEnd(rowsExcludingDescriptions);
+  }, [hasManualSorting, moveCompletedToEnd, rowsExcludingDescriptions]);
   const completedPendingReceiptShareCount = useMemo(() => {
     let pendingCount = 0;
 
@@ -3941,7 +3982,7 @@ export function MonthlyExpensesTable({
               hideableColumnsDefaultVisibility={
                 MONTHLY_EXPENSES_DEFAULT_COLUMN_VISIBILITY
               }
-              data={rowsExcludingDescriptions}
+              data={rowsForTable}
               emptyMessage={
                 hasActiveDescriptionFiltering
                   ? MONTHLY_EXPENSES_FILTERED_EMPTY_MESSAGE
@@ -3957,6 +3998,27 @@ export function MonthlyExpensesTable({
               }
               excludeFilterValues={excludedDescriptionFilters}
               filterColumnId="description"
+              filterExtraContent={(
+                <div className={styles.completedOrderFilter}>
+                  <label className={styles.completedOrderFilterLabel}>
+                    <input
+                      checked={moveCompletedToEnd}
+                      className={styles.completedOrderFilterCheckbox}
+                      disabled={hasManualSorting}
+                      onChange={(event) => {
+                        setMoveCompletedToEnd(event.target.checked);
+                      }}
+                      type="checkbox"
+                    />
+                    <span>{MOVE_COMPLETED_TO_END_LABEL}</span>
+                  </label>
+                  {hasManualSorting ? (
+                    <p className={styles.completedOrderFilterHint}>
+                      {MOVE_COMPLETED_TO_END_WITH_SORTING_HELPER_TEXT}
+                    </p>
+                  ) : null}
+                </div>
+              )}
               filterLabel="Filtrar compromisos"
               filterPlaceholder="Filtrar compromisos por descripción"
               filterValue={descriptionFilter}
