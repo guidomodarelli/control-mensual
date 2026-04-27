@@ -51,9 +51,12 @@ export const basePageProps = {
       trackedLoanCount: 0,
     },
   },
+  lendersLoadErrorCode: null,
   lendersLoadError: null,
+  loadErrorCode: null,
   loadError: null,
   initialActiveTab: "expenses" as const,
+  reportLoadErrorCode: null,
   reportLoadError: null,
 };
 

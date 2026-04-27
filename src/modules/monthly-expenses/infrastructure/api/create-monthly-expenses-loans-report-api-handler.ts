@@ -10,6 +10,12 @@ import {
   appLogger,
   createRequestLogContext,
 } from "@/modules/shared/infrastructure/observability/app-logger";
+import {
+  TECHNICAL_ERROR_CODES,
+} from "@/modules/shared/infrastructure/errors/technical-error-codes";
+import {
+  createTechnicalErrorEnvelope,
+} from "@/modules/shared/infrastructure/errors/technical-error";
 
 async function getDefaultUserSubject(request: NextApiRequest) {
   const { getAuthenticatedUserSubjectFromRequest } = await import(
@@ -79,22 +85,28 @@ export function createMonthlyExpensesLoansReportApiHandler<TResult>({
 
       if (error instanceof GoogleOAuthAuthenticationError) {
         return response.status(401).json({
-          error:
+          ...createTechnicalErrorEnvelope(
             "Google authentication is required before loading monthly expenses reports.",
+            TECHNICAL_ERROR_CODES.GOOGLE_AUTHENTICATION_REQUIRED,
+          ),
         });
       }
 
       if (error instanceof GoogleOAuthConfigurationError) {
         return response.status(500).json({
-          error:
+          ...createTechnicalErrorEnvelope(
             "Google OAuth server configuration is incomplete for monthly expenses report loading.",
+            TECHNICAL_ERROR_CODES.GOOGLE_OAUTH_CONFIGURATION_INCOMPLETE,
+          ),
         });
       }
 
       if (error instanceof TursoConfigurationError) {
         return response.status(500).json({
-          error:
+          ...createTechnicalErrorEnvelope(
             "Database server configuration is incomplete for monthly expenses report loading.",
+            TECHNICAL_ERROR_CODES.TURSO_CONFIGURATION_INCOMPLETE,
+          ),
         });
       }
 
@@ -105,7 +117,10 @@ export function createMonthlyExpensesLoansReportApiHandler<TResult>({
       }
 
       return response.status(500).json({
-        error: "We could not load the monthly expenses report right now. Try again later.",
+        ...createTechnicalErrorEnvelope(
+          "We could not load the monthly expenses report right now. Try again later.",
+          TECHNICAL_ERROR_CODES.MONTHLY_EXPENSES_REPORT_API_UNEXPECTED_ERROR,
+        ),
       });
     }
   };

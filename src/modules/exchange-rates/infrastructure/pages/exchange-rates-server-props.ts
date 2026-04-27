@@ -16,6 +16,10 @@ import {
   createRequestLogContext,
 } from "@/modules/shared/infrastructure/observability/app-logger";
 import {
+  TECHNICAL_ERROR_CODES,
+  type TechnicalErrorCode,
+} from "@/modules/shared/infrastructure/errors/technical-error-codes";
+import {
   getRequestedSidebarOpen,
   SIDEBAR_STATE_COOKIE_NAME,
 } from "@/modules/shared/infrastructure/pages/sidebar-state";
@@ -70,6 +74,7 @@ export interface ExchangeRatesRoutePageProps {
 function createFallbackExchangeRatesPageResult(
   canEditIibb: boolean,
   loadError: string,
+  loadErrorCode: TechnicalErrorCode,
   maxSelectableMonth: string,
   minSelectableMonth: string,
   selectedMonth: string,
@@ -78,6 +83,7 @@ function createFallbackExchangeRatesPageResult(
     blueRate: 0,
     canEditIibb,
     iibbRateDecimal: DEFAULT_IIBB_RATE_DECIMAL,
+    loadErrorCode,
     loadError,
     maxSelectableMonth,
     minSelectableMonth,
@@ -162,6 +168,7 @@ export async function getExchangeRatesServerSideProps(
         result: createFallbackExchangeRatesPageResult(
           canEditIibb,
           "No pudimos cargar las cotizaciones del dólar en este momento.",
+          TECHNICAL_ERROR_CODES.EXCHANGE_RATES_SSR_UNEXPECTED_ERROR,
           currentMonth,
           currentMonth,
           selectedMonth,

@@ -14,6 +14,12 @@ import {
 } from "@/modules/exchange-rates/infrastructure/pages/exchange-rates-server-props";
 import { saveGlobalExchangeRateSettingsViaApi } from "@/modules/exchange-rates/infrastructure/api/exchange-rates-settings-api";
 import { calculateSolidarityRate } from "@/modules/exchange-rates/application/use-cases/get-monthly-exchange-rate-snapshot";
+import {
+  getTechnicalErrorCode,
+} from "@/modules/shared/infrastructure/errors/technical-error";
+import {
+  renderErrorWithCode,
+} from "@/modules/shared/infrastructure/errors/technical-error-ui";
 
 import styles from "./exchange-rates-page.module.scss";
 
@@ -63,6 +69,7 @@ export default function ExchangeRatesPage({
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(
     result.loadError,
   );
+  const [feedbackErrorCode, setFeedbackErrorCode] = useState(result.loadErrorCode);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isRatesAvailable = !currentResult.loadError;
   const isOAuthConfigured = bootstrap.authStatus === "configured";
@@ -71,6 +78,7 @@ export default function ExchangeRatesPage({
     setCurrentResult(result);
     setIibbInputValue(String(result.iibbRateDecimal));
     setFeedbackMessage(result.loadError);
+    setFeedbackErrorCode(result.loadErrorCode);
   }, [result]);
 
   const handleMonthChange = (selectedMonth: string) => {
@@ -115,12 +123,14 @@ export default function ExchangeRatesPage({
       setFeedbackMessage(
         "Ingresá un valor decimal válido para IIBB entre 0 y 1. Por ejemplo: 0.02.",
       );
+      setFeedbackErrorCode(null);
       toast.warning("Ingresá un valor válido para IIBB.");
       return;
     }
 
     setIsSubmitting(true);
     setFeedbackMessage(null);
+    setFeedbackErrorCode(null);
 
     try {
       const savedSettings = await saveGlobalExchangeRateSettingsViaApi({
@@ -144,7 +154,15 @@ export default function ExchangeRatesPage({
           : "No pudimos guardar la configuración global de IIBB.";
 
       setFeedbackMessage(nextFeedbackMessage);
-      toast.error("No pudimos guardar la configuración global de IIBB.");
+      const technicalErrorCode = getTechnicalErrorCode(error);
+
+      setFeedbackErrorCode(technicalErrorCode);
+      toast.error(
+        renderErrorWithCode(
+          "No pudimos guardar la configuración global de IIBB.",
+          technicalErrorCode,
+        ),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -201,7 +219,10 @@ export default function ExchangeRatesPage({
           <Card>
             <CardContent>
               <p className={`${styles.feedbackText} ${styles.errorText}`} role="alert">
-                {feedbackMessage}
+                <span>{feedbackMessage}</span>
+                {feedbackErrorCode ? (
+                  <span className={styles.feedbackErrorCode}>{`Code: ${feedbackErrorCode}`}</span>
+                ) : null}
               </p>
             </CardContent>
           </Card>

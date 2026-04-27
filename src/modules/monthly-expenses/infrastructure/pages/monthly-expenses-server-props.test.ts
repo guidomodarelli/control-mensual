@@ -209,8 +209,11 @@ describe("toSerializableMonthlyExpensesPageProps", () => {
         },
       },
       initialSidebarOpen: false,
+      lendersLoadErrorCode: null,
       lendersLoadError: null,
+      loadErrorCode: null,
       loadError: null,
+      reportLoadErrorCode: null,
       reportLoadError: null,
     };
 

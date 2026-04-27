@@ -1,6 +1,12 @@
 import { z } from "zod";
 
 import { withCorrelationIdHeaders } from "@/modules/shared/infrastructure/observability/client-correlation-id";
+import {
+  type TechnicalErrorCode,
+} from "@/modules/shared/infrastructure/errors/technical-error-codes";
+import {
+  parseTechnicalErrorResponse,
+} from "@/modules/shared/infrastructure/errors/technical-error";
 
 import type { SaveLendersCatalogCommand } from "../../application/commands/save-lenders-catalog-command";
 import type { LendersCatalogDocumentResult } from "../../application/results/lenders-catalog-document-result";
@@ -30,14 +36,18 @@ const storedLendersResponseSchema = z.object({
   }),
 });
 
-const lendersErrorResponseSchema = z.object({
-  error: z.string().trim().min(1),
-});
-
 export class LendersApiError extends Error {
-  constructor(message: string, options?: ErrorOptions) {
+  readonly errorCode: TechnicalErrorCode | null;
+
+  constructor(
+    message: string,
+    options?: ErrorOptions & {
+      errorCode?: TechnicalErrorCode | null;
+    },
+  ) {
     super(message, options);
     this.name = "LendersApiError";
+    this.errorCode = options?.errorCode ?? null;
   }
 }
 
@@ -50,12 +60,14 @@ export async function getLendersCatalogViaApi(
   const responseJson = await response.json();
 
   if (!response.ok) {
-    const parsedError = lendersErrorResponseSchema.safeParse(responseJson);
+    const parsedError = parseTechnicalErrorResponse(responseJson);
 
     throw new LendersApiError(
-      parsedError.success
-        ? parsedError.data.error
-        : "lenders-api:/api/storage/lenders returned an unexpected error response.",
+      parsedError?.error ??
+        "lenders-api:/api/storage/lenders returned an unexpected error response.",
+      {
+        errorCode: parsedError?.errorCode ?? null,
+      },
     );
   }
 
@@ -78,12 +90,14 @@ export async function saveLendersCatalogViaApi(
   const responseJson = await response.json();
 
   if (!response.ok) {
-    const parsedError = lendersErrorResponseSchema.safeParse(responseJson);
+    const parsedError = parseTechnicalErrorResponse(responseJson);
 
     throw new LendersApiError(
-      parsedError.success
-        ? parsedError.data.error
-        : "lenders-api:/api/storage/lenders returned an unexpected error response.",
+      parsedError?.error ??
+        "lenders-api:/api/storage/lenders returned an unexpected error response.",
+      {
+        errorCode: parsedError?.errorCode ?? null,
+      },
     );
   }
 

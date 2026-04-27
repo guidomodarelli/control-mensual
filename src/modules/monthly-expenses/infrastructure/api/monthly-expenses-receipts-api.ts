@@ -1,6 +1,12 @@
 import { z } from "zod";
 
 import { withCorrelationIdHeaders } from "@/modules/shared/infrastructure/observability/client-correlation-id";
+import {
+  type TechnicalErrorCode,
+} from "@/modules/shared/infrastructure/errors/technical-error-codes";
+import {
+  parseTechnicalErrorResponse,
+} from "@/modules/shared/infrastructure/errors/technical-error";
 
 const uploadMonthlyExpenseReceiptRequestSchema = z.object({
   contentBase64: z.string().trim().min(1),
@@ -31,10 +37,6 @@ const monthlyExpenseReceiptSuccessEnvelopeSchema = z.object({
   data: monthlyExpenseReceiptResultSchema,
 }).strict();
 
-const monthlyExpenseReceiptErrorEnvelopeSchema = z.object({
-  error: z.string().trim().min(1),
-}).strict();
-
 export type UploadMonthlyExpenseReceiptRequest = z.infer<
   typeof uploadMonthlyExpenseReceiptRequestSchema
 >;
@@ -53,9 +55,17 @@ const MONTHLY_EXPENSES_RECEIPTS_API_UNEXPECTED_ERROR_MESSAGE =
   "monthly-expenses-receipts-api:/api/storage/monthly-expenses-receipts returned an unexpected error response.";
 
 export class MonthlyExpenseReceiptsApiError extends Error {
-  constructor(message: string, options?: ErrorOptions) {
+  readonly errorCode: TechnicalErrorCode | null;
+
+  constructor(
+    message: string,
+    options?: ErrorOptions & {
+      errorCode?: TechnicalErrorCode | null;
+    },
+  ) {
     super(message, options);
     this.name = "MonthlyExpenseReceiptsApiError";
+    this.errorCode = options?.errorCode ?? null;
   }
 }
 
@@ -128,15 +138,15 @@ function uploadMonthlyExpenseReceiptViaApiWithXhr(
         const responseJson = parseJsonFromXhrResponse(request);
 
         if (request.status < 200 || request.status >= 300) {
-          const parsedError = monthlyExpenseReceiptErrorEnvelopeSchema.safeParse(
-            responseJson,
-          );
+          const parsedError = parseTechnicalErrorResponse(responseJson);
 
           reject(
             new MonthlyExpenseReceiptsApiError(
-              parsedError.success
-                ? parsedError.data.error
-                : MONTHLY_EXPENSES_RECEIPTS_API_UNEXPECTED_ERROR_MESSAGE,
+              parsedError?.error ??
+                MONTHLY_EXPENSES_RECEIPTS_API_UNEXPECTED_ERROR_MESSAGE,
+              {
+                errorCode: parsedError?.errorCode ?? null,
+              },
             ),
           );
           return;
@@ -183,14 +193,14 @@ export async function uploadMonthlyExpenseReceiptViaApi(
   const responseJson = await response.json();
 
   if (!response.ok) {
-    const parsedError = monthlyExpenseReceiptErrorEnvelopeSchema.safeParse(
-      responseJson,
-    );
+    const parsedError = parseTechnicalErrorResponse(responseJson);
 
     throw new MonthlyExpenseReceiptsApiError(
-      parsedError.success
-        ? parsedError.data.error
-        : MONTHLY_EXPENSES_RECEIPTS_API_UNEXPECTED_ERROR_MESSAGE,
+      parsedError?.error ??
+        MONTHLY_EXPENSES_RECEIPTS_API_UNEXPECTED_ERROR_MESSAGE,
+      {
+        errorCode: parsedError?.errorCode ?? null,
+      },
     );
   }
 
@@ -215,14 +225,14 @@ export async function deleteMonthlyExpenseReceiptViaApi(
 
   if (!response.ok) {
     const responseJson = await response.json();
-    const parsedError = monthlyExpenseReceiptErrorEnvelopeSchema.safeParse(
-      responseJson,
-    );
+    const parsedError = parseTechnicalErrorResponse(responseJson);
 
     throw new MonthlyExpenseReceiptsApiError(
-      parsedError.success
-        ? parsedError.data.error
-        : "monthly-expenses-receipts-api:/api/storage/monthly-expenses-receipts returned an unexpected error response.",
+      parsedError?.error ??
+        "monthly-expenses-receipts-api:/api/storage/monthly-expenses-receipts returned an unexpected error response.",
+      {
+        errorCode: parsedError?.errorCode ?? null,
+      },
     );
   }
 }

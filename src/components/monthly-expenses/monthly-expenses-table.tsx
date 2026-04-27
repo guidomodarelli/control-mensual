@@ -116,6 +116,8 @@ import {
 } from "./payment-link";
 import styles from "./monthly-expenses-table.module.scss";
 
+type TechnicalErrorCode = `E${number}${number}${number}${number}`;
+
 type MonthlyExpenseCurrency = "ARS" | "USD";
 export type MonthlyExpenseLoanDirection = "payable" | "receivable";
 type MonthlyExpenseReceiptShareStatus = "pending" | "sent";
@@ -991,6 +993,7 @@ interface MonthlyExpensesTableProps {
     solidarityRate: number;
   } | null;
   feedbackMessage: string;
+  feedbackErrorCode?: TechnicalErrorCode | null;
   feedbackTone: "default" | "error" | "success";
   isCopyFromDisabled: boolean;
   isExpenseSheetOpen: boolean;
@@ -998,6 +1001,7 @@ interface MonthlyExpensesTableProps {
   isSubmitting: boolean;
   lenders: LenderOption[];
   loadError: string | null;
+  loadErrorCode?: TechnicalErrorCode | null;
   month: string;
   pendingMonth: string | null;
   onAddExpense: () => void;
@@ -2218,6 +2222,7 @@ export function MonthlyExpensesTable({
   exchangeRateLoadError,
   exchangeRateSnapshot,
   feedbackMessage,
+  feedbackErrorCode = null,
   feedbackTone,
   isCopyFromDisabled,
   isExpenseSheetOpen,
@@ -2225,6 +2230,7 @@ export function MonthlyExpensesTable({
   isSubmitting,
   lenders,
   loadError,
+  loadErrorCode = null,
   month,
   pendingMonth,
   onAddExpense,
@@ -3890,7 +3896,10 @@ export function MonthlyExpensesTable({
 
         {loadError ? (
           <p className={cn(styles.feedback, styles.errorText)} role="alert">
-            {loadError}
+            <span>{loadError}</span>
+            {loadErrorCode ? (
+              <span className={styles.feedbackErrorCode}>{`Code: ${loadErrorCode}`}</span>
+            ) : null}
           </p>
         ) : null}
 
@@ -4133,7 +4142,10 @@ export function MonthlyExpensesTable({
               )}
               role={feedbackTone === "error" ? "alert" : undefined}
             >
-              {feedbackMessage}
+              <span>{feedbackMessage}</span>
+              {feedbackTone === "error" && feedbackErrorCode ? (
+                <span className={styles.feedbackErrorCode}>{`Code: ${feedbackErrorCode}`}</span>
+              ) : null}
             </p>
           ) : null}
         </div>

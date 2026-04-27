@@ -1,6 +1,12 @@
 import { z } from "zod";
 
 import { withCorrelationIdHeaders } from "@/modules/shared/infrastructure/observability/client-correlation-id";
+import {
+  type TechnicalErrorCode,
+} from "@/modules/shared/infrastructure/errors/technical-error-codes";
+import {
+  parseTechnicalErrorResponse,
+} from "@/modules/shared/infrastructure/errors/technical-error";
 
 import type { MonthlyExpensesLoansReportResult } from "../../application/results/monthly-expenses-loans-report-result";
 
@@ -32,14 +38,18 @@ const monthlyExpensesReportSchema = z.object({
   }),
 });
 
-const monthlyExpensesReportErrorSchema = z.object({
-  error: z.string().trim().min(1),
-});
-
 export class MonthlyExpensesReportApiError extends Error {
-  constructor(message: string, options?: ErrorOptions) {
+  readonly errorCode: TechnicalErrorCode | null;
+
+  constructor(
+    message: string,
+    options?: ErrorOptions & {
+      errorCode?: TechnicalErrorCode | null;
+    },
+  ) {
     super(message, options);
     this.name = "MonthlyExpensesReportApiError";
+    this.errorCode = options?.errorCode ?? null;
   }
 }
 
@@ -52,12 +62,14 @@ export async function getMonthlyExpensesLoansReportViaApi(
   const responseJson = await response.json();
 
   if (!response.ok) {
-    const parsedError = monthlyExpensesReportErrorSchema.safeParse(responseJson);
+    const parsedError = parseTechnicalErrorResponse(responseJson);
 
     throw new MonthlyExpensesReportApiError(
-      parsedError.success
-        ? parsedError.data.error
-        : "monthly-expenses-report-api:/api/storage/monthly-expenses-report returned an unexpected error response.",
+      parsedError?.error ??
+        "monthly-expenses-report-api:/api/storage/monthly-expenses-report returned an unexpected error response.",
+      {
+        errorCode: parsedError?.errorCode ?? null,
+      },
     );
   }
 

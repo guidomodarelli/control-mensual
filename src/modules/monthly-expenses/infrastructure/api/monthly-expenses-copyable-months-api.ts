@@ -1,6 +1,12 @@
 import { z } from "zod";
 
 import { withCorrelationIdHeaders } from "@/modules/shared/infrastructure/observability/client-correlation-id";
+import {
+  type TechnicalErrorCode,
+} from "@/modules/shared/infrastructure/errors/technical-error-codes";
+import {
+  parseTechnicalErrorResponse,
+} from "@/modules/shared/infrastructure/errors/technical-error";
 
 import type { MonthlyExpensesCopyableMonthsResult } from "../../application/results/monthly-expenses-copyable-months-result";
 
@@ -12,14 +18,18 @@ const monthlyExpensesCopyableMonthsSchema = z.object({
   }).strict(),
 }).strict();
 
-const monthlyExpensesCopyableMonthsErrorSchema = z.object({
-  error: z.string().trim().min(1),
-}).strict();
-
 export class MonthlyExpensesCopyableMonthsApiError extends Error {
-  constructor(message: string, options?: ErrorOptions) {
+  readonly errorCode: TechnicalErrorCode | null;
+
+  constructor(
+    message: string,
+    options?: ErrorOptions & {
+      errorCode?: TechnicalErrorCode | null;
+    },
+  ) {
     super(message, options);
     this.name = "MonthlyExpensesCopyableMonthsApiError";
+    this.errorCode = options?.errorCode ?? null;
   }
 }
 
@@ -56,13 +66,14 @@ export async function getMonthlyExpensesCopyableMonthsViaApi(
   const responseJson = await response.json();
 
   if (!response.ok) {
-    const parsedError =
-      monthlyExpensesCopyableMonthsErrorSchema.safeParse(responseJson);
+    const parsedError = parseTechnicalErrorResponse(responseJson);
 
     throw new MonthlyExpensesCopyableMonthsApiError(
-      parsedError.success
-        ? parsedError.data.error
-        : "monthly-expenses-copyable-months-api returned an unexpected error response.",
+      parsedError?.error ??
+        "monthly-expenses-copyable-months-api returned an unexpected error response.",
+      {
+        errorCode: parsedError?.errorCode ?? null,
+      },
     );
   }
 

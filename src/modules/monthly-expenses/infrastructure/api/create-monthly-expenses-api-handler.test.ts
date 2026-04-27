@@ -3,6 +3,7 @@ import type { TursoDatabase } from "@/modules/shared/infrastructure/database/dri
 
 import { GoogleOAuthAuthenticationError } from "@/modules/auth/infrastructure/oauth/google-oauth-token";
 import { TursoConfigurationError } from "@/modules/shared/infrastructure/database/turso-server-config";
+import { TECHNICAL_ERROR_CODES } from "@/modules/shared/infrastructure/errors/technical-error-codes";
 
 import { createMonthlyExpensesApiHandler } from "./create-monthly-expenses-api-handler";
 
@@ -831,6 +832,7 @@ describe("createMonthlyExpensesApiHandler", () => {
     expect(response.statusCode).toBe(401);
     expect(response.body).toEqual({
       error: "Google authentication is required before saving monthly expenses.",
+      errorCode: TECHNICAL_ERROR_CODES.GOOGLE_AUTHENTICATION_REQUIRED,
     });
     expect(errorSpy).toHaveBeenCalled();
   });
@@ -872,6 +874,7 @@ describe("createMonthlyExpensesApiHandler", () => {
     expect(response.body).toEqual({
       error:
         "Database server configuration is incomplete for monthly expenses storage.",
+      errorCode: TECHNICAL_ERROR_CODES.TURSO_CONFIGURATION_INCOMPLETE,
     });
   });
 });

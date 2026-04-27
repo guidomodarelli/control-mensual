@@ -33,6 +33,7 @@ export async function getExchangeRatesPageResult({
     blueRate: snapshot.blueRate,
     canEditIibb,
     iibbRateDecimal: snapshot.iibbRateDecimalUsed,
+    loadErrorCode: null,
     loadError: null,
     maxSelectableMonth,
     minSelectableMonth,

@@ -25,8 +25,11 @@ import { cn } from "@/lib/utils";
 
 import styles from "./lenders-panel.module.scss";
 
+type TechnicalErrorCode = `E${number}${number}${number}${number}`;
+
 interface LenderCreateDialogProps {
   feedbackMessage: string | null;
+  feedbackErrorCode?: TechnicalErrorCode | null;
   feedbackTone: "default" | "error" | "success";
   formValues: {
     name: string;
@@ -43,6 +46,7 @@ interface LenderCreateDialogProps {
 
 export function LenderCreateDialog({
   feedbackMessage,
+  feedbackErrorCode = null,
   feedbackTone,
   formValues,
   isOpen,
@@ -129,7 +133,10 @@ export function LenderCreateDialog({
           <form className={styles.form} onSubmit={handleSubmit}>
             {feedbackTone === "error" ? (
               <p className={cn(styles.feedback, styles.errorText)} role="alert">
-                {feedbackMessage}
+                <span>{feedbackMessage}</span>
+                {feedbackErrorCode ? (
+                  <span className={styles.feedbackErrorCode}>{`Code: ${feedbackErrorCode}`}</span>
+                ) : null}
               </p>
             ) : null}
 

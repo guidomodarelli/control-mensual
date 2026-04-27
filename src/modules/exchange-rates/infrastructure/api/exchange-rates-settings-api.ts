@@ -1,6 +1,12 @@
 import { z } from "zod";
 
 import { withCorrelationIdHeaders } from "@/modules/shared/infrastructure/observability/client-correlation-id";
+import {
+  type TechnicalErrorCode,
+} from "@/modules/shared/infrastructure/errors/technical-error-codes";
+import {
+  parseTechnicalErrorResponse,
+} from "@/modules/shared/infrastructure/errors/technical-error";
 
 const exchangeRateSettingsRequestSchema = z.object({
   iibbRateDecimal: z.number(),
@@ -12,14 +18,18 @@ const exchangeRateSettingsResultSchema = z.object({
   }),
 });
 
-const exchangeRateSettingsErrorEnvelopeSchema = z.object({
-  error: z.string().trim().min(1),
-});
-
 export class ExchangeRateSettingsApiError extends Error {
-  constructor(message: string, options?: ErrorOptions) {
+  readonly errorCode: TechnicalErrorCode | null;
+
+  constructor(
+    message: string,
+    options?: ErrorOptions & {
+      errorCode?: TechnicalErrorCode | null;
+    },
+  ) {
     super(message, options);
     this.name = "ExchangeRateSettingsApiError";
+    this.errorCode = options?.errorCode ?? null;
   }
 }
 
@@ -38,13 +48,14 @@ export async function saveGlobalExchangeRateSettingsViaApi(
   const responseJson = await response.json();
 
   if (!response.ok) {
-    const parsedError =
-      exchangeRateSettingsErrorEnvelopeSchema.safeParse(responseJson);
+    const parsedError = parseTechnicalErrorResponse(responseJson);
 
     throw new ExchangeRateSettingsApiError(
-      parsedError.success
-        ? parsedError.data.error
-        : "exchange-rates-settings-api:/api/exchange-rates/settings returned an unexpected error response.",
+      parsedError?.error ??
+        "exchange-rates-settings-api:/api/exchange-rates/settings returned an unexpected error response.",
+      {
+        errorCode: parsedError?.errorCode ?? null,
+      },
     );
   }
 

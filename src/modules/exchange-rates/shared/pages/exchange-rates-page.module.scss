@@ -82,11 +82,18 @@
 }
 
 .feedbackText {
+  display: grid;
+  gap: 0.2rem;
   font-size: 0.9rem;
 }
 
 .errorText {
   color: var(--destructive);
+}
+
+.feedbackErrorCode {
+  font-size: 0.75rem;
+  opacity: 0.85;
 }
 
 .readOnlyValue {

@@ -1,6 +1,12 @@
 import { z } from "zod";
 
 import { withCorrelationIdHeaders } from "@/modules/shared/infrastructure/observability/client-correlation-id";
+import {
+  type TechnicalErrorCode,
+} from "@/modules/shared/infrastructure/errors/technical-error-codes";
+import {
+  parseTechnicalErrorResponse,
+} from "@/modules/shared/infrastructure/errors/technical-error";
 
 const storageRequestSchema = z.object({
   content: z.string().trim().min(1),
@@ -19,17 +25,21 @@ const storageSuccessEnvelopeSchema = z.object({
   data: storedStorageResourceSchema,
 });
 
-const storageErrorEnvelopeSchema = z.object({
-  error: z.string().trim().min(1),
-});
-
 export type StorageSaveRequest = z.infer<typeof storageRequestSchema>;
 export type StoredStorageResource = z.infer<typeof storedStorageResourceSchema>;
 
 export class StorageApiError extends Error {
-  constructor(message: string, options?: ErrorOptions) {
+  readonly errorCode: TechnicalErrorCode | null;
+
+  constructor(
+    message: string,
+    options?: ErrorOptions & {
+      errorCode?: TechnicalErrorCode | null;
+    },
+  ) {
     super(message, options);
     this.name = "StorageApiError";
+    this.errorCode = options?.errorCode ?? null;
   }
 }
 
@@ -49,12 +59,14 @@ async function postStorageRequest(
   const responseJson = await response.json();
 
   if (!response.ok) {
-    const parsedError = storageErrorEnvelopeSchema.safeParse(responseJson);
+    const parsedError = parseTechnicalErrorResponse(responseJson);
 
     throw new StorageApiError(
-      parsedError.success
-        ? parsedError.data.error
-        : `storage-api:${endpoint} returned an unexpected error response.`,
+      parsedError?.error ??
+        `storage-api:${endpoint} returned an unexpected error response.`,
+      {
+        errorCode: parsedError?.errorCode ?? null,
+      },
     );
   }
 

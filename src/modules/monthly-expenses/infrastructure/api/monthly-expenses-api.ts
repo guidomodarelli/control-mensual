@@ -2,6 +2,12 @@ import { z } from "zod";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 import { withCorrelationIdHeaders } from "@/modules/shared/infrastructure/observability/client-correlation-id";
+import {
+  type TechnicalErrorCode,
+} from "@/modules/shared/infrastructure/errors/technical-error-codes";
+import {
+  parseTechnicalErrorResponse,
+} from "@/modules/shared/infrastructure/errors/technical-error";
 
 import type { SaveMonthlyExpensesCommand } from "../../application/commands/save-monthly-expenses-command";
 import type { MonthlyExpensesDocumentResult } from "../../application/results/monthly-expenses-document-result";
@@ -203,10 +209,6 @@ const monthlyExpensesRequestSchema = z.object({
   month: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
 }).strict();
 
-const monthlyExpensesErrorEnvelopeSchema = z.object({
-  error: z.string().trim().min(1),
-}).strict();
-
 const monthlyExpensesSaveWarningSchema = z.object({
   fileId: z.string().trim().min(1),
   nextFileName: z.string().trim().min(1),
@@ -295,14 +297,27 @@ const monthlyExpensesDocumentEnvelopeSchema = z.object({
 }).strict();
 
 export class MonthlyExpensesApiError extends Error {
-  constructor(message: string, options?: ErrorOptions) {
+  readonly errorCode: TechnicalErrorCode | null;
+
+  constructor(
+    message: string,
+    options?: ErrorOptions & {
+      errorCode?: TechnicalErrorCode | null;
+    },
+  ) {
     super(message, options);
     this.name = "MonthlyExpensesApiError";
+    this.errorCode = options?.errorCode ?? null;
   }
 }
 
 export class MonthlyExpensesAuthenticationError extends MonthlyExpensesApiError {
-  constructor(message: string, options?: ErrorOptions) {
+  constructor(
+    message: string,
+    options?: ErrorOptions & {
+      errorCode?: TechnicalErrorCode | null;
+    },
+  ) {
     super(message, options);
     this.name = "MonthlyExpensesAuthenticationError";
   }
@@ -345,17 +360,19 @@ export async function saveMonthlyExpensesDocumentViaApi(
 
   if (!response.ok) {
     const responseJson = await response.json();
-    const parsedError =
-      monthlyExpensesErrorEnvelopeSchema.safeParse(responseJson);
-    const errorMessage = parsedError.success
-      ? parsedError.data.error
-      : "monthly-expenses-api:/api/storage/monthly-expenses returned an unexpected error response.";
+    const parsedError = parseTechnicalErrorResponse(responseJson);
+    const errorMessage = parsedError?.error ??
+      "monthly-expenses-api:/api/storage/monthly-expenses returned an unexpected error response.";
 
     if (response.status === 401) {
-      throw new MonthlyExpensesAuthenticationError(errorMessage);
+      throw new MonthlyExpensesAuthenticationError(errorMessage, {
+        errorCode: parsedError?.errorCode ?? null,
+      });
     }
 
-    throw new MonthlyExpensesApiError(errorMessage);
+    throw new MonthlyExpensesApiError(errorMessage, {
+      errorCode: parsedError?.errorCode ?? null,
+    });
   }
 
   if (response.status === 204) {
@@ -418,16 +435,19 @@ export async function getMonthlyExpensesDocumentViaApi(
   const responseJson = await response.json();
 
   if (!response.ok) {
-    const parsedError = monthlyExpensesErrorEnvelopeSchema.safeParse(responseJson);
-    const errorMessage = parsedError.success
-      ? parsedError.data.error
-      : "monthly-expenses-api:/api/storage/monthly-expenses returned an unexpected error response.";
+    const parsedError = parseTechnicalErrorResponse(responseJson);
+    const errorMessage = parsedError?.error ??
+      "monthly-expenses-api:/api/storage/monthly-expenses returned an unexpected error response.";
 
     if (response.status === 401) {
-      throw new MonthlyExpensesAuthenticationError(errorMessage);
+      throw new MonthlyExpensesAuthenticationError(errorMessage, {
+        errorCode: parsedError?.errorCode ?? null,
+      });
     }
 
-    throw new MonthlyExpensesApiError(errorMessage);
+    throw new MonthlyExpensesApiError(errorMessage, {
+      errorCode: parsedError?.errorCode ?? null,
+    });
   }
 
   return monthlyExpensesDocumentEnvelopeSchema.parse(responseJson)

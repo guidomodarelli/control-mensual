@@ -17,6 +17,12 @@ import {
   appLogger,
   createRequestLogContext,
 } from "@/modules/shared/infrastructure/observability/app-logger";
+import {
+  TECHNICAL_ERROR_CODES,
+} from "@/modules/shared/infrastructure/errors/technical-error-codes";
+import {
+  createTechnicalErrorEnvelope,
+} from "@/modules/shared/infrastructure/errors/technical-error";
 
 import type { SaveGlobalExchangeRateSettingsCommand } from "../../application/commands/save-global-exchange-rate-settings-command";
 
@@ -120,22 +126,28 @@ export function createGlobalExchangeRateSettingsApiHandler<TResult>({
 
       if (error instanceof GoogleOAuthAuthenticationError) {
         return response.status(401).json({
-          error:
+          ...createTechnicalErrorEnvelope(
             "Google authentication is required before saving the global IIBB configuration.",
+            TECHNICAL_ERROR_CODES.GOOGLE_AUTHENTICATION_REQUIRED,
+          ),
         });
       }
 
       if (error instanceof GoogleOAuthConfigurationError) {
         return response.status(500).json({
-          error:
+          ...createTechnicalErrorEnvelope(
             "Google OAuth server configuration is incomplete for global IIBB configuration.",
+            TECHNICAL_ERROR_CODES.GOOGLE_OAUTH_CONFIGURATION_INCOMPLETE,
+          ),
         });
       }
 
       if (error instanceof TursoConfigurationError) {
         return response.status(500).json({
-          error:
+          ...createTechnicalErrorEnvelope(
             "Database server configuration is incomplete for global IIBB configuration.",
+            TECHNICAL_ERROR_CODES.TURSO_CONFIGURATION_INCOMPLETE,
+          ),
         });
       }
 
@@ -146,8 +158,10 @@ export function createGlobalExchangeRateSettingsApiHandler<TResult>({
       }
 
       return response.status(500).json({
-        error:
+        ...createTechnicalErrorEnvelope(
           "We could not save the global IIBB configuration right now. Try again later.",
+          TECHNICAL_ERROR_CODES.EXCHANGE_RATES_SETTINGS_API_UNEXPECTED_ERROR,
+        ),
       });
     }
   };

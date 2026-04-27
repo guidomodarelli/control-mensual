@@ -11,6 +11,12 @@ import {
   appLogger,
   createRequestLogContext,
 } from "@/modules/shared/infrastructure/observability/app-logger";
+import {
+  TECHNICAL_ERROR_CODES,
+} from "@/modules/shared/infrastructure/errors/technical-error-codes";
+import {
+  createTechnicalErrorEnvelope,
+} from "@/modules/shared/infrastructure/errors/technical-error";
 
 const applicationSettingsRequestBodySchema = z.object({
   content: z.string().trim().min(1),
@@ -109,22 +115,28 @@ export function createApplicationSettingsApiHandler<TResult>({
 
       if (error instanceof GoogleOAuthAuthenticationError) {
         return response.status(401).json({
-          error:
+          ...createTechnicalErrorEnvelope(
             "Google authentication is required before saving application settings.",
+            TECHNICAL_ERROR_CODES.GOOGLE_AUTHENTICATION_REQUIRED,
+          ),
         });
       }
 
       if (error instanceof GoogleOAuthConfigurationError) {
         return response.status(500).json({
-          error:
+          ...createTechnicalErrorEnvelope(
             "Google OAuth server configuration is incomplete for application settings storage.",
+            TECHNICAL_ERROR_CODES.GOOGLE_OAUTH_CONFIGURATION_INCOMPLETE,
+          ),
         });
       }
 
       if (error instanceof TursoConfigurationError) {
         return response.status(500).json({
-          error:
+          ...createTechnicalErrorEnvelope(
             "Database server configuration is incomplete for application settings storage.",
+            TECHNICAL_ERROR_CODES.TURSO_CONFIGURATION_INCOMPLETE,
+          ),
         });
       }
 
@@ -135,8 +147,10 @@ export function createApplicationSettingsApiHandler<TResult>({
       }
 
       return response.status(500).json({
-        error:
+        ...createTechnicalErrorEnvelope(
           "We could not save application settings right now. Try again later.",
+          TECHNICAL_ERROR_CODES.APPLICATION_SETTINGS_API_UNEXPECTED_ERROR,
+        ),
       });
     }
   };

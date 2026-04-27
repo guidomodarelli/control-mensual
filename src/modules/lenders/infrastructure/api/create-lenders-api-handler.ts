@@ -11,6 +11,12 @@ import {
   appLogger,
   createRequestLogContext,
 } from "@/modules/shared/infrastructure/observability/app-logger";
+import {
+  TECHNICAL_ERROR_CODES,
+} from "@/modules/shared/infrastructure/errors/technical-error-codes";
+import {
+  createTechnicalErrorEnvelope,
+} from "@/modules/shared/infrastructure/errors/technical-error";
 
 const lenderSchema = z.object({
   id: z.string().trim().min(1),
@@ -122,21 +128,28 @@ export function createLendersApiHandler<TGetResult, TSaveResult>({
 
       if (error instanceof GoogleOAuthAuthenticationError) {
         return response.status(401).json({
-          error:
+          ...createTechnicalErrorEnvelope(
             "Google authentication is required before reading or saving lenders.",
+            TECHNICAL_ERROR_CODES.GOOGLE_AUTHENTICATION_REQUIRED,
+          ),
         });
       }
 
       if (error instanceof GoogleOAuthConfigurationError) {
         return response.status(500).json({
-          error:
+          ...createTechnicalErrorEnvelope(
             "Google OAuth server configuration is incomplete for lenders storage.",
+            TECHNICAL_ERROR_CODES.GOOGLE_OAUTH_CONFIGURATION_INCOMPLETE,
+          ),
         });
       }
 
       if (error instanceof TursoConfigurationError) {
         return response.status(500).json({
-          error: "Database server configuration is incomplete for lenders storage.",
+          ...createTechnicalErrorEnvelope(
+            "Database server configuration is incomplete for lenders storage.",
+            TECHNICAL_ERROR_CODES.TURSO_CONFIGURATION_INCOMPLETE,
+          ),
         });
       }
 
@@ -147,7 +160,10 @@ export function createLendersApiHandler<TGetResult, TSaveResult>({
       }
 
       return response.status(500).json({
-        error: "We could not manage lenders right now. Try again later.",
+        ...createTechnicalErrorEnvelope(
+          "We could not manage lenders right now. Try again later.",
+          TECHNICAL_ERROR_CODES.LENDERS_API_UNEXPECTED_ERROR,
+        ),
       });
     }
   };

@@ -16,6 +16,12 @@ import {
   appLogger,
   createRequestLogContext,
 } from "@/modules/shared/infrastructure/observability/app-logger";
+import {
+  TECHNICAL_ERROR_CODES,
+} from "@/modules/shared/infrastructure/errors/technical-error-codes";
+import {
+  createTechnicalErrorEnvelope,
+} from "@/modules/shared/infrastructure/errors/technical-error";
 
 import type {
   UploadMonthlyExpenseReceiptCommand,
@@ -119,37 +125,47 @@ export function createMonthlyExpenseReceiptsApiHandler<TResult>({
 
         if (error instanceof GoogleOAuthAuthenticationError) {
           return response.status(401).json({
-            error:
+            ...createTechnicalErrorEnvelope(
               "Google authentication is required before deleting monthly expense receipts.",
+              TECHNICAL_ERROR_CODES.GOOGLE_AUTHENTICATION_REQUIRED,
+            ),
           });
         }
 
         if (error instanceof GoogleOAuthConfigurationError) {
           return response.status(500).json({
-            error:
+            ...createTechnicalErrorEnvelope(
               "Google OAuth server configuration is incomplete for monthly expense receipt deletions.",
+              TECHNICAL_ERROR_CODES.GOOGLE_OAUTH_CONFIGURATION_INCOMPLETE,
+            ),
           });
         }
 
         if (error instanceof GoogleDriveStorageError) {
           if (error.code === "api_disabled") {
             return response.status(503).json({
-              error:
+              ...createTechnicalErrorEnvelope(
                 "Google Drive API is not enabled for this project yet. Enable drive.googleapis.com in Google Cloud and try again.",
+                TECHNICAL_ERROR_CODES.GOOGLE_DRIVE_API_DISABLED,
+              ),
             });
           }
 
           if (error.code === "invalid_scope") {
             return response.status(403).json({
-              error:
+              ...createTechnicalErrorEnvelope(
                 "The current Google session is missing the Drive permissions required to delete receipts. Sign out, connect Google again, and approve Drive access.",
+                TECHNICAL_ERROR_CODES.GOOGLE_DRIVE_INVALID_SCOPE,
+              ),
             });
           }
 
           if (error.code === "insufficient_permissions") {
             return response.status(403).json({
-              error:
+              ...createTechnicalErrorEnvelope(
                 "Google Drive denied permission to delete this receipt. Verify the selected Google account can update Drive files and try again.",
+                TECHNICAL_ERROR_CODES.GOOGLE_DRIVE_INSUFFICIENT_PERMISSIONS,
+              ),
             });
           }
         }
@@ -161,7 +177,10 @@ export function createMonthlyExpenseReceiptsApiHandler<TResult>({
         }
 
         return response.status(500).json({
-          error: "We could not delete the monthly expense receipt right now. Try again later.",
+          ...createTechnicalErrorEnvelope(
+            "We could not delete the monthly expense receipt right now. Try again later.",
+            TECHNICAL_ERROR_CODES.MONTHLY_EXPENSES_RECEIPTS_API_DELETE_UNEXPECTED_ERROR,
+          ),
         });
       }
     }
@@ -207,15 +226,19 @@ export function createMonthlyExpenseReceiptsApiHandler<TResult>({
 
       if (error instanceof GoogleOAuthAuthenticationError) {
         return response.status(401).json({
-          error:
+          ...createTechnicalErrorEnvelope(
             "Google authentication is required before uploading monthly expense receipts.",
+            TECHNICAL_ERROR_CODES.GOOGLE_AUTHENTICATION_REQUIRED,
+          ),
         });
       }
 
       if (error instanceof GoogleOAuthConfigurationError) {
         return response.status(500).json({
-          error:
+          ...createTechnicalErrorEnvelope(
             "Google OAuth server configuration is incomplete for monthly expense receipt uploads.",
+            TECHNICAL_ERROR_CODES.GOOGLE_OAUTH_CONFIGURATION_INCOMPLETE,
+          ),
         });
       }
 
@@ -229,22 +252,28 @@ export function createMonthlyExpenseReceiptsApiHandler<TResult>({
       if (error instanceof GoogleDriveStorageError) {
         if (error.code === "api_disabled") {
           return response.status(503).json({
-            error:
+            ...createTechnicalErrorEnvelope(
               "Google Drive API is not enabled for this project yet. Enable drive.googleapis.com in Google Cloud and try again.",
+              TECHNICAL_ERROR_CODES.GOOGLE_DRIVE_API_DISABLED,
+            ),
           });
         }
 
         if (error.code === "invalid_scope") {
           return response.status(403).json({
-            error:
+            ...createTechnicalErrorEnvelope(
               "The current Google session is missing the Drive permissions required to upload receipts. Sign out, connect Google again, and approve Drive access.",
+              TECHNICAL_ERROR_CODES.GOOGLE_DRIVE_INVALID_SCOPE,
+            ),
           });
         }
 
         if (error.code === "insufficient_permissions") {
           return response.status(403).json({
-            error:
+            ...createTechnicalErrorEnvelope(
               "Google Drive denied permission to upload this receipt. Verify the selected Google account can create Drive files and try again.",
+              TECHNICAL_ERROR_CODES.GOOGLE_DRIVE_INSUFFICIENT_PERMISSIONS,
+            ),
           });
         }
       }
@@ -256,7 +285,10 @@ export function createMonthlyExpenseReceiptsApiHandler<TResult>({
       }
 
       return response.status(500).json({
-        error: "We could not upload the monthly expense receipt right now. Try again later.",
+        ...createTechnicalErrorEnvelope(
+          "We could not upload the monthly expense receipt right now. Try again later.",
+          TECHNICAL_ERROR_CODES.MONTHLY_EXPENSES_RECEIPTS_API_UPLOAD_UNEXPECTED_ERROR,
+        ),
       });
     }
   };

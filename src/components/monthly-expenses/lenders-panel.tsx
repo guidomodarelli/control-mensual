@@ -7,8 +7,11 @@ import { cn } from "@/lib/utils";
 
 import styles from "./lenders-panel.module.scss";
 
+type TechnicalErrorCode = `E${number}${number}${number}${number}`;
+
 interface LendersPanelProps {
   feedbackMessage: string | null;
+  feedbackErrorCode?: TechnicalErrorCode | null;
   feedbackTone: "default" | "error" | "success";
   isCreateModalOpen: boolean;
   lenders: LenderOption[];
@@ -31,6 +34,7 @@ function getLenderTypeLabel(type: LenderOption["type"]): string {
 
 export function LendersPanel({
   feedbackMessage,
+  feedbackErrorCode = null,
   feedbackTone,
   isCreateModalOpen,
   lenders,
@@ -63,7 +67,10 @@ export function LendersPanel({
           )}
           role={feedbackTone === "error" ? "alert" : "status"}
         >
-          {feedbackMessage}
+          <span>{feedbackMessage}</span>
+          {feedbackTone === "error" && feedbackErrorCode ? (
+            <span className={styles.feedbackErrorCode}>{`Code: ${feedbackErrorCode}`}</span>
+          ) : null}
         </p>
       ) : null}
 

@@ -77,6 +77,15 @@ import {
 } from "@/modules/monthly-expenses/infrastructure/api/monthly-expenses-receipts-api";
 import type { StorageBootstrapResult } from "@/modules/storage/application/results/storage-bootstrap";
 import { createMonthlyExpenseId } from "../utils/monthly-expenses-id";
+import {
+  getTechnicalErrorCode,
+} from "@/modules/shared/infrastructure/errors/technical-error";
+import {
+  type TechnicalErrorCode,
+} from "@/modules/shared/infrastructure/errors/technical-error-codes";
+import {
+  renderErrorWithCode,
+} from "@/modules/shared/infrastructure/errors/technical-error-ui";
 
 export type MonthlyExpensesPageProps = {
   bootstrap: StorageBootstrapResult;
@@ -86,13 +95,17 @@ export type MonthlyExpensesPageProps = {
   initialActiveTab: MonthlyExpensesTabKey;
   initialLendersCatalog: LendersCatalogDocumentResult;
   initialLoansReport: MonthlyExpensesLoansReportResult;
+  lendersLoadErrorCode: TechnicalErrorCode | null;
   lendersLoadError: string | null;
+  loadErrorCode: TechnicalErrorCode | null;
   loadError: string | null;
+  reportLoadErrorCode: TechnicalErrorCode | null;
   reportLoadError: string | null;
 };
 
 interface MonthlyExpensesFormState {
   error: string | null;
+  errorCode?: TechnicalErrorCode | null;
   exchangeRateLoadError: string | null;
   exchangeRateSnapshot: Exclude<
     MonthlyExpensesDocumentResult["exchangeRateSnapshot"],
@@ -105,6 +118,7 @@ interface MonthlyExpensesFormState {
 
 interface LendersCatalogState {
   error: string | null;
+  errorCode: TechnicalErrorCode | null;
   isSubmitting: boolean;
   lenders: LenderOption[];
   notes: string;
@@ -117,6 +131,7 @@ interface LoansReportState {
   directionFilter: string;
   entries: NormalizedLoansReportEntry[];
   error: string | null;
+  errorCode: TechnicalErrorCode | null;
   lenderFilter: string;
   typeFilter: string;
   summary: NormalizedLoansReportSummary;
@@ -824,6 +839,7 @@ function createMonthlyExpensesFormState(
 ): MonthlyExpensesFormState {
   return {
     error: null,
+    errorCode: null,
     exchangeRateLoadError: document.exchangeRateLoadError ?? null,
     exchangeRateSnapshot: document.exchangeRateSnapshot ?? null,
     isSubmitting: false,
@@ -837,6 +853,7 @@ function createLendersCatalogState(
 ): LendersCatalogState {
   return {
     error: null,
+    errorCode: null,
     isSubmitting: false,
     lenders: catalog.lenders.map(({ id, name, notes, type }) => ({
       id,
@@ -875,11 +892,13 @@ function normalizeLoansReportSummary(
 function createLoansReportState(
   report: MonthlyExpensesLoansReportResult,
   error: string | null,
+  errorCode: TechnicalErrorCode | null = null,
 ): LoansReportState {
   return {
     directionFilter: "all",
     entries: normalizeLoansReportEntries(report.entries),
     error: error ? getSafeLoansReportErrorMessage(error) : null,
+    errorCode,
     lenderFilter: "all",
     summary: normalizeLoansReportSummary(report.summary),
     typeFilter: "all",
@@ -1394,8 +1413,11 @@ export default function MonthlyExpensesPage({
   initialActiveTab,
   initialLendersCatalog,
   initialLoansReport,
+  lendersLoadErrorCode,
   lendersLoadError,
+  loadErrorCode,
   loadError,
+  reportLoadErrorCode,
   reportLoadError,
 }: MonthlyExpensesPageProps) {
   const router = useRouter();
@@ -1409,11 +1431,17 @@ export default function MonthlyExpensesPage({
     createLendersCatalogState(initialLendersCatalog),
   );
   const [reportState, setReportState] = useState<LoansReportState>(
-    createLoansReportState(initialLoansReport, reportLoadError),
+    createLoansReportState(initialLoansReport, reportLoadError, reportLoadErrorCode),
   );
   const [copyableMonthsState, setCopyableMonthsState] =
     useState<MonthlyExpensesCopyableMonthsResult>(initialCopyableMonths);
-  const [currentLoadError, setCurrentLoadError] = useState<string | null>(loadError);
+  const [currentLoadError, setCurrentLoadError] = useState<{
+    errorCode: TechnicalErrorCode | null;
+    message: string | null;
+  }>({
+    errorCode: loadErrorCode,
+    message: loadError,
+  });
   const [copySourceMonth, setCopySourceMonth] = useState<string | null>(
     initialCopyableMonths.defaultSourceMonth,
   );
@@ -1473,8 +1501,11 @@ export default function MonthlyExpensesPage({
   }, [initialCopyableMonths, initialDocument]);
 
   useEffect(() => {
-    setCurrentLoadError(loadError);
-  }, [loadError]);
+    setCurrentLoadError({
+      errorCode: loadErrorCode,
+      message: loadError,
+    });
+  }, [loadError, loadErrorCode]);
 
   useEffect(() => {
     if (isLenderCreateModalOpen) {
@@ -1503,6 +1534,7 @@ export default function MonthlyExpensesPage({
     !copySourceMonth ||
     copySourceMonthOptions.length === 0;
   const lendersFeedbackMessage = lendersState.error ?? lendersLoadError ?? null;
+  const lendersFeedbackErrorCode = lendersState.errorCode ?? lendersLoadErrorCode;
   const lendersFeedbackTone = lendersState.error || lendersLoadError
     ? "error"
     : "default";
@@ -1579,15 +1611,24 @@ export default function MonthlyExpensesPage({
       updateReportState((currentState) => ({
         ...currentState,
         entries: mapReportEntriesToCurrentLenders(report.entries, lenders),
+        errorCode: null,
         error: null,
         summary: normalizeLoansReportSummary(report.summary),
       }));
     } catch (error) {
+      const technicalErrorCode = getTechnicalErrorCode(error);
+
       updateReportState((currentState) => ({
         ...currentState,
+        errorCode: technicalErrorCode,
         error: getSafeLoansReportErrorMessage(error),
       }));
-      toast.error("No pudimos actualizar el reporte de deudas.");
+      toast.error(
+        renderErrorWithCode(
+          "No pudimos actualizar el reporte de deudas.",
+          technicalErrorCode,
+        ),
+      );
     }
   };
 
@@ -1650,7 +1691,10 @@ export default function MonthlyExpensesPage({
         }
 
         setFormState(createMonthlyExpensesFormState(document));
-        setCurrentLoadError(null);
+        setCurrentLoadError({
+          errorCode: null,
+          message: null,
+        });
         setIsCopyingFromMonth(false);
         setExpenseSheetState(createClosedExpenseSheetState());
         setExpenseReceiptUploadState(createClosedExpenseReceiptUploadState());
@@ -1678,7 +1722,12 @@ export default function MonthlyExpensesPage({
           return;
         }
 
-        toast.error(getSafeMonthlyExpensesLoadErrorMessage(error));
+        toast.error(
+          renderErrorWithCode(
+            getSafeMonthlyExpensesLoadErrorMessage(error),
+            getTechnicalErrorCode(error),
+          ),
+        );
       } finally {
         if (latestMonthLoadRequestIdRef.current === requestId) {
           setIsMonthTransitionPending(false);
@@ -1789,9 +1838,15 @@ export default function MonthlyExpensesPage({
     } catch (error) {
       updateFormState((currentState) => ({
         ...currentState,
+        errorCode: getTechnicalErrorCode(error),
         error: getSafeMonthlyExpensesErrorMessage(error),
       }));
-      toast.error("No pudimos copiar compromisos desde el mes seleccionado.");
+      toast.error(
+        renderErrorWithCode(
+          "No pudimos copiar compromisos desde el mes seleccionado.",
+          getTechnicalErrorCode(error),
+        ),
+      );
     } finally {
       setIsCopyingFromMonth(false);
     }
@@ -1821,6 +1876,7 @@ export default function MonthlyExpensesPage({
     updateFormState((currentState) => ({
       ...currentState,
       error: null,
+      errorCode: null,
       isSubmitting: true,
     }));
 
@@ -1839,7 +1895,10 @@ export default function MonthlyExpensesPage({
             error: (error) =>
               error instanceof MonthlyExpensesAuthenticationError
                 ? "Tu sesion vencio. Te redirigimos para iniciar sesion nuevamente."
-                : "No pudimos guardar los compromisos mensuales.",
+                : renderErrorWithCode(
+                    "No pudimos guardar los compromisos mensuales.",
+                    getTechnicalErrorCode(error),
+                  ),
             loading: toastMessages.loading,
             success: toastMessages.success,
           },
@@ -1850,6 +1909,7 @@ export default function MonthlyExpensesPage({
       updateFormState((currentState) => ({
         ...currentState,
         error: null,
+        errorCode: null,
         isSubmitting: false,
         rows,
       }));
@@ -1873,6 +1933,7 @@ export default function MonthlyExpensesPage({
 
       updateFormState((currentState) => ({
         ...currentState,
+        errorCode: getTechnicalErrorCode(error),
         error: getSafeMonthlyExpensesErrorMessage(error),
         isSubmitting: false,
       }));
@@ -2880,7 +2941,11 @@ export default function MonthlyExpensesPage({
     void toast.promise(
       registerReceiptPromise,
       {
-        error: (error) => getSafeMonthlyExpensesErrorMessage(error),
+        error: (error) =>
+          renderErrorWithCode(
+            getSafeMonthlyExpensesErrorMessage(error),
+            getTechnicalErrorCode(error),
+          ),
         loading: "Guardando comprobante...",
         success: "Comprobante subido correctamente.",
       },
@@ -3481,6 +3546,7 @@ export default function MonthlyExpensesPage({
     updateLendersState((currentState) => ({
       ...currentState,
       error: null,
+      errorCode: null,
       [fieldName]: value,
       successMessage: null,
     }));
@@ -3490,6 +3556,7 @@ export default function MonthlyExpensesPage({
     updateLendersState((currentState) => ({
       ...currentState,
       error: null,
+      errorCode: null,
       name: "",
       notes: "",
       successMessage: null,
@@ -3515,6 +3582,7 @@ export default function MonthlyExpensesPage({
     if (!lenderName) {
       updateLendersState((currentState) => ({
         ...currentState,
+        errorCode: null,
         error: "Completá el nombre del prestamista antes de guardarlo.",
       }));
       toast.warning("Completá el nombre del prestamista antes de guardarlo.");
@@ -3529,6 +3597,7 @@ export default function MonthlyExpensesPage({
     ) {
       updateLendersState((currentState) => ({
         ...currentState,
+        errorCode: null,
         error: "Ya existe un prestamista con ese nombre.",
       }));
       toast.warning("Ya existe un prestamista con ese nombre.");
@@ -3548,6 +3617,7 @@ export default function MonthlyExpensesPage({
     updateLendersState((currentState) => ({
       ...currentState,
       error: null,
+      errorCode: null,
       isSubmitting: true,
       successMessage: null,
     }));
@@ -3565,7 +3635,11 @@ export default function MonthlyExpensesPage({
       void toast.promise(
         savePromise,
         {
-          error: "No pudimos guardar el prestamista.",
+          error: (error) =>
+            renderErrorWithCode(
+              "No pudimos guardar el prestamista.",
+              getTechnicalErrorCode(error),
+            ),
           loading: "Guardando prestamista...",
           success: "Prestamista guardado correctamente.",
         },
@@ -3574,6 +3648,7 @@ export default function MonthlyExpensesPage({
 
       updateLendersState(() => ({
         error: null,
+        errorCode: null,
         isSubmitting: false,
         lenders: nextLenders,
         name: "",
@@ -3584,8 +3659,11 @@ export default function MonthlyExpensesPage({
       await refreshLoansReport(nextLenders);
       return true;
     } catch (error) {
+      const technicalErrorCode = getTechnicalErrorCode(error);
+
       updateLendersState((currentState) => ({
         ...currentState,
+        errorCode: technicalErrorCode,
         error: getSafeLendersErrorMessage(error),
         isSubmitting: false,
       }));
@@ -3604,6 +3682,7 @@ export default function MonthlyExpensesPage({
     updateLendersState((currentState) => ({
       ...currentState,
       error: null,
+      errorCode: null,
       isSubmitting: true,
       successMessage: null,
     }));
@@ -3621,7 +3700,11 @@ export default function MonthlyExpensesPage({
       void toast.promise(
         savePromise,
         {
-          error: "No pudimos eliminar el prestamista.",
+          error: (error) =>
+            renderErrorWithCode(
+              "No pudimos eliminar el prestamista.",
+              getTechnicalErrorCode(error),
+            ),
           loading: "Eliminando prestamista...",
           success: "Prestamista eliminado del catálogo.",
         },
@@ -3647,14 +3730,19 @@ export default function MonthlyExpensesPage({
       }));
       updateLendersState((currentState) => ({
         ...currentState,
+        error: null,
+        errorCode: null,
         isSubmitting: false,
         lenders: nextLenders,
         successMessage: "Prestamista eliminado del catálogo.",
       }));
       await refreshLoansReport(nextLenders);
     } catch (error) {
+      const technicalErrorCode = getTechnicalErrorCode(error);
+
       updateLendersState((currentState) => ({
         ...currentState,
+        errorCode: technicalErrorCode,
         error: getSafeLendersErrorMessage(error),
         isSubmitting: false,
       }));
@@ -3721,13 +3809,15 @@ export default function MonthlyExpensesPage({
                 exchangeRateLoadError={formState.exchangeRateLoadError}
                 exchangeRateSnapshot={formState.exchangeRateSnapshot}
                 feedbackMessage={feedbackMessage}
+                feedbackErrorCode={formState.errorCode}
                 feedbackTone={feedbackTone}
                 isCopyFromDisabled={copyFromDisabled}
                 isExpenseSheetOpen={expenseSheetState.isOpen}
                 isMonthTransitionPending={isMonthTransitionPending}
                 isSubmitting={formState.isSubmitting}
                 lenders={lendersState.lenders}
-                loadError={currentLoadError}
+                loadError={currentLoadError.message}
+                loadErrorCode={currentLoadError.errorCode}
                 month={formState.month}
                 pendingMonth={pendingMonth}
                 onAddExpense={handleAddExpense}
@@ -3771,6 +3861,7 @@ export default function MonthlyExpensesPage({
       {activeTab === "lenders" ? (
               <LendersPanel
                 feedbackMessage={lendersFeedbackMessage}
+                feedbackErrorCode={lendersFeedbackErrorCode}
                 feedbackTone={lendersFeedbackTone}
                 isCreateModalOpen={isLenderCreateModalOpen}
                 lenders={lendersState.lenders}
@@ -3783,6 +3874,7 @@ export default function MonthlyExpensesPage({
               <MonthlyExpensesLoansReport
                 entries={filteredReportEntries}
                 feedbackMessage={reportState.error}
+                feedbackErrorCode={reportState.errorCode}
                 providerFilterOptions={reportProviderFilterOptions}
                 selectedDirectionFilter={reportState.directionFilter}
                 selectedLenderFilter={reportState.lenderFilter}
@@ -3834,6 +3926,7 @@ export default function MonthlyExpensesPage({
 
       <LenderCreateDialog
         feedbackMessage={lendersFeedbackMessage}
+        feedbackErrorCode={lendersFeedbackErrorCode}
         feedbackTone={lendersFeedbackTone}
         formValues={{
           name: lendersState.name,

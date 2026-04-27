@@ -36,6 +36,9 @@ import {
   createRequestLogContext,
 } from "@/modules/shared/infrastructure/observability/app-logger";
 import {
+  TECHNICAL_ERROR_CODES,
+} from "@/modules/shared/infrastructure/errors/technical-error-codes";
+import {
   getRequestedSidebarOpen,
   SIDEBAR_STATE_COOKIE_NAME,
 } from "@/modules/shared/infrastructure/pages/sidebar-state";
@@ -121,8 +124,11 @@ export async function getMonthlyExpensesServerSidePropsForTab(
         ),
         initialLendersCatalog: createEmptyLendersCatalogDocumentResult(),
         initialLoansReport: createEmptyMonthlyExpensesLoansReportResult(),
+        lendersLoadErrorCode: null,
         lendersLoadError: null,
+        loadErrorCode: null,
         loadError: null,
+        reportLoadErrorCode: null,
         reportLoadError: null,
       }),
     };
@@ -286,13 +292,25 @@ export async function getMonthlyExpensesServerSidePropsForTab(
           reportResult.status === "fulfilled"
             ? reportResult.value
             : createEmptyMonthlyExpensesLoansReportResult(),
+        lendersLoadErrorCode:
+          lendersResult.status === "rejected"
+            ? TECHNICAL_ERROR_CODES.MONTHLY_EXPENSES_SSR_LENDERS_LOAD_ERROR
+            : null,
         lendersLoadError:
           lendersResult.status === "rejected"
             ? "No pudimos cargar el catálogo de prestamistas desde la base de datos."
             : null,
+        loadErrorCode:
+          documentResult.status === "rejected"
+            ? TECHNICAL_ERROR_CODES.MONTHLY_EXPENSES_SSR_DOCUMENT_LOAD_ERROR
+            : null,
         loadError:
           documentResult.status === "rejected"
             ? "No pudimos cargar los compromisos mensuales desde la base de datos. Igual podés editar la tabla y volver a guardarla."
+            : null,
+        reportLoadErrorCode:
+          reportResult.status === "rejected"
+            ? TECHNICAL_ERROR_CODES.MONTHLY_EXPENSES_SSR_REPORT_LOAD_ERROR
             : null,
         reportLoadError:
           reportResult.status === "rejected"
@@ -323,13 +341,21 @@ export async function getMonthlyExpensesServerSidePropsForTab(
         ),
         initialLendersCatalog: createEmptyLendersCatalogDocumentResult(),
         initialLoansReport: createEmptyMonthlyExpensesLoansReportResult(),
+        lendersLoadErrorCode: null,
         lendersLoadError: null,
+        loadErrorCode:
+          error instanceof Error &&
+          (error.name === "GoogleOAuthAuthenticationError" ||
+            error.name === "GoogleOAuthConfigurationError")
+            ? null
+            : TECHNICAL_ERROR_CODES.MONTHLY_EXPENSES_SSR_UNEXPECTED_ERROR,
         loadError:
           error instanceof Error &&
           (error.name === "GoogleOAuthAuthenticationError" ||
             error.name === "GoogleOAuthConfigurationError")
             ? null
             : "No pudimos cargar los compromisos mensuales desde la base de datos. Igual podés editar la tabla y volver a guardarla.",
+        reportLoadErrorCode: null,
         reportLoadError: null,
       }),
     };

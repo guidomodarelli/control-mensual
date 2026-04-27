@@ -127,6 +127,7 @@ function sanitizeValue(
     const allowedErrorKeys = [
       "apiStatus",
       "code",
+      "errorCode",
       "endpoint",
       "httpStatus",
       "operation",

@@ -898,11 +898,18 @@
 }
 
 .feedback {
+  display: grid;
+  gap: 0.2rem;
   margin: 0;
   padding-top: 0.875rem;
   border-top: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
   font-size: 0.875rem;
   color: var(--muted-foreground);
+}
+
+.feedbackErrorCode {
+  font-size: 0.75rem;
+  opacity: 0.85;
 }
 
 .errorText {

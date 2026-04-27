@@ -10,6 +10,12 @@ import {
   appLogger,
   createRequestLogContext,
 } from "@/modules/shared/infrastructure/observability/app-logger";
+import {
+  TECHNICAL_ERROR_CODES,
+} from "@/modules/shared/infrastructure/errors/technical-error-codes";
+import {
+  createTechnicalErrorEnvelope,
+} from "@/modules/shared/infrastructure/errors/technical-error";
 
 import { GoogleDriveStorageError } from "../google-drive/google-drive-storage-error";
 
@@ -106,45 +112,65 @@ export function createStorageApiHandler<TResult>({
 
       if (error instanceof GoogleOAuthAuthenticationError) {
         return response.status(401).json({
-          error: `Google authentication is required before saving ${operationLabel} to Drive.`,
+          ...createTechnicalErrorEnvelope(
+            `Google authentication is required before saving ${operationLabel} to Drive.`,
+            TECHNICAL_ERROR_CODES.GOOGLE_AUTHENTICATION_REQUIRED,
+          ),
         });
       }
 
       if (error instanceof GoogleOAuthConfigurationError) {
         return response.status(500).json({
-          error: `Google OAuth server configuration is incomplete for ${operationLabel} Drive storage.`,
+          ...createTechnicalErrorEnvelope(
+            `Google OAuth server configuration is incomplete for ${operationLabel} Drive storage.`,
+            TECHNICAL_ERROR_CODES.GOOGLE_OAUTH_CONFIGURATION_INCOMPLETE,
+          ),
         });
       }
 
       if (error instanceof GoogleDriveStorageError) {
         if (error.code === "api_disabled") {
           return response.status(503).json({
-            error:
+            ...createTechnicalErrorEnvelope(
               "Google Drive API is not enabled for this project yet. Enable drive.googleapis.com in Google Cloud and try again.",
+              TECHNICAL_ERROR_CODES.GOOGLE_DRIVE_API_DISABLED,
+            ),
           });
         }
 
         if (error.code === "invalid_scope") {
           return response.status(403).json({
-            error: `The current Google session is missing the Drive permissions required to save ${operationLabel}. Sign out, connect Google again, and approve Drive access.`,
+            ...createTechnicalErrorEnvelope(
+              `The current Google session is missing the Drive permissions required to save ${operationLabel}. Sign out, connect Google again, and approve Drive access.`,
+              TECHNICAL_ERROR_CODES.GOOGLE_DRIVE_INVALID_SCOPE,
+            ),
           });
         }
 
         if (error.code === "insufficient_permissions") {
           return response.status(403).json({
-            error: `Google Drive denied permission to save ${operationLabel}. Verify the selected Google account can create Drive files and try again.`,
+            ...createTechnicalErrorEnvelope(
+              `Google Drive denied permission to save ${operationLabel}. Verify the selected Google account can create Drive files and try again.`,
+              TECHNICAL_ERROR_CODES.GOOGLE_DRIVE_INSUFFICIENT_PERMISSIONS,
+            ),
           });
         }
 
         if (error.code === "invalid_payload") {
           return response.status(400).json({
-            error: `Google Drive rejected the ${operationLabel} payload. Check the file name, MIME type, and content and try again.`,
+            ...createTechnicalErrorEnvelope(
+              `Google Drive rejected the ${operationLabel} payload. Check the file name, MIME type, and content and try again.`,
+              TECHNICAL_ERROR_CODES.GOOGLE_DRIVE_INVALID_PAYLOAD,
+            ),
           });
         }
       }
 
       return response.status(500).json({
-        error: `We could not save ${operationLabel} to Google Drive. Try again later.`,
+        ...createTechnicalErrorEnvelope(
+          `We could not save ${operationLabel} to Google Drive. Try again later.`,
+          TECHNICAL_ERROR_CODES.STORAGE_API_UNEXPECTED_ERROR,
+        ),
       });
     }
   };

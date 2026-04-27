@@ -40,6 +40,7 @@ describe("getExchangeRatesPageResult", () => {
       blueRate: 1250,
       canEditIibb: true,
       iibbRateDecimal: 0.02,
+      loadErrorCode: null,
       loadError: null,
       maxSelectableMonth: "2026-03",
       minSelectableMonth: "2026-01",

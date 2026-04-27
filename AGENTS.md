@@ -241,6 +241,15 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 - Keep Google SDK calls isolated in infrastructure adapters.
 - Keep Google Drive error mapping and Drive client factories inside module infrastructure folders such as `src/modules/storage/infrastructure/*` and `src/modules/auth/infrastructure/*`.
 
+### Technical error traceability (mandatory)
+
+- Every technical error from SSR flows or external API/provider/database integrations must include a stable `errorCode` with format `E####`.
+- Use the shared centralized error-code catalog under `src/modules/shared/infrastructure/errors/*` and do not introduce ad-hoc or duplicated codes.
+- API technical error envelopes must return both `error` and `errorCode`; keep success envelopes unchanged.
+- Request/query/body validation errors (form/business validation) must not expose `errorCode` to the UI.
+- Global UI errors (page-level feedback and toasts) must keep the current generic message and render `errorCode` as secondary text below it.
+- Whenever a new feature can introduce technical errors, or when an existing technical error without traceability is found, add/update `errorCode` coverage in the same work item.
+
 ## 6. Development Workflow
 
 ### TDD is mandatory

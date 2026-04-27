@@ -10,6 +10,8 @@ import {
 
 import styles from "./monthly-expenses-loans-report.module.scss";
 
+type TechnicalErrorCode = `E${number}${number}${number}${number}`;
+
 const arsCurrencyFormatter = new Intl.NumberFormat("es-AR", {
   maximumFractionDigits: 2,
   minimumFractionDigits: 0,
@@ -31,6 +33,7 @@ interface MonthlyExpensesLoanReportView {
 interface MonthlyExpensesLoansReportProps {
   entries: MonthlyExpensesLoanReportView[];
   feedbackMessage: string | null;
+  feedbackErrorCode?: TechnicalErrorCode | null;
   providerFilterOptions: Array<{
     id: string;
     label: string;
@@ -83,6 +86,7 @@ function getDirectionLabel(direction: MonthlyExpensesLoanReportView["direction"]
 export function MonthlyExpensesLoansReport({
   entries,
   feedbackMessage,
+  feedbackErrorCode = null,
   providerFilterOptions,
   selectedLenderFilter,
   selectedDirectionFilter,
@@ -205,7 +209,12 @@ export function MonthlyExpensesLoansReport({
       </div>
 
       {feedbackMessage ? (
-        <p className={styles.feedback}>{feedbackMessage}</p>
+        <p className={styles.feedback}>
+          <span>{feedbackMessage}</span>
+          {feedbackErrorCode ? (
+            <span className={styles.feedbackErrorCode}>{`Code: ${feedbackErrorCode}`}</span>
+          ) : null}
+        </p>
       ) : null}
 
       <div className={styles.entries}>

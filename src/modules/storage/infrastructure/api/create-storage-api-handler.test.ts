@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import type { drive_v3 } from "googleapis";
 
 import { GoogleOAuthAuthenticationError } from "@/modules/auth/infrastructure/oauth/google-oauth-token";
+import { TECHNICAL_ERROR_CODES } from "@/modules/shared/infrastructure/errors/technical-error-codes";
 
 import { GoogleDriveStorageError } from "../google-drive/google-drive-storage-error";
 import { createStorageApiHandler } from "./create-storage-api-handler";
@@ -124,6 +125,7 @@ describe("createStorageApiHandler", () => {
     expect(response.body).toEqual({
       error:
         "Google authentication is required before saving application settings to Drive.",
+      errorCode: TECHNICAL_ERROR_CODES.GOOGLE_AUTHENTICATION_REQUIRED,
     });
   });
 
@@ -199,6 +201,7 @@ describe("createStorageApiHandler", () => {
     expect(response.body).toEqual({
       error:
         "We could not save application settings to Google Drive. Try again later.",
+      errorCode: TECHNICAL_ERROR_CODES.STORAGE_API_UNEXPECTED_ERROR,
     });
     expect(errorSpy).toHaveBeenCalled();
   });
@@ -236,6 +239,7 @@ describe("createStorageApiHandler", () => {
     expect(response.body).toEqual({
       error:
         "Google Drive API is not enabled for this project yet. Enable drive.googleapis.com in Google Cloud and try again.",
+      errorCode: TECHNICAL_ERROR_CODES.GOOGLE_DRIVE_API_DISABLED,
     });
   });
 
@@ -272,6 +276,7 @@ describe("createStorageApiHandler", () => {
     expect(response.body).toEqual({
       error:
         "The current Google session is missing the Drive permissions required to save user files. Sign out, connect Google again, and approve Drive access.",
+      errorCode: TECHNICAL_ERROR_CODES.GOOGLE_DRIVE_INVALID_SCOPE,
     });
   });
 
@@ -308,6 +313,7 @@ describe("createStorageApiHandler", () => {
     expect(response.body).toEqual({
       error:
         "Google Drive rejected the user files payload. Check the file name, MIME type, and content and try again.",
+      errorCode: TECHNICAL_ERROR_CODES.GOOGLE_DRIVE_INVALID_PAYLOAD,
     });
   });
 });
