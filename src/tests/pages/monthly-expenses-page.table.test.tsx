@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRouter } from "next/router";
 import { signIn, signOut, useSession } from "next-auth/react";
@@ -2461,6 +2461,235 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(
       screen.queryByRole("button", { name: "Replicar gastos/deudas del mes anterior" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("adds a selection column and toggles all visible rows from the header checkbox", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Internet",
+              id: "expense-2",
+              occurrencesPerMonth: 1,
+              subtotal: 200,
+              total: 200,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    const toggleAllCheckbox = screen.getByRole("checkbox", {
+      name: "Seleccionar todas las filas visibles",
+    });
+    const aguaCheckbox = screen.getByRole("checkbox", {
+      name: "Seleccionar compromiso Agua",
+    });
+    const internetCheckbox = screen.getByRole("checkbox", {
+      name: "Seleccionar compromiso Internet",
+    });
+
+    expect(toggleAllCheckbox).not.toBeChecked();
+    expect(aguaCheckbox).not.toBeChecked();
+    expect(internetCheckbox).not.toBeChecked();
+
+    await user.click(aguaCheckbox);
+
+    expect(aguaCheckbox).toBeChecked();
+    expect(internetCheckbox).not.toBeChecked();
+    expect(toggleAllCheckbox).not.toBeChecked();
+
+    await user.click(
+      screen.getByRole("checkbox", { name: "Seleccionar todas las filas visibles" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("checkbox", { name: "Seleccionar compromiso Agua" }),
+      ).toBeChecked();
+      expect(
+        screen.getByRole("checkbox", { name: "Seleccionar compromiso Internet" }),
+      ).toBeChecked();
+      expect(
+        screen.getByRole("checkbox", { name: "Seleccionar todas las filas visibles" }),
+      ).toBeChecked();
+    });
+
+    await user.click(
+      screen.getByRole("checkbox", { name: "Seleccionar todas las filas visibles" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("checkbox", { name: "Seleccionar compromiso Agua" }),
+      ).not.toBeChecked();
+      expect(
+        screen.getByRole("checkbox", { name: "Seleccionar compromiso Internet" }),
+      ).not.toBeChecked();
+      expect(
+        screen.getByRole("checkbox", { name: "Seleccionar todas las filas visibles" }),
+      ).not.toBeChecked();
+    });
+  });
+
+  it("deletes only selected visible rows from bulk actions when a filter is active", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock();
+    global.fetch = fetchMock as typeof fetch;
+    mockedUseSession.mockReturnValue({
+      data: {
+        user: {
+          email: "user@example.com",
+          image: null,
+          name: "User",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as never);
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Internet",
+              id: "expense-2",
+              occurrencesPerMonth: 1,
+              subtotal: 200,
+              total: 200,
+            },
+            {
+              currency: "ARS",
+              description: "Luz",
+              id: "expense-3",
+              occurrencesPerMonth: 1,
+              subtotal: 300,
+              total: 300,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.type(
+      screen.getByRole("textbox", { name: "Filtrar compromisos" }),
+      "Agua",
+    );
+    await user.click(
+      screen.getByRole("checkbox", { name: "Seleccionar todas las filas visibles" }),
+    );
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Acciones masivas" })).toBeEnabled();
+    });
+    await user.click(screen.getByRole("button", { name: "Acciones masivas" }));
+    await user.click(screen.getByRole("menuitem", { name: "Eliminar" }));
+
+    const bulkDeleteDialog = screen.getByRole("alertdialog");
+    expect(
+      within(bulkDeleteDialog).getByText("Se eliminarán 1 compromiso seleccionado de la tabla visible."),
+    ).toBeInTheDocument();
+
+    await user.click(within(bulkDeleteDialog).getByRole("button", { name: "Eliminar" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Agua")).not.toBeInTheDocument();
+    });
+
+    const payload = getMonthlyExpensesSavePayload(fetchMock);
+    const savedDescriptions = payload.items.map(
+      (item: { description: string }) => item.description,
+    );
+
+    expect(savedDescriptions).toEqual(["Internet", "Luz"]);
+    expect(savedDescriptions).not.toContain("Agua");
+  });
+
+  it("disables bulk actions when filters leave no visible rows", async () => {
+    const user = userEvent.setup();
+    const fetchMock = createMonthlyExpensesFetchMock();
+    global.fetch = fetchMock as typeof fetch;
+    mockedUseSession.mockReturnValue({
+      data: {
+        user: {
+          email: "user@example.com",
+          image: null,
+          name: "User",
+        },
+      },
+      status: "authenticated",
+      update: jest.fn(),
+    } as never);
+
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+            {
+              currency: "ARS",
+              description: "Internet",
+              id: "expense-2",
+              occurrencesPerMonth: 1,
+              subtotal: 200,
+              total: 200,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("checkbox", { name: "Seleccionar compromiso Agua" }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Acciones masivas" })).toBeEnabled();
+    });
+
+    await user.clear(screen.getByRole("textbox", { name: "Filtrar compromisos" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Filtrar compromisos" }),
+      "No existe",
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Acciones masivas" })).toBeDisabled();
+    });
   });
 
   it("copies rows from a selected saved month and persists them", async () => {

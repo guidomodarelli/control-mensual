@@ -160,6 +160,18 @@
   accent-color: var(--primary);
 }
 
+.selectionCell {
+  display: inline-flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.selectionCheckbox {
+  width: 0.95rem;
+  height: 0.95rem;
+  accent-color: var(--primary);
+}
+
 .completedOrderFilterHint {
   margin: 0;
   padding-left: 1.4rem;

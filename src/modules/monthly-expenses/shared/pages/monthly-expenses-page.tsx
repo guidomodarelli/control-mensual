@@ -3760,6 +3760,33 @@ export default function MonthlyExpensesPage({
       setExpenseSheetState(createClosedExpenseSheetState());
     }
   };
+  const handleRemoveExpensesInBulk = async (
+    expenseIds: string[],
+  ): Promise<boolean> => {
+    if (expenseIds.length === 0) {
+      return false;
+    }
+
+    const expenseIdSet = new Set(expenseIds);
+    const nextRows = normalizeEditableRows(
+      formState.month,
+      formState.rows.filter((row) => !expenseIdSet.has(row.id)),
+    );
+    const wasSaved = await persistMonthlyExpensesRows(nextRows, {
+      loading: "Eliminando compromisos seleccionados...",
+      success: "Compromisos eliminados correctamente.",
+    });
+
+    if (
+      wasSaved &&
+      expenseSheetState.draft &&
+      expenseIdSet.has(expenseSheetState.draft.id)
+    ) {
+      setExpenseSheetState(createClosedExpenseSheetState());
+    }
+
+    return wasSaved;
+  };
 
   const handleLenderFieldChange = (
     fieldName: "name" | "notes" | "type",
@@ -4051,6 +4078,7 @@ export default function MonthlyExpensesPage({
                 onToggleReplicableOption={handleToggleReplicableOption}
                 onDeleteAllReceiptsFolderReference={handleDeleteAllReceiptsFolderReference}
                 onDeleteExpense={handleRemoveExpense}
+                onDeleteExpenses={handleRemoveExpensesInBulk}
                 onDeleteExpenseReceiptShare={handleDeleteExpenseReceiptShare}
                 onDeletePaymentLink={handleDeletePaymentLink}
                 onDeleteMonthlyFolderReference={handleDeleteMonthlyFolderReference}

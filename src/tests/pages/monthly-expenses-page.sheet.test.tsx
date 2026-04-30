@@ -2395,7 +2395,16 @@ registerMonthlyExpensesPageDefaultHooks({
       throw new Error("Expected a table row for the matching description");
     }
 
-    const descriptionCell = within(matchingRow).getAllByRole("cell")[0];
+    const descriptionCell = within(matchingRow)
+      .getAllByRole("cell")
+      .find((cell) => cell.textContent?.includes("Préstamo tarjeta"));
+
+    expect(descriptionCell).toBeDefined();
+
+    if (!descriptionCell) {
+      throw new Error("Expected a description cell for the matching row");
+    }
+
     const highlightedText = Array.from(
       descriptionCell.querySelectorAll("mark"),
       (element) => element.textContent ?? "",

@@ -104,6 +104,8 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   emptyMessage: string;
+  toolbarActions?: React.ReactNode;
+  onVisibleRowsChange?: (visibleRows: TData[]) => void;
   getRowClassName?: (row: TData) => string | undefined;
   sorting?: SortingState;
   onSortingChange?: (sorting: SortingState) => void;
@@ -258,6 +260,8 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   emptyMessage,
+  toolbarActions,
+  onVisibleRowsChange,
   getRowClassName,
   sorting: controlledSorting,
   onSortingChange,
@@ -472,7 +476,9 @@ export function DataTable<TData, TValue>({
   const shouldShowStandaloneAdvancedFiltersToggle =
     shouldShowAdvancedFiltersToggle && !filterColumnId;
   const shouldShowToolbarActions =
-    shouldShowColumnVisibilityToggle || shouldShowStandaloneAdvancedFiltersToggle;
+    shouldShowColumnVisibilityToggle ||
+    shouldShowStandaloneAdvancedFiltersToggle ||
+    toolbarActions != null;
   const shouldShowToolbar =
     Boolean(filterColumnId) ||
     shouldShowToolbarActions ||
@@ -709,6 +715,17 @@ export function DataTable<TData, TValue>({
   const handleClearAdvancedFilters = React.useCallback(() => {
     setAdvancedFiltersDraftByColumn({});
   }, []);
+
+  React.useEffect(() => {
+    onVisibleRowsChange?.(table.getRowModel().rows.map((row) => row.original));
+  }, [
+    columnFilters,
+    columnVisibility,
+    data,
+    onVisibleRowsChange,
+    sorting,
+    table,
+  ]);
 
   return (
     <div className="grid gap-4">
@@ -1003,13 +1020,13 @@ export function DataTable<TData, TValue>({
                     ) : null}
                   </Button>
                 ) : null}
+                {toolbarActions}
                 {shouldShowColumnVisibilityToggle ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
                         aria-label={columnVisibilityButtonLabel}
                         className="relative"
-                        size="sm"
                         type="button"
                         variant="outline"
                       >

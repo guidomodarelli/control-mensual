@@ -68,6 +68,7 @@ function renderMonthlyExpensesTable(rows: MonthlyExpensesEditableRow[]) {
         onToggleReplicableOption={jest.fn()}
         onDeleteAllReceiptsFolderReference={jest.fn()}
         onDeleteExpense={jest.fn()}
+        onDeleteExpenses={jest.fn().mockResolvedValue(true)}
         onDeleteExpenseReceiptShare={jest.fn()}
         onDeleteMonthlyFolderReference={jest.fn()}
         onDeletePaymentLink={jest.fn()}

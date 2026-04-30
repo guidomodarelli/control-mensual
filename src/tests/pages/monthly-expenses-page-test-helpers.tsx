@@ -266,7 +266,19 @@ export function getMonthlyExpensesDescriptionsOrder(): Array<string | null> {
 
   return within(tableBody)
     .getAllByRole("row")
-    .map((row) => within(row).getAllByRole("cell")[0].textContent?.trim() ?? null);
+    .map((row) => {
+      const rowCells = within(row).getAllByRole("cell");
+
+      for (const rowCell of rowCells) {
+        const rowCellText = rowCell.textContent?.trim() ?? "";
+
+        if (rowCellText.length > 0) {
+          return rowCellText;
+        }
+      }
+
+      return null;
+    });
 }
 
 export function getPersistedTablePreferences():

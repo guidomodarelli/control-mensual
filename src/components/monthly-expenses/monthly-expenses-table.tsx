@@ -72,6 +72,8 @@ import {
   ArrowUp,
   ArrowUpDown,
   Clock3,
+  ChevronDown,
+  ChevronUp,
   CircleX,
   EyeOff,
   ExternalLink,
@@ -199,6 +201,20 @@ const LOAN_SORT_DIRECTION_OPTIONS: Array<{
     value: "desc",
   },
 ];
+
+function areSetsEqual<TValue>(leftSet: Set<TValue>, rightSet: Set<TValue>): boolean {
+  if (leftSet.size !== rightSet.size) {
+    return false;
+  }
+
+  for (const value of leftSet) {
+    if (!rightSet.has(value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
 const CURRENCY_FORMATTER_BY_CURRENCY: Record<MonthlyExpenseCurrency, Intl.NumberFormat> = {
   ARS: new Intl.NumberFormat("es-AR", {
     currency: "ARS",
@@ -1013,6 +1029,7 @@ interface MonthlyExpensesTableProps {
   onToggleReplicableOption: (optionId: string) => void;
   onDeleteAllReceiptsFolderReference: (expenseId: string) => void;
   onDeleteExpense: (expenseId: string) => void;
+  onDeleteExpenses: (expenseIds: string[]) => Promise<boolean>;
   onDeleteExpenseReceiptShare: (expenseId: string) => void | Promise<void>;
   onDeletePaymentLink: (expenseId: string) => void | Promise<void>;
   onDeleteMonthlyFolderReference: (expenseId: string) => void;
@@ -2246,6 +2263,7 @@ export function MonthlyExpensesTable({
   onToggleReplicableOption,
   onDeleteAllReceiptsFolderReference,
   onDeleteExpense,
+  onDeleteExpenses,
   onDeleteExpenseReceiptShare,
   onDeletePaymentLink,
   onDeleteMonthlyFolderReference,
@@ -2313,6 +2331,14 @@ export function MonthlyExpensesTable({
   const [receiptShareMessageDraftValue, setReceiptShareMessageDraftValue] = useState("");
   const [receiptShareDraftError, setReceiptShareDraftError] =
     useState<string | null>(null);
+  const [selectedExpenseIds, setSelectedExpenseIds] = useState<Set<string>>(
+    () => new Set<string>(),
+  );
+  const [visibleExpenseIds, setVisibleExpenseIds] = useState<Set<string> | null>(
+    null,
+  );
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [isBulkActionsMenuOpen, setIsBulkActionsMenuOpen] = useState(false);
   const handleDialogInputAutoFocus = useCallback(
     (event: Event, inputId: string) => {
       event.preventDefault();
@@ -2476,6 +2502,103 @@ export function MonthlyExpensesTable({
 
     return getRowsWithCompletedAtEnd(rowsExcludingDescriptions);
   }, [hasManualSorting, moveCompletedToEnd, rowsExcludingDescriptions]);
+  const selectedExpenseIdsInCurrentRows = useMemo(() => {
+    const availableExpenseIds = new Set(rows.map((row) => row.id));
+
+    return new Set(
+      Array.from(selectedExpenseIds).filter((expenseId) =>
+        availableExpenseIds.has(expenseId),
+      ),
+    );
+  }, [rows, selectedExpenseIds]);
+  const effectiveVisibleExpenseIds = useMemo(() => {
+    if (visibleExpenseIds !== null) {
+      return visibleExpenseIds;
+    }
+
+    return new Set(rowsForTable.map((row) => row.id));
+  }, [rowsForTable, visibleExpenseIds]);
+  const selectedVisibleExpenseIds = useMemo(
+    () =>
+      Array.from(selectedExpenseIdsInCurrentRows).filter((expenseId) =>
+        effectiveVisibleExpenseIds.has(expenseId),
+      ),
+    [effectiveVisibleExpenseIds, selectedExpenseIdsInCurrentRows],
+  );
+  const selectedVisibleCount = selectedVisibleExpenseIds.length;
+  const hasVisibleRows = effectiveVisibleExpenseIds.size > 0;
+  const areAllVisibleRowsSelected =
+    hasVisibleRows && selectedVisibleCount === effectiveVisibleExpenseIds.size;
+  const areSomeVisibleRowsSelected =
+    selectedVisibleCount > 0 && !areAllVisibleRowsSelected;
+  const handleVisibleRowsChange = useCallback((visibleRows: MonthlyExpensesEditableRow[]) => {
+    const nextVisibleExpenseIds = new Set(visibleRows.map((row) => row.id));
+
+    setVisibleExpenseIds((previousVisibleExpenseIds) =>
+      previousVisibleExpenseIds !== null &&
+      areSetsEqual(previousVisibleExpenseIds, nextVisibleExpenseIds)
+        ? previousVisibleExpenseIds
+        : nextVisibleExpenseIds,
+    );
+  }, []);
+  const handleToggleExpenseSelection = useCallback((expenseId: string, checked: boolean) => {
+    setSelectedExpenseIds((previousSelectedExpenseIds) => {
+      const nextSelectedExpenseIds = new Set(previousSelectedExpenseIds);
+
+      if (checked) {
+        nextSelectedExpenseIds.add(expenseId);
+      } else {
+        nextSelectedExpenseIds.delete(expenseId);
+      }
+
+      return nextSelectedExpenseIds;
+    });
+  }, []);
+  const handleToggleAllVisibleRowsSelection = useCallback(() => {
+    setSelectedExpenseIds((previousSelectedExpenseIds) => {
+      const nextSelectedExpenseIds = new Set(previousSelectedExpenseIds);
+
+      if (areAllVisibleRowsSelected) {
+        for (const visibleExpenseId of effectiveVisibleExpenseIds) {
+          nextSelectedExpenseIds.delete(visibleExpenseId);
+        }
+      } else {
+        for (const visibleExpenseId of effectiveVisibleExpenseIds) {
+          nextSelectedExpenseIds.add(visibleExpenseId);
+        }
+      }
+
+      return nextSelectedExpenseIds;
+    });
+  }, [
+    areAllVisibleRowsSelected,
+    effectiveVisibleExpenseIds,
+  ]);
+  const isBulkActionsDisabled =
+    selectedVisibleCount === 0 || actionDisabled || isSubmitting;
+  const handleConfirmBulkDelete = useCallback(async () => {
+    if (selectedVisibleExpenseIds.length === 0) {
+      setIsBulkDeleteDialogOpen(false);
+      return;
+    }
+
+    const wasSaved = await onDeleteExpenses(selectedVisibleExpenseIds);
+
+    if (!wasSaved) {
+      return;
+    }
+
+    setSelectedExpenseIds((previousSelectedExpenseIds) => {
+      const nextSelectedExpenseIds = new Set(previousSelectedExpenseIds);
+
+      for (const selectedVisibleExpenseId of selectedVisibleExpenseIds) {
+        nextSelectedExpenseIds.delete(selectedVisibleExpenseId);
+      }
+
+      return nextSelectedExpenseIds;
+    });
+    setIsBulkDeleteDialogOpen(false);
+  }, [onDeleteExpenses, selectedVisibleExpenseIds]);
   const completedPendingReceiptShareCount = useMemo(() => {
     let pendingCount = 0;
 
@@ -2809,6 +2932,50 @@ export function MonthlyExpensesTable({
 
   const columns = useMemo<ColumnDef<MonthlyExpensesEditableRow>[]>(
     () => [
+      {
+        id: "bulkSelection",
+        cell: ({ row }) => {
+          const expenseDescription =
+            row.original.description.trim() || "compromiso sin descripción";
+          const checkboxId = `bulk-selection-row-${row.original.id}`;
+
+          return (
+            <div className={styles.selectionCell}>
+              <input
+                aria-label={`Seleccionar compromiso ${expenseDescription}`}
+                checked={selectedExpenseIdsInCurrentRows.has(row.original.id)}
+                className={styles.selectionCheckbox}
+                id={checkboxId}
+                onChange={(event) =>
+                  handleToggleExpenseSelection(row.original.id, event.target.checked)}
+                type="checkbox"
+              />
+            </div>
+          );
+        },
+        enableHiding: false,
+        enableSorting: false,
+        header: () => (
+          <div className={styles.selectionCell}>
+            <input
+              aria-label="Seleccionar todas las filas visibles"
+              checked={areAllVisibleRowsSelected}
+              className={styles.selectionCheckbox}
+              onChange={() => undefined}
+              onClick={handleToggleAllVisibleRowsSelection}
+              ref={(element) => {
+                if (!element) {
+                  return;
+                }
+
+                element.indeterminate = areSomeVisibleRowsSelected;
+              }}
+              type="checkbox"
+            />
+          </div>
+        ),
+        meta: { label: "Selección" },
+      },
       {
         accessorKey: "description",
         cell: ({ row, table }) => {
@@ -3855,8 +4022,12 @@ export function MonthlyExpensesTable({
     ],
     [
       actionDisabled,
+      areAllVisibleRowsSelected,
+      areSomeVisibleRowsSelected,
       exchangeRateSnapshot,
       getSortDirection,
+      handleToggleAllVisibleRowsSelection,
+      handleToggleExpenseSelection,
       loanInstallmentEndSortDirection,
       loanInstallmentStartSortDirection,
       loanSortMode,
@@ -3877,6 +4048,7 @@ export function MonthlyExpensesTable({
       handleOpenOccurrencesDialog,
       handleOpenReceiptShareDialog,
       handleOpenPaymentLinkDialog,
+      selectedExpenseIdsInCurrentRows,
     ],
   );
 
@@ -4119,6 +4291,7 @@ export function MonthlyExpensesTable({
                 isPaymentCompleted(row) ? styles.paidRow : undefined
               }
               onFilterValueChange={setDescriptionFilter}
+              onVisibleRowsChange={handleVisibleRowsChange}
               onColumnVisibilityChange={setColumnVisibility}
               onSortingChange={setSorting}
               selectAllColumnsLabel="Restablecer"
@@ -4128,6 +4301,39 @@ export function MonthlyExpensesTable({
                 [LOAN_SORT_COLUMN_ID]: `Deuda / cuotas (${getLoanSortModeLabel(loanSortMode)})`,
               }}
               sorting={sorting}
+              toolbarActions={
+                <DropdownMenu
+                  onOpenChange={setIsBulkActionsMenuOpen}
+                  open={isBulkActionsMenuOpen}
+                >
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      aria-label="Acciones masivas"
+                      disabled={isBulkActionsDisabled}
+                      type="button"
+                      variant="outline"
+                    >
+                      Acciones masivas
+                      {isBulkActionsMenuOpen ? (
+                        <ChevronUp aria-hidden="true" />
+                      ) : (
+                        <ChevronDown aria-hidden="true" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      disabled={isBulkActionsDisabled}
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        setIsBulkDeleteDialogOpen(true);
+                      }}
+                    >
+                      Eliminar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              }
             />
           </div>
 
@@ -4148,6 +4354,32 @@ export function MonthlyExpensesTable({
             </p>
           ) : null}
         </div>
+
+        <AlertDialog
+          onOpenChange={setIsBulkDeleteDialogOpen}
+          open={isBulkDeleteDialogOpen}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Querés eliminar los compromisos seleccionados?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {`Se eliminarán ${selectedVisibleCount} compromiso${selectedVisibleCount === 1 ? " seleccionado" : "s seleccionados"} de la tabla visible.`}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel type="button">Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(event) => {
+                  event.preventDefault();
+                  void handleConfirmBulkDelete();
+                }}
+                type="button"
+              >
+                Eliminar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <Dialog
           onOpenChange={onCopyFromMonthDialogOpenChange}
