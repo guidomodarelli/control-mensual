@@ -161,9 +161,13 @@
 }
 
 .selectionCell {
-  display: inline-flex;
+  display: flex;
   justify-content: center;
   width: 100%;
+}
+
+.selectionTableCell {
+  cursor: pointer;
 }
 
 .selectionCheckbox {

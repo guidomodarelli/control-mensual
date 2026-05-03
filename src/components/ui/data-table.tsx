@@ -106,6 +106,11 @@ interface DataTableProps<TData, TValue> {
   emptyMessage: string;
   toolbarActions?: React.ReactNode;
   onVisibleRowsChange?: (visibleRows: TData[]) => void;
+  onCellClick?: (
+    event: React.MouseEvent<HTMLTableCellElement>,
+    row: TData,
+    columnId: string,
+  ) => void;
   getRowClassName?: (row: TData) => string | undefined;
   sorting?: SortingState;
   onSortingChange?: (sorting: SortingState) => void;
@@ -143,6 +148,7 @@ interface DataTableProps<TData, TValue> {
 interface DataTableColumnMeta {
   label?: string;
   cellClassName?: string;
+  isClickable?: boolean;
 }
 
 const DIACRITICS_PATTERN = /[\u0300-\u036f]/g;
@@ -262,6 +268,7 @@ export function DataTable<TData, TValue>({
   emptyMessage,
   toolbarActions,
   onVisibleRowsChange,
+  onCellClick,
   getRowClassName,
   sorting: controlledSorting,
   onSortingChange,
@@ -1143,9 +1150,19 @@ export function DataTable<TData, TValue>({
                       const columnMeta = cell.column.columnDef.meta as
                         | DataTableColumnMeta
                         | undefined;
+                      const handleCellClick =
+                        onCellClick && columnMeta?.isClickable
+                          ? (event: React.MouseEvent<HTMLTableCellElement>) => {
+                              onCellClick(event, row.original, cell.column.id);
+                            }
+                          : undefined;
 
                       return (
-                        <TableCell className={columnMeta?.cellClassName} key={cell.id}>
+                        <TableCell
+                          className={columnMeta?.cellClassName}
+                          key={cell.id}
+                          onClick={handleCellClick}
+                        >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
                       );

@@ -130,6 +130,7 @@ const LOAN_DIRECTION_COLUMN_ID = "loanDirection";
 const LOAN_SORT_COLUMN_ID = "loanProgress";
 const LOAN_INSTALLMENT_START_COLUMN_ID = "loanInstallmentStart";
 const LOAN_INSTALLMENT_END_COLUMN_ID = "loanInstallmentEnd";
+const BULK_SELECTION_COLUMN_ID = "bulkSelection";
 const MONTHLY_EXPENSES_TABLE_PREFERENCES_STORAGE_KEY =
   "mes-en-regla.monthly-expenses.table-preferences";
 const MOVE_COMPLETED_TO_END_LABEL = "Mover completados al final";
@@ -2574,6 +2575,27 @@ export function MonthlyExpensesTable({
     areAllVisibleRowsSelected,
     effectiveVisibleExpenseIds,
   ]);
+  const handleTableCellClick = useCallback(
+    (
+      event: React.MouseEvent<HTMLTableCellElement>,
+      row: MonthlyExpensesEditableRow,
+      columnId: string,
+    ) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+
+      if (columnId !== BULK_SELECTION_COLUMN_ID) {
+        return;
+      }
+
+      handleToggleExpenseSelection(
+        row.id,
+        !selectedExpenseIdsInCurrentRows.has(row.id),
+      );
+    },
+    [handleToggleExpenseSelection, selectedExpenseIdsInCurrentRows],
+  );
   const isBulkActionsDisabled =
     selectedVisibleCount === 0 || actionDisabled || isSubmitting;
   const handleConfirmBulkDelete = useCallback(async () => {
@@ -2933,7 +2955,7 @@ export function MonthlyExpensesTable({
   const columns = useMemo<ColumnDef<MonthlyExpensesEditableRow>[]>(
     () => [
       {
-        id: "bulkSelection",
+        id: BULK_SELECTION_COLUMN_ID,
         cell: ({ row }) => {
           const expenseDescription =
             row.original.description.trim() || "compromiso sin descripción";
@@ -2948,6 +2970,7 @@ export function MonthlyExpensesTable({
                 id={checkboxId}
                 onChange={(event) =>
                   handleToggleExpenseSelection(row.original.id, event.target.checked)}
+                onClick={(event) => event.stopPropagation()}
                 type="checkbox"
               />
             </div>
@@ -2962,7 +2985,10 @@ export function MonthlyExpensesTable({
               checked={areAllVisibleRowsSelected}
               className={styles.selectionCheckbox}
               onChange={() => undefined}
-              onClick={handleToggleAllVisibleRowsSelection}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleToggleAllVisibleRowsSelection();
+              }}
               ref={(element) => {
                 if (!element) {
                   return;
@@ -2974,7 +3000,11 @@ export function MonthlyExpensesTable({
             />
           </div>
         ),
-        meta: { label: "Selección" },
+        meta: {
+          cellClassName: styles.selectionTableCell,
+          isClickable: true,
+          label: "Selección",
+        },
       },
       {
         accessorKey: "description",
@@ -4290,6 +4320,7 @@ export function MonthlyExpensesTable({
               getRowClassName={(row) =>
                 isPaymentCompleted(row) ? styles.paidRow : undefined
               }
+              onCellClick={handleTableCellClick}
               onFilterValueChange={setDescriptionFilter}
               onVisibleRowsChange={handleVisibleRowsChange}
               onColumnVisibilityChange={setColumnVisibility}

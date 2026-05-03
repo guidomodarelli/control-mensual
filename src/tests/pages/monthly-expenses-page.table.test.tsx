@@ -2546,6 +2546,52 @@ registerMonthlyExpensesPageDefaultHooks({
     });
   });
 
+  it("toggles row selection when the selection cell is clicked", async () => {
+    renderWithProviders(
+      <MonthlyExpensesPage
+        {...basePageProps}
+        initialDocument={{
+          items: [
+            {
+              currency: "ARS",
+              description: "Agua",
+              id: "expense-1",
+              occurrencesPerMonth: 1,
+              subtotal: 100,
+              total: 100,
+            },
+          ],
+          month: "2026-03",
+        }}
+      />,
+    );
+
+    const aguaCheckbox = screen.getByRole("checkbox", {
+      name: "Seleccionar compromiso Agua",
+    });
+    const aguaSelectionCell = aguaCheckbox.closest("td");
+
+    expect(aguaSelectionCell).not.toBeNull();
+    expect(aguaSelectionCell).toHaveClass("selectionTableCell");
+    expect(aguaCheckbox).not.toBeChecked();
+
+    fireEvent.click(aguaSelectionCell as HTMLElement);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("checkbox", { name: "Seleccionar compromiso Agua" }),
+      ).toBeChecked();
+    });
+
+    fireEvent.click(aguaSelectionCell as HTMLElement);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("checkbox", { name: "Seleccionar compromiso Agua" }),
+      ).not.toBeChecked();
+    });
+  });
+
   it("deletes only selected visible rows from bulk actions when a filter is active", async () => {
     const user = userEvent.setup();
     const fetchMock = createMonthlyExpensesFetchMock();
