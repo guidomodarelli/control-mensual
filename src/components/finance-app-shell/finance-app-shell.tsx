@@ -219,7 +219,7 @@ export function FinanceAppShell({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              align="start"
+              align="end"
               className={styles.sidebarAccountMenu}
               side="right"
               sideOffset={8}
