@@ -311,7 +311,7 @@ function isMonthlyExpensesTabKey(
 function getPageHeadingByTab(tab: MonthlyExpensesTabKey): string {
   switch (tab) {
     case "expenses":
-      return "Compromisos Mensuales";
+      return "Control mensual";
     case "lenders":
       return "Prestamistas";
     case "debts":
@@ -1639,7 +1639,7 @@ export default function MonthlyExpensesPage({
 
       await signOut({
         callbackUrl: `/auth/signin?callbackUrl=${encodeURIComponent(
-          `/compromisos?month=${formState.month}`,
+          `/gastos?month=${formState.month}`,
         )}`,
       });
 
@@ -1888,12 +1888,12 @@ export default function MonthlyExpensesPage({
 
   const handleCopyFromMonth = async () => {
     if (!copySourceMonth) {
-      toast.warning("El mes anterior no tiene compromisos para replicar.");
+      toast.warning("El mes anterior no tiene gastos para replicar.");
       return;
     }
 
     if (!isOAuthConfigured || !isAuthenticated) {
-      toast.warning("Conectate con Google para replicar compromisos del mes anterior.");
+      toast.warning("Conectate con Google para replicar gastos del mes anterior.");
       return;
     }
 
@@ -1903,7 +1903,7 @@ export default function MonthlyExpensesPage({
       const sourceDocument = await getMonthlyExpensesDocumentViaApi(copySourceMonth);
 
       if (sourceDocument.items.length === 0) {
-        toast.warning("El mes anterior no tiene compromisos para replicar.");
+        toast.warning("El mes anterior no tiene gastos para replicar.");
         return;
       }
 
@@ -1948,7 +1948,7 @@ export default function MonthlyExpensesPage({
       }));
       toast.error(
         renderErrorWithCode(
-          "No pudimos replicar compromisos desde el mes anterior.",
+          "No pudimos replicar gastos desde el mes anterior.",
           getTechnicalErrorCode(error),
         ),
       );
@@ -2001,7 +2001,7 @@ export default function MonthlyExpensesPage({
     const sourceMonth = replicateFromPreviousMonthDialogState.sourceMonth;
 
     if (!sourceMonth) {
-      toast.warning("No encontramos el mes origen para replicar compromisos.");
+      toast.warning("No encontramos el mes origen para replicar gastos.");
       return;
     }
 
@@ -2050,7 +2050,7 @@ export default function MonthlyExpensesPage({
       }));
       toast.error(
         renderErrorWithCode(
-          "No pudimos replicar compromisos desde el mes anterior.",
+          "No pudimos replicar gastos desde el mes anterior.",
           getTechnicalErrorCode(error),
         ),
       );
@@ -2065,8 +2065,8 @@ export default function MonthlyExpensesPage({
       loading: string;
       success: string;
     } = {
-      loading: "Guardando compromisos mensuales...",
-      success: "Compromisos mensuales guardados correctamente.",
+      loading: "Guardando control mensual...",
+      success: "Control mensual guardado correctamente.",
     },
     options: {
       hasReplicatedFromPreviousMonth?: boolean;
@@ -2081,7 +2081,7 @@ export default function MonthlyExpensesPage({
     } = options;
 
     if (!isOAuthConfigured || !isAuthenticated) {
-      toast.warning("Conectate con Google para guardar compromisos mensuales.");
+      toast.warning("Conectate con Google para guardar control mensual.");
       return false;
     }
 
@@ -2109,7 +2109,7 @@ export default function MonthlyExpensesPage({
               error instanceof MonthlyExpensesAuthenticationError
                 ? "Tu sesion vencio. Te redirigimos para iniciar sesion nuevamente."
                 : renderErrorWithCode(
-                    "No pudimos guardar los compromisos mensuales.",
+                    "No pudimos guardar el control mensual.",
                     getTechnicalErrorCode(error),
                   ),
             loading: toastMessages.loading,
@@ -3713,7 +3713,7 @@ export default function MonthlyExpensesPage({
     }
 
     if (!isOAuthConfigured || !isAuthenticated) {
-      toast.warning("Conectate con Google para guardar compromisos mensuales.");
+      toast.warning("Conectate con Google para guardar control mensual.");
       return;
     }
 
@@ -3773,8 +3773,8 @@ export default function MonthlyExpensesPage({
       formState.rows.filter((row) => !expenseIdSet.has(row.id)),
     );
     const wasSaved = await persistMonthlyExpensesRows(nextRows, {
-      loading: "Eliminando compromisos seleccionados...",
-      success: "Compromisos eliminados correctamente.",
+      loading: "Eliminando gastos seleccionados...",
+      success: "Gastos eliminados correctamente.",
     });
 
     if (
@@ -4034,7 +4034,7 @@ export default function MonthlyExpensesPage({
   return (
     <FinanceAppShell
       activeSection={activeTab}
-      authRedirectPath="/compromisos"
+      authRedirectPath="/gastos"
       expensesMonth={formState.month}
       initialSidebarOpen={initialSidebarOpen}
       isOAuthConfigured={isOAuthConfigured}

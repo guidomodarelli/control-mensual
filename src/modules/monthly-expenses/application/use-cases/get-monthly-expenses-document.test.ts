@@ -520,7 +520,7 @@ describe("getMonthlyExpensesDocument", () => {
 
     expect(result).toEqual({
       exchangeRateLoadError:
-        "No pudimos cargar la cotización histórica del mes seleccionado. Igual podés seguir cargando y guardando compromisos.",
+        "No pudimos cargar la cotización histórica del mes seleccionado. Igual podés seguir cargando y guardando gastos.",
       exchangeRateSnapshot: null,
       items: [],
       month: "2026-05",

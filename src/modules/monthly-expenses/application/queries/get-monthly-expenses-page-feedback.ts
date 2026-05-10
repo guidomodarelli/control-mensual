@@ -1,6 +1,6 @@
 export function getSafeLoansReportErrorMessage(error: unknown): string {
   const fallbackMessage =
-    "No pudimos actualizar el reporte de deudas en este momento. Igual podés seguir cargando compromisos y volver a intentarlo más tarde.";
+    "No pudimos actualizar el reporte de deudas en este momento. Igual podés seguir cargando gastos y volver a intentarlo más tarde.";
 
   if (!(error instanceof Error) && typeof error !== "string") {
     return fallbackMessage;
@@ -24,7 +24,7 @@ export function getSafeLoansReportErrorMessage(error: unknown): string {
 
 export function getSafeMonthlyExpensesErrorMessage(error: unknown): string {
   const fallbackMessage =
-    "No pudimos guardar los compromisos mensuales en este momento. Revisá los datos y volvé a intentarlo.";
+    "No pudimos guardar el control mensual en este momento. Revisá los datos y volvé a intentarlo.";
 
   if (!(error instanceof Error) && typeof error !== "string") {
     return fallbackMessage;
@@ -33,15 +33,15 @@ export function getSafeMonthlyExpensesErrorMessage(error: unknown): string {
   const message = typeof error === "string" ? error : error.message;
 
   if (message.includes("Google authentication is required")) {
-    return "Conectate con Google para guardar tus compromisos mensuales en Drive.";
+    return "Conectate con Google para guardar tu control mensual en Drive.";
   }
 
   if (message.includes("missing the Drive permissions required")) {
-    return "Tu sesión actual no tiene permisos suficientes para guardar compromisos mensuales en Drive.";
+    return "Tu sesión actual no tiene permisos suficientes para guardar control mensual en Drive.";
   }
 
   if (message.includes("Google Drive rejected the monthly expenses payload")) {
-    return "No pudimos guardar los compromisos porque algunos datos no son válidos. Revisá la planilla y volvé a intentarlo.";
+    return "No pudimos guardar los gastos porque algunos datos no son válidos. Revisá la planilla y volvé a intentarlo.";
   }
 
   if (message.includes("A receipt folder with the requested description already exists")) {
@@ -85,7 +85,7 @@ export function getSafeMonthlyExpensesErrorMessage(error: unknown): string {
 
 export function getSafeMonthlyExpensesLoadErrorMessage(error: unknown): string {
   const fallbackMessage =
-    "No pudimos cargar los compromisos mensuales en este momento. Volvé a intentarlo más tarde.";
+    "No pudimos cargar el control mensual en este momento. Volvé a intentarlo más tarde.";
 
   if (!(error instanceof Error) && typeof error !== "string") {
     return fallbackMessage;
@@ -94,11 +94,11 @@ export function getSafeMonthlyExpensesLoadErrorMessage(error: unknown): string {
   const message = typeof error === "string" ? error : error.message;
 
   if (message.includes("Google authentication is required")) {
-    return "Conectate con Google para cargar tus compromisos mensuales.";
+    return "Conectate con Google para cargar tu control mensual.";
   }
 
   if (message.includes("missing the Drive permissions required")) {
-    return "Tu sesión actual no tiene permisos suficientes para cargar compromisos mensuales desde Drive.";
+    return "Tu sesión actual no tiene permisos suficientes para cargar control mensual desde Drive.";
   }
 
   return fallbackMessage;

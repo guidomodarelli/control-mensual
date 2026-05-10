@@ -43,10 +43,10 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
         2,
       ),
       mimeType: "application/json",
-      name: "compromisos-mensuales-2026-marzo.json",
+      name: "control-mensual-2026-marzo.json",
     });
     expect(createMonthlyExpensesFileName("2026-03")).toBe(
-      "compromisos-mensuales-2026-marzo.json",
+      "control-mensual-2026-marzo.json",
     );
   });
 
@@ -196,7 +196,7 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
       mapGoogleDriveMonthlyExpensesFileDtoToStoredDocument(
         {
           id: "monthly-expenses-file-id",
-          name: "compromisos-mensuales-2026-marzo.json",
+          name: "control-mensual-2026-marzo.json",
           webViewLink:
             "https://drive.google.com/file/d/monthly-expenses-file-id/view",
         },
@@ -205,7 +205,7 @@ describe("monthlyExpensesGoogleDriveMapper", () => {
     ).toEqual({
       id: "monthly-expenses-file-id",
       month: "2026-03",
-      name: "compromisos-mensuales-2026-marzo.json",
+      name: "control-mensual-2026-marzo.json",
       viewUrl: "https://drive.google.com/file/d/monthly-expenses-file-id/view",
     });
   });

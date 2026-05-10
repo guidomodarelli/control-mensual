@@ -1,10 +1,10 @@
 {
   "name": "Control Mensual",
   "short_name": "Control Mensual",
-  "description": "Gestiona tus compromisos mensuales: pagos, deudas, cuotas, prestamos, comprobantes y prestamistas, con reportes de seguimiento.",
+  "description": "Gestiona tu control mensual: pagos, deudas, cuotas, prestamos, comprobantes y prestamistas, con reportes de seguimiento.",
   "lang": "es-AR",
   "id": "/",
-  "start_url": "/compromisos",
+  "start_url": "/gastos",
   "scope": "/",
   "display": "standalone",
   "background_color": "#121826",

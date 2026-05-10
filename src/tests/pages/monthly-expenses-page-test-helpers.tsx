@@ -75,7 +75,7 @@ export function createMockRouter(
 ) {
   const router = {
     isReady: true,
-    pathname: "/compromisos",
+    pathname: "/gastos",
     query: {},
     push: jest.fn().mockImplementation(async (nextRoute: unknown) => {
       if (
@@ -257,7 +257,12 @@ export function createDeferredValue<T>() {
 }
 
 export function getMonthlyExpensesDescriptionsOrder(): Array<string | null> {
-  const table = screen.getByRole("table");
+  const table = getMonthlyExpensesTable();
+
+  if (!table) {
+    return [];
+  }
+
   const tableBody = table.querySelector("tbody");
 
   if (!tableBody) {
@@ -279,6 +284,12 @@ export function getMonthlyExpensesDescriptionsOrder(): Array<string | null> {
 
       return null;
     });
+}
+
+export function getMonthlyExpensesTable(): HTMLElement | undefined {
+  return screen.getAllByRole("table").find((currentTable) =>
+    within(currentTable).queryByRole("columnheader", { name: /Descripción/i }),
+  );
 }
 
 export function getPersistedTablePreferences():

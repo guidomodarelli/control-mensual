@@ -22,7 +22,7 @@ import {
 } from "@/modules/exchange-rates/domain/errors/missing-monthly-exchange-rate-error";
 
 const MONTHLY_EXCHANGE_RATE_FALLBACK_MESSAGE =
-  "No pudimos cargar la cotización histórica del mes seleccionado. Igual podés seguir cargando y guardando compromisos.";
+  "No pudimos cargar la cotización histórica del mes seleccionado. Igual podés seguir cargando y guardando gastos.";
 
 interface SaveMonthlyExpensesDocumentDependencies {
   command: SaveMonthlyExpensesCommand;

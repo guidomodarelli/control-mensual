@@ -97,12 +97,12 @@ export function FinanceAppShell({
 
   const expensesHref = expensesMonth
     ? {
-        pathname: "/compromisos",
+        pathname: "/gastos",
         query: {
           month: expensesMonth,
         },
       }
-    : "/compromisos";
+    : "/gastos";
 
   return (
     <SidebarProvider defaultOpen={initialSidebarOpen}>
@@ -120,11 +120,11 @@ export function FinanceAppShell({
                 <SidebarMenuButton
                   asChild
                   isActive={activeSection === "expenses"}
-                  tooltip="Compromisos Mensuales"
+                  tooltip="Control mensual"
                 >
                   <Link href={expensesHref}>
                     <IconCalendarDollar />
-                    <span>Compromisos Mensuales</span>
+                    <span>Control mensual</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

@@ -232,7 +232,7 @@ describe("createMonthlyExpensesApiHandler", () => {
     const save = jest.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-03",
-      name: "compromisos-mensuales-2026-marzo.json",
+      name: "control-mensual-2026-marzo.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
@@ -283,7 +283,7 @@ describe("createMonthlyExpensesApiHandler", () => {
       data: {
         id: "monthly-expenses-file-id",
         month: "2026-03",
-        name: "compromisos-mensuales-2026-marzo.json",
+        name: "control-mensual-2026-marzo.json",
         viewUrl: null,
       },
     });
@@ -294,7 +294,7 @@ describe("createMonthlyExpensesApiHandler", () => {
     const save = jest.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-03",
-      name: "compromisos-mensuales-2026-marzo.json",
+      name: "control-mensual-2026-marzo.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
@@ -355,7 +355,7 @@ describe("createMonthlyExpensesApiHandler", () => {
       data: {
         id: "monthly-expenses-file-id",
         month: "2026-03",
-        name: "compromisos-mensuales-2026-marzo.json",
+        name: "control-mensual-2026-marzo.json",
         viewUrl: null,
       },
     });
@@ -366,7 +366,7 @@ describe("createMonthlyExpensesApiHandler", () => {
     const save = jest.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-03",
-      name: "compromisos-mensuales-2026-marzo.json",
+      name: "control-mensual-2026-marzo.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
@@ -432,7 +432,7 @@ describe("createMonthlyExpensesApiHandler", () => {
     const save = jest.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-03",
-      name: "compromisos-mensuales-2026-marzo.json",
+      name: "control-mensual-2026-marzo.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
@@ -490,7 +490,7 @@ describe("createMonthlyExpensesApiHandler", () => {
     const save = jest.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-03",
-      name: "compromisos-mensuales-2026-marzo.json",
+      name: "control-mensual-2026-marzo.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
@@ -583,7 +583,7 @@ describe("createMonthlyExpensesApiHandler", () => {
     const save = jest.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-03",
-      name: "compromisos-mensuales-2026-marzo.json",
+      name: "control-mensual-2026-marzo.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
@@ -667,7 +667,7 @@ describe("createMonthlyExpensesApiHandler", () => {
     const save = jest.fn().mockResolvedValue({
       id: "monthly-expenses-file-id",
       month: "2026-03",
-      name: "compromisos-mensuales-2026-marzo.json",
+      name: "control-mensual-2026-marzo.json",
       viewUrl: null,
     });
     const handler = createMonthlyExpensesApiHandler({
@@ -745,7 +745,7 @@ describe("createMonthlyExpensesApiHandler", () => {
       storedDocument: {
         id: "monthly-expenses-file-id",
         month: "2026-03",
-        name: "compromisos-mensuales-2026-marzo.json",
+        name: "control-mensual-2026-marzo.json",
         viewUrl: null,
       },
     });
@@ -790,7 +790,7 @@ describe("createMonthlyExpensesApiHandler", () => {
         storedDocument: {
           id: "monthly-expenses-file-id",
           month: "2026-03",
-          name: "compromisos-mensuales-2026-marzo.json",
+          name: "control-mensual-2026-marzo.json",
           viewUrl: null,
         },
       },

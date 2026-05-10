@@ -46,7 +46,7 @@ describe("GoogleDriveMonthlyExpensesRepository", () => {
       .mockResolvedValueOnce({
         data: {
           id: "monthly-expenses-file-id",
-          name: "compromisos-mensuales-2026-marzo.json",
+          name: "control-mensual-2026-marzo.json",
           webViewLink:
             "https://drive.google.com/file/d/monthly-expenses-file-id/view",
         },
@@ -89,7 +89,7 @@ describe("GoogleDriveMonthlyExpensesRepository", () => {
       2,
       expect.objectContaining({
         requestBody: {
-          name: "compromisos-mensuales-2026-marzo.json",
+          name: "control-mensual-2026-marzo.json",
           parents: ["monthly-expenses-folder-id"],
         },
       }),
@@ -97,7 +97,7 @@ describe("GoogleDriveMonthlyExpensesRepository", () => {
     expect(result).toEqual({
       id: "monthly-expenses-file-id",
       month: "2026-03",
-      name: "compromisos-mensuales-2026-marzo.json",
+      name: "control-mensual-2026-marzo.json",
       viewUrl: "https://drive.google.com/file/d/monthly-expenses-file-id/view",
     });
   });
@@ -121,7 +121,7 @@ describe("GoogleDriveMonthlyExpensesRepository", () => {
           files: [
             {
               id: "monthly-expenses-file-id",
-              name: "compromisos-mensuales-2026-marzo.json",
+              name: "control-mensual-2026-marzo.json",
               parents: ["monthly-expenses-folder-id"],
             },
           ],
@@ -130,7 +130,7 @@ describe("GoogleDriveMonthlyExpensesRepository", () => {
     files.update.mockResolvedValueOnce({
       data: {
         id: "monthly-expenses-file-id",
-        name: "compromisos-mensuales-2026-marzo.json",
+        name: "control-mensual-2026-marzo.json",
         webViewLink:
           "https://drive.google.com/file/d/monthly-expenses-file-id/view",
       },
@@ -158,14 +158,14 @@ describe("GoogleDriveMonthlyExpensesRepository", () => {
       expect.objectContaining({
         fileId: "monthly-expenses-file-id",
         requestBody: {
-          name: "compromisos-mensuales-2026-marzo.json",
+          name: "control-mensual-2026-marzo.json",
         },
       }),
     );
     expect(result).toEqual({
       id: "monthly-expenses-file-id",
       month: "2026-03",
-      name: "compromisos-mensuales-2026-marzo.json",
+      name: "control-mensual-2026-marzo.json",
       viewUrl: "https://drive.google.com/file/d/monthly-expenses-file-id/view",
     });
   });
@@ -189,7 +189,7 @@ describe("GoogleDriveMonthlyExpensesRepository", () => {
           files: [
             {
               id: "current-file-id",
-              name: "compromisos-mensuales-2026-marzo.json",
+              name: "control-mensual-2026-marzo.json",
               parents: ["monthly-expenses-folder-id"],
             },
           ],

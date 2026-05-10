@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { toast } from "sonner";
 
-import MonthlyExpensesPage from "@/pages/compromisos";
+import MonthlyExpensesPage from "@/pages/gastos";
 
 import {
   basePageProps,
@@ -227,7 +227,7 @@ registerMonthlyExpensesPageDefaultHooks({
             storedDocument: {
               id: "monthly-expenses-file-id",
               month: "2026-03",
-              name: "compromisos-mensuales-2026-marzo.json",
+              name: "control-mensual-2026-marzo.json",
               viewUrl: null,
             },
           },
@@ -278,13 +278,13 @@ registerMonthlyExpensesPageDefaultHooks({
         body: {
           data: {
             exchangeRateLoadError:
-              "No pudimos cargar la cotización histórica del mes seleccionado. Igual podés seguir cargando y guardando compromisos.",
+              "No pudimos cargar la cotización histórica del mes seleccionado. Igual podés seguir cargando y guardando gastos.",
             receiptRenameWarnings: [],
             renamedReceiptFilesCount: 0,
             storedDocument: {
               id: "monthly-expenses-file-id",
               month: "2026-05",
-              name: "compromisos-mensuales-2026-mayo.json",
+              name: "control-mensual-2026-mayo.json",
               viewUrl: null,
             },
           },
@@ -323,7 +323,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await waitFor(() => {
       expect(mockedToast.info).toHaveBeenCalledWith(
-        "No pudimos cargar la cotización histórica del mes seleccionado. Igual podés seguir cargando y guardando compromisos.",
+        "No pudimos cargar la cotización histórica del mes seleccionado. Igual podés seguir cargando y guardando gastos.",
       );
     });
   });
@@ -1117,7 +1117,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
     await user.click(summaryFilterButton);
     expect(
-      screen.getByRole("textbox", { name: "Filtrar compromisos" }),
+      screen.getByRole("textbox", { name: "Filtrar gastos" }),
     ).toHaveValue("Servicio pendiente");
   });
 
@@ -1162,7 +1162,7 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     expect(
-      screen.getByRole("textbox", { name: "Filtrar compromisos" }),
+      screen.getByRole("textbox", { name: "Filtrar gastos" }),
     ).toHaveValue("");
     expect(screen.getByText("Sin descripción")).toBeInTheDocument();
   });
@@ -1336,7 +1336,7 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     expect(mockedSignIn).toHaveBeenCalledWith("google", {
-      callbackUrl: "/compromisos",
+      callbackUrl: "/gastos",
     });
   });
 
@@ -1371,7 +1371,7 @@ registerMonthlyExpensesPageDefaultHooks({
     await user.click(screen.getByRole("menuitem", { name: "Desconectar Google" }));
 
     expect(mockedSignOut).toHaveBeenCalledWith({
-      callbackUrl: "/compromisos",
+      callbackUrl: "/gastos",
     });
   });
 
@@ -2384,7 +2384,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.type(screen.getByRole("textbox", { name: "Filtrar compromisos" }), "PREST");
+    await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "PREST");
 
     const matchingDescription = screen.getByText(
       (_, element) => element?.textContent === "Préstamo tarjeta",
@@ -2422,7 +2422,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await user.click(clearFilterButton);
 
-    expect(screen.getByRole("textbox", { name: "Filtrar compromisos" })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Filtrar gastos" })).toHaveValue("");
     expect(screen.getByText("Préstamo tarjeta")).toBeInTheDocument();
     expect(screen.getByText("Agua")).toBeInTheDocument();
     expect(
@@ -2482,7 +2482,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.type(screen.getByRole("textbox", { name: "Filtrar compromisos" }), "ipe");
+    await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "ipe");
     await user.click(screen.getByRole("button", { name: "Ordenar Pagos" }));
 
     expect(
@@ -2552,7 +2552,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.type(screen.getByRole("textbox", { name: "Filtrar compromisos" }), "PRESTAMO");
+    await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "PRESTAMO");
 
     await user.click(
       screen.getByRole("button", { name: "Mostrar filtros de exclusión" }),
@@ -2635,7 +2635,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.type(screen.getByRole("textbox", { name: "Filtrar compromisos" }), "PRESTAMO");
+    await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "PRESTAMO");
 
     await user.click(
       screen.getByRole("button", { name: "Mostrar filtros de exclusión" }),
@@ -2706,7 +2706,7 @@ registerMonthlyExpensesPageDefaultHooks({
       "internet{enter}",
     );
 
-    expect(screen.getByRole("textbox", { name: "Filtrar compromisos" })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Filtrar gastos" })).toHaveValue("");
     expect(screen.getByText("− internet")).toBeInTheDocument();
     expect(screen.queryByText("Internet casa")).not.toBeInTheDocument();
     expect(screen.getByText("Agua")).toBeInTheDocument();
@@ -2742,7 +2742,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    const mainFilterInput = screen.getByRole("textbox", { name: "Filtrar compromisos" });
+    const mainFilterInput = screen.getByRole("textbox", { name: "Filtrar gastos" });
     await user.type(mainFilterInput, "-internet");
 
     expect(mainFilterInput).toHaveValue("-internet");

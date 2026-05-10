@@ -16,7 +16,7 @@ import {
   parseGoogleDriveMonthlyExpensesContent,
 } from "../dto/mapper";
 
-const CURRENT_MONTHLY_EXPENSES_FILE_PREFIX = "compromisos-mensuales-";
+const CURRENT_MONTHLY_EXPENSES_FILE_PREFIX = "control-mensual-";
 const LEGACY_MONTHLY_EXPENSES_FILE_PREFIX = "gastos-mensuales-";
 const DRIVE_FILE_FIELDS = "id,name,mimeType,parents,webViewLink";
 const DRIVE_FILES_CREATE_ENDPOINT = "drive.files.create";

@@ -440,7 +440,7 @@ export default function ReceiptShareTargetPage() {
     }
 
     if (!monthDocument) {
-      setSaveError("Todavia no pudimos cargar los compromisos del mes seleccionado.");
+      setSaveError("Todavia no pudimos cargar los gastos del mes seleccionado.");
       return;
     }
 
@@ -555,7 +555,7 @@ export default function ReceiptShareTargetPage() {
       await consumeSharedReceiptPayload();
 
       toast.success("Comprobante guardado correctamente.");
-      await router.push(`/compromisos?month=${encodeURIComponent(selectedMonth)}`);
+      await router.push(`/gastos?month=${encodeURIComponent(selectedMonth)}`);
     } catch (error) {
       if (error instanceof MonthlyExpensesAuthenticationError) {
         setSaveError("Tu sesion de Google vencio. Inicia sesion de nuevo para guardar.");
@@ -681,7 +681,7 @@ export default function ReceiptShareTargetPage() {
         {!isAuthenticated ? (
           <div className={styles.authCard}>
             <p className={styles.feedbackNeutral}>
-              Conectate con Google para cargar tus compromisos del mes y guardar el comprobante.
+              Conectate con Google para cargar tus gastos del mes y guardar el comprobante.
             </p>
             <Button onClick={handleConnectGoogle} type="button">
               Conectar con Google
@@ -701,7 +701,7 @@ export default function ReceiptShareTargetPage() {
             </div>
 
             {isLoadingMonthDocument ? (
-              <p className={styles.feedbackNeutral}>Cargando compromisos del periodo seleccionado...</p>
+              <p className={styles.feedbackNeutral}>Cargando gastos del periodo seleccionado...</p>
             ) : null}
 
             {documentLoadError ? (

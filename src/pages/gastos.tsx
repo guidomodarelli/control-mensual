@@ -1,40 +1,28 @@
-import type { GetServerSideProps, GetServerSidePropsContext } from "next";
+import type {
+  GetServerSideProps,
+  GetServerSidePropsContext,
+  InferGetServerSidePropsType,
+} from "next";
 
-export {
+import MonthlyExpensesPage, {
   getReportProviderFilterOptions,
   getRequestedMonthlyExpensesTab,
-} from "./compromisos";
+  type MonthlyExpensesPageProps,
+} from "@/modules/monthly-expenses/shared/pages/monthly-expenses-page";
 
-export default function LegacyMonthlyExpensesRoutePage() {
-  return null;
+export { getReportProviderFilterOptions, getRequestedMonthlyExpensesTab };
+
+export default function MonthlyExpensesRoutePage(
+  props: InferGetServerSidePropsType<typeof getServerSideProps>,
+) {
+  return <MonthlyExpensesPage {...props} />;
 }
 
-function getCompromisosDestination(context: GetServerSidePropsContext): string {
-  const params = new URLSearchParams();
+export const getServerSideProps: GetServerSideProps<MonthlyExpensesPageProps> =
+  async (context: GetServerSidePropsContext) => {
+    const { getMonthlyExpensesServerSidePropsForTab } = await import(
+      "@/modules/monthly-expenses/infrastructure/pages/monthly-expenses-server-props"
+    );
 
-  Object.entries(context.query).forEach(([key, value]) => {
-    if (Array.isArray(value)) {
-      value.forEach((currentValue) => {
-        params.append(key, currentValue);
-      });
-      return;
-    }
-
-    if (typeof value === "string") {
-      params.append(key, value);
-    }
-  });
-
-  const serializedParams = params.toString();
-
-  return serializedParams.length > 0
-    ? `/compromisos?${serializedParams}`
-    : "/compromisos";
-}
-
-export const getServerSideProps: GetServerSideProps = async (context) => ({
-  redirect: {
-    destination: getCompromisosDestination(context),
-    permanent: false,
-  },
-});
+    return getMonthlyExpensesServerSidePropsForTab(context, "expenses");
+  };

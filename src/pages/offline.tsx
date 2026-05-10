@@ -41,7 +41,7 @@ export default function OfflinePage() {
         </CardContent>
         <CardFooter className={styles.actions}>
           <Button asChild>
-            <Link href="/compromisos">Intentar abrir la app</Link>
+            <Link href="/gastos">Intentar abrir la app</Link>
           </Button>
           <Button asChild variant="outline">
             <Link href="/">Inicio</Link>

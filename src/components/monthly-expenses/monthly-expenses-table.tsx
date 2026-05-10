@@ -139,7 +139,7 @@ const MOVE_COMPLETED_TO_END_WITH_SORTING_HELPER_TEXT =
 const MONTHLY_EXPENSES_DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   usd: false,
 };
-const MONTHLY_EXPENSES_EMPTY_MESSAGE = "No hay compromisos cargados para este mes.";
+const MONTHLY_EXPENSES_EMPTY_MESSAGE = "No hay gastos cargados para este mes.";
 const MONTHLY_EXPENSES_FILTERED_EMPTY_MESSAGE =
   "No hay resultados para los filtros actuales.";
 const SORTABLE_COLUMN_IDS = new Set([
@@ -4112,7 +4112,7 @@ export function MonthlyExpensesTable({
               >
                 Cargá, editá y guardá
               </Highlighter>{" "}
-              tus compromisos mensuales: pagos, deudas, cuotas, prestamos y comprobantes.
+              tu control mensual: pagos, deudas, cuotas, prestamos y comprobantes.
             </p>
           </div>
         </div>
@@ -4283,7 +4283,7 @@ export function MonthlyExpensesTable({
                   : MONTHLY_EXPENSES_EMPTY_MESSAGE
               }
               excludeFilterLabel="Excluir resultados"
-              excludeFilterPlaceholder="Excluir compromisos por descripción"
+              excludeFilterPlaceholder="Excluir gastos por descripción"
               excludeFilterRowsCountByValue={
                 excludeFilterMetrics.excludeFilterRowsCountByValue
               }
@@ -4313,8 +4313,8 @@ export function MonthlyExpensesTable({
                   ) : null}
                 </div>
               )}
-              filterLabel="Filtrar compromisos"
-              filterPlaceholder="Filtrar compromisos por descripción"
+              filterLabel="Filtrar gastos"
+              filterPlaceholder="Filtrar gastos por descripción"
               filterValue={descriptionFilter}
               onExcludeFilterValuesChange={setExcludedDescriptionFilters}
               getRowClassName={(row) =>
@@ -4392,7 +4392,7 @@ export function MonthlyExpensesTable({
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>¿Querés eliminar los compromisos seleccionados?</AlertDialogTitle>
+              <AlertDialogTitle>¿Querés eliminar los gastos seleccionados?</AlertDialogTitle>
               <AlertDialogDescription>
                 {`Se eliminarán ${selectedVisibleCount} compromiso${selectedVisibleCount === 1 ? " seleccionado" : "s seleccionados"} de la tabla visible.`}
               </AlertDialogDescription>
@@ -4420,7 +4420,7 @@ export function MonthlyExpensesTable({
             <DialogHeader>
               <DialogTitle>Seleccioná los gastos/deudas a replicar</DialogTitle>
               <DialogDescription>
-                Mostramos los compromisos faltantes y vigentes del mes anterior.
+                Mostramos los gastos faltantes y vigentes del mes anterior.
                 Todos empiezan seleccionados.
               </DialogDescription>
             </DialogHeader>

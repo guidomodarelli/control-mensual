@@ -29,15 +29,15 @@ type PagePropsWithSession = {
 };
 
 const APP_NAME = "Control Mensual";
-const APP_DESCRIPTION = "Gestiona tus compromisos mensuales: pagos, deudas, cuotas, prestamos, comprobantes y prestamistas, con reportes de seguimiento.";
+const APP_DESCRIPTION = "Gestiona tu control mensual: pagos, deudas, cuotas, prestamos, comprobantes y prestamistas, con reportes de seguimiento.";
 const APP_THEME_COLOR = "#121826";
 const PAGE_TITLE_BY_PATHNAME: Record<string, string> = {
   "/": "Inicio",
   "/auth/error": "Error de autenticacion",
   "/auth/signin": "Conectar Google",
   "/cotizaciones": "Cotizaciones del dolar",
-  "/gastos": "Compromisos Mensuales",
-  "/compromisos": "Compromisos Mensuales",
+  "/gastos": "Control mensual",
+  "/compromisos": "Control mensual",
   "/prestamistas": "Prestamistas",
   "/recibir-comprobante": "Recibir comprobante",
   "/reportes/deudas": "Reporte de deudas",

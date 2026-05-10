@@ -1,6 +1,6 @@
 import type { GetServerSidePropsContext } from "next";
 
-import { getServerSideProps } from "@/pages/gastos";
+import { getServerSideProps } from "@/pages/compromisos";
 
 function createContext(
   query: GetServerSidePropsContext["query"],
@@ -9,15 +9,15 @@ function createContext(
     query,
     req: {} as GetServerSidePropsContext["req"],
     res: {} as GetServerSidePropsContext["res"],
-    resolvedUrl: "/gastos",
+    resolvedUrl: "/compromisos",
   } as unknown as GetServerSidePropsContext;
 }
 
-describe("Legacy gastos route", () => {
-  it("redirects /gastos to /compromisos", async () => {
+describe("Legacy monthly expenses route", () => {
+  it("redirects /compromisos to /gastos", async () => {
     const result = await getServerSideProps(createContext({}));
 
-    expect("redirect" in result && result.redirect?.destination).toBe("/compromisos");
+    expect("redirect" in result && result.redirect?.destination).toBe("/gastos");
     expect(
       "redirect" in result &&
         result.redirect &&
@@ -34,7 +34,7 @@ describe("Legacy gastos route", () => {
     );
 
     expect("redirect" in result && result.redirect?.destination).toBe(
-      "/compromisos?month=2026-04&tab=expenses",
+      "/gastos?month=2026-04&tab=expenses",
     );
   });
 
@@ -46,7 +46,7 @@ describe("Legacy gastos route", () => {
     );
 
     expect("redirect" in result && result.redirect?.destination).toBe(
-      "/compromisos?tag=a&tag=b",
+      "/gastos?tag=a&tag=b",
     );
   });
 });

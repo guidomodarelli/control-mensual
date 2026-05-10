@@ -306,7 +306,7 @@ export async function getMonthlyExpensesServerSidePropsForTab(
             : null,
         loadError:
           documentResult.status === "rejected"
-            ? "No pudimos cargar los compromisos mensuales desde la base de datos. Igual podés editar la tabla y volver a guardarla."
+            ? "No pudimos cargar el control mensual desde la base de datos. Igual podés editar la tabla y volver a guardarla."
             : null,
         reportLoadErrorCode:
           reportResult.status === "rejected"
@@ -354,7 +354,7 @@ export async function getMonthlyExpensesServerSidePropsForTab(
           (error.name === "GoogleOAuthAuthenticationError" ||
             error.name === "GoogleOAuthConfigurationError")
             ? null
-            : "No pudimos cargar los compromisos mensuales desde la base de datos. Igual podés editar la tabla y volver a guardarla.",
+            : "No pudimos cargar el control mensual desde la base de datos. Igual podés editar la tabla y volver a guardarla.",
         reportLoadErrorCode: null,
         reportLoadError: null,
       }),

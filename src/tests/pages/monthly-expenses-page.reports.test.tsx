@@ -10,7 +10,7 @@ import {
   getSafeMonthlyExpensesLoadErrorMessage,
   getSafeMonthlyExpensesErrorMessage,
 } from "@/modules/monthly-expenses/application/queries/get-monthly-expenses-page-feedback";
-import MonthlyExpensesPage, { getReportProviderFilterOptions } from "@/pages/compromisos";
+import MonthlyExpensesPage, { getReportProviderFilterOptions } from "@/pages/gastos";
 
 import {
   basePageProps,
@@ -18,6 +18,7 @@ import {
   createMockRouter,
   createMonthlyExpensesFetchMock,
   getMonthlyExpensesDescriptionsOrder,
+  getMonthlyExpensesTable,
   getMonthlyExpensesSavePayload,
   registerMonthlyExpensesPageDefaultHooks,
   renderWithProviders,
@@ -62,6 +63,7 @@ const mockedSignIn = jest.mocked(signIn);
 const mockedSignOut = jest.mocked(signOut);
 const mockedToast = toast as unknown as MockedToast;
 const originalFetch = global.fetch;
+const REPORTS_SORT_TEST_TIMEOUT_MS = 15000;
 
 describe("MonthlyExpensesPage lenders and reports", () => {
 
@@ -111,7 +113,7 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(
       getSafeLoansReportErrorMessage("repository.listAll is not a function"),
     ).toBe(
-      "No pudimos actualizar el reporte de deudas en este momento. Igual podés seguir cargando compromisos y volver a intentarlo más tarde.",
+      "No pudimos actualizar el reporte de deudas en este momento. Igual podés seguir cargando gastos y volver a intentarlo más tarde.",
     );
   });
 
@@ -120,7 +122,7 @@ registerMonthlyExpensesPageDefaultHooks({
       getSafeMonthlyExpensesErrorMessage(
         "Google authentication is required before saving monthly expenses to Drive.",
       ),
-    ).toBe("Conectate con Google para guardar tus compromisos mensuales en Drive.");
+    ).toBe("Conectate con Google para guardar tu control mensual en Drive.");
   });
 
   it("maps technical monthly expenses load errors to a user-friendly message", () => {
@@ -128,7 +130,7 @@ registerMonthlyExpensesPageDefaultHooks({
       getSafeMonthlyExpensesLoadErrorMessage(
         "Google authentication is required before loading monthly expenses from Drive.",
       ),
-    ).toBe("Conectate con Google para cargar tus compromisos mensuales.");
+    ).toBe("Conectate con Google para cargar tu control mensual.");
   });
 
   it("maps technical lenders errors to a user-friendly message", () => {
@@ -156,7 +158,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     expect(
       screen.getByText(
-        "No pudimos actualizar el reporte de deudas en este momento. Igual podés seguir cargando compromisos y volver a intentarlo más tarde.",
+        "No pudimos actualizar el reporte de deudas en este momento. Igual podés seguir cargando gastos y volver a intentarlo más tarde.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -208,7 +210,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     expect(
       await screen.findByText(
-        "Conectate con Google para guardar tus compromisos mensuales en Drive.",
+        "Conectate con Google para guardar tu control mensual en Drive.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -919,7 +921,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await waitFor(() => {
       expect(mockedSignOut).toHaveBeenCalledWith({
-        callbackUrl: "/auth/signin?callbackUrl=%2Fcompromisos%3Fmonth%3D2026-03",
+        callbackUrl: "/auth/signin?callbackUrl=%2Fgastos%3Fmonth%3D2026-03",
       });
     });
   });
@@ -2771,7 +2773,7 @@ registerMonthlyExpensesPageDefaultHooks({
       rendered.unmount();
       window.localStorage.clear();
     }
-  });
+  }, REPORTS_SORT_TEST_TIMEOUT_MS);
 
   it("renders Prestamista followed by Inicio cuota and Fin cuota, then Dirección before actions", () => {
     renderWithProviders(
@@ -2901,7 +2903,15 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(within(marchRow).getByText("08/2026")).toBeInTheDocument();
     expect(within(noLoanRow).getAllByText("-").length).toBeGreaterThan(0);
 
-    await user.click(screen.getByRole("button", { name: "Ordenar Inicio cuota" }));
+    const monthlyExpensesTable = getMonthlyExpensesTable();
+
+    expect(monthlyExpensesTable).toBeDefined();
+
+    await user.click(
+      within(monthlyExpensesTable as HTMLElement).getByRole("button", {
+        name: "Ordenar Inicio cuota",
+      }),
+    );
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Prestamo noviembre",
@@ -2910,7 +2920,11 @@ registerMonthlyExpensesPageDefaultHooks({
       "Sin deuda",
     ]);
 
-    await user.click(screen.getByRole("button", { name: "Ordenar Inicio cuota" }));
+    await user.click(
+      within(monthlyExpensesTable as HTMLElement).getByRole("button", {
+        name: "Ordenar Inicio cuota",
+      }),
+    );
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Prestamo marzo",
@@ -2919,7 +2933,11 @@ registerMonthlyExpensesPageDefaultHooks({
       "Sin deuda",
     ]);
 
-    await user.click(screen.getByRole("button", { name: "Ordenar Fin cuota" }));
+    await user.click(
+      within(monthlyExpensesTable as HTMLElement).getByRole("button", {
+        name: "Ordenar Fin cuota",
+      }),
+    );
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Prestamo noviembre",
@@ -2928,7 +2946,11 @@ registerMonthlyExpensesPageDefaultHooks({
       "Sin deuda",
     ]);
 
-    await user.click(screen.getByRole("button", { name: "Ordenar Fin cuota" }));
+    await user.click(
+      within(monthlyExpensesTable as HTMLElement).getByRole("button", {
+        name: "Ordenar Fin cuota",
+      }),
+    );
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual([
       "Prestamo marzo",

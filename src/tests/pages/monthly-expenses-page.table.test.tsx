@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { MonthlyExpensesDocumentResult } from "@/modules/monthly-expenses/application/results/monthly-expenses-document-result";
 import { copyMonthlyExpenseTemplatesToMonth } from "@/modules/monthly-expenses/shared/pages/monthly-expenses-page";
-import MonthlyExpensesPage, { getRequestedMonthlyExpensesTab } from "@/pages/compromisos";
+import MonthlyExpensesPage, { getRequestedMonthlyExpensesTab } from "@/pages/gastos";
 
 import {
   basePageProps,
@@ -110,7 +110,7 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(screen.getByLabelText("Mes")).toHaveValue("2026-03");
     expect(screen.getByText("Agua")).toBeInTheDocument();
     expect(
-      screen.getByRole("textbox", { name: "Filtrar compromisos" }),
+      screen.getByRole("textbox", { name: "Filtrar gastos" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Guardar gastos" }),
@@ -920,7 +920,7 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.type(screen.getByRole("textbox", { name: "Filtrar compromisos" }), "aa");
+    await user.type(screen.getByRole("textbox", { name: "Filtrar gastos" }), "aa");
     await user.click(screen.getByRole("button", { name: "Ordenar Subtotal" }));
 
     expect(getMonthlyExpensesDescriptionsOrder()).toEqual(["Aab", "Aaa"]);
@@ -1176,7 +1176,7 @@ registerMonthlyExpensesPageDefaultHooks({
       screen.getByText("Guardá prestamistas para reutilizarlos en tus deudas."),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { name: "Compromisos Mensuales" }),
+      screen.queryByRole("heading", { name: "Control mensual" }),
     ).not.toBeInTheDocument();
   });
 
@@ -1403,7 +1403,7 @@ registerMonthlyExpensesPageDefaultHooks({
     await waitFor(() => {
       expect(router.push).toHaveBeenCalledWith(
         {
-          pathname: "/compromisos",
+          pathname: "/gastos",
           query: {
             month: "2026-04",
             tab: "expenses",
@@ -1707,7 +1707,7 @@ registerMonthlyExpensesPageDefaultHooks({
     await waitFor(() => {
       expect(router.push).toHaveBeenCalledWith(
         {
-          pathname: "/compromisos",
+          pathname: "/gastos",
           query: {
             month: "2026-04",
             tab: "expenses",
@@ -1831,7 +1831,7 @@ registerMonthlyExpensesPageDefaultHooks({
     await waitFor(() => {
       expect(router.push).toHaveBeenCalledWith(
         {
-          pathname: "/compromisos",
+          pathname: "/gastos",
           query: {
             month: "2026-04",
             tab: "expenses",
@@ -2246,7 +2246,7 @@ registerMonthlyExpensesPageDefaultHooks({
 
     await waitFor(() => {
       expect(mockedToast.error).toHaveBeenCalledWith(
-        "Conectate con Google para cargar tus compromisos mensuales.",
+        "Conectate con Google para cargar tu control mensual.",
       );
     });
     expect(router.push).not.toHaveBeenCalled();
@@ -2294,7 +2294,7 @@ registerMonthlyExpensesPageDefaultHooks({
     await waitFor(() => {
       expect(router.push).toHaveBeenCalledWith(
         {
-          pathname: "/compromisos",
+          pathname: "/gastos",
           query: {
             month: "2026-04",
             tab: "expenses",
@@ -2321,7 +2321,7 @@ registerMonthlyExpensesPageDefaultHooks({
       },
     });
     const loadErrorMessage =
-      "No pudimos cargar los compromisos mensuales desde la base de datos.";
+      "No pudimos cargar el control mensual desde la base de datos.";
     const fetchMock = createMonthlyExpensesFetchMock({
       copyableMonths: {
         defaultSourceMonth: "2026-03",
@@ -2645,7 +2645,7 @@ registerMonthlyExpensesPageDefaultHooks({
     );
 
     await user.type(
-      screen.getByRole("textbox", { name: "Filtrar compromisos" }),
+      screen.getByRole("textbox", { name: "Filtrar gastos" }),
       "Agua",
     );
     await user.click(
@@ -2728,9 +2728,9 @@ registerMonthlyExpensesPageDefaultHooks({
       expect(screen.getByRole("button", { name: "Acciones masivas" })).toBeEnabled();
     });
 
-    await user.clear(screen.getByRole("textbox", { name: "Filtrar compromisos" }));
+    await user.clear(screen.getByRole("textbox", { name: "Filtrar gastos" }));
     await user.type(
-      screen.getByRole("textbox", { name: "Filtrar compromisos" }),
+      screen.getByRole("textbox", { name: "Filtrar gastos" }),
       "No existe",
     );
 

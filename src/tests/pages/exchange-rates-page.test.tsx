@@ -139,7 +139,7 @@ describe("ExchangeRatesPage", () => {
     const sidebarLabels = sidebarLinks.map((link) => link.textContent?.trim());
 
     expect(sidebarLabels).toEqual([
-      "Compromisos Mensuales",
+      "Control mensual",
       "Cotizaciones del dólar",
       "Prestamistas",
       "Reporte de deudas",
