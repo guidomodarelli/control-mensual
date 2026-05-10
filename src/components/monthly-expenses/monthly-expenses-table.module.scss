@@ -167,6 +167,8 @@
 }
 
 .selectionTableCell {
+  width: var(--selection-column-width);
+  min-width: var(--selection-column-width);
   cursor: pointer;
 }
 
@@ -184,6 +186,8 @@
 }
 
 .tableWrapper {
+  --selection-column-width: 3.75rem;
+
   position: relative;
   padding-top: 0.25rem;
   overflow: visible;
@@ -648,14 +652,7 @@
 }
 
 .stickyDescriptionCell {
-  position: -webkit-sticky;
-  position: sticky;
-  left: 0;
-  z-index: 2;
   background: var(--background);
-  box-shadow:
-    1px 0 0 color-mix(in srgb, var(--border) 80%, transparent),
-    12px 0 12px -12px color-mix(in srgb, var(--foreground) 16%, transparent);
 }
 
 .tableWrapper :global([data-slot="table-head"]) {
@@ -663,16 +660,25 @@
 }
 
 .tableWrapper :global([data-slot="table-head"]:first-child) {
-  position: -webkit-sticky;
-  position: sticky;
-  left: 0;
-  z-index: 4;
+  width: var(--selection-column-width);
+  min-width: var(--selection-column-width);
   background: var(--background);
-  box-shadow: 1px 0 0 color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.tableWrapper :global([data-slot="table-head"]:nth-child(2)) {
+  background: var(--background);
+}
+
+.tableWrapper :global([data-slot="table-row"]:hover) .selectionTableCell {
+  background: color-mix(in srgb, var(--muted) 70%, var(--background));
 }
 
 .tableWrapper :global([data-slot="table-row"]:hover) .stickyDescriptionCell {
   background: color-mix(in srgb, var(--muted) 70%, var(--background));
+}
+
+.tableWrapper :global([data-slot="table-row"][data-state="selected"]) .selectionTableCell {
+  background: var(--muted);
 }
 
 .tableWrapper :global([data-slot="table-row"][data-state="selected"]) .stickyDescriptionCell {
@@ -707,11 +713,13 @@
   background: var(--muted);
 }
 
+.tableWrapper .paidRow .selectionTableCell,
 .tableWrapper .paidRow .stickyDescriptionCell,
 .tableWrapper .paidRow .stickyActionsCell {
   background: color-mix(in srgb, #34a853 9%, var(--background));
 }
 
+.tableWrapper .paidRow:hover .selectionTableCell,
 .tableWrapper .paidRow:hover .stickyDescriptionCell,
 .tableWrapper .paidRow:hover .stickyActionsCell {
   background: color-mix(in srgb, #34a853 13%, var(--background));
@@ -999,22 +1007,45 @@
   border: 0;
 }
 
-@media (max-width: 1024px) {
+@media (min-width: 1024px) {
+  .selectionTableCell {
+    position: -webkit-sticky;
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: var(--background);
+  }
+
   .stickyDescriptionCell {
-    position: static;
-    left: auto;
-    z-index: auto;
-    background: transparent;
-    box-shadow: none;
+    position: -webkit-sticky;
+    position: sticky;
+    left: var(--selection-column-width);
+    z-index: 2;
+    box-shadow:
+      1px 0 0 color-mix(in srgb, var(--border) 80%, transparent),
+      12px 0 12px -12px color-mix(in srgb, var(--foreground) 16%, transparent);
   }
 
   .tableWrapper :global([data-slot="table-head"]:first-child) {
-    position: static;
-    left: auto;
-    z-index: auto;
-    box-shadow: none;
+    position: -webkit-sticky;
+    position: sticky;
+    left: 0;
+    z-index: 4;
+    box-shadow: 1px 0 0 color-mix(in srgb, var(--border) 80%, transparent);
   }
 
+  .tableWrapper :global([data-slot="table-head"]:nth-child(2)) {
+    position: -webkit-sticky;
+    position: sticky;
+    left: var(--selection-column-width);
+    z-index: 4;
+    box-shadow:
+      1px 0 0 color-mix(in srgb, var(--border) 80%, transparent),
+      12px 0 12px -12px color-mix(in srgb, var(--foreground) 16%, transparent);
+  }
+}
+
+@media (max-width: 1024px) {
   .headerTopRow {
     flex-direction: column;
   }
