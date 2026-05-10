@@ -10,6 +10,7 @@ import type { Session } from "next-auth";
 import { SessionProvider } from "next-auth/react";
 import { useEffect } from "react";
 
+import { Loading } from "@/components/route-loading/loading";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { registerServiceWorker } from "@/modules/shared/infrastructure/pages/register-service-worker";
@@ -87,6 +88,7 @@ export default function App({
       >
         <TooltipProvider>
           <div className={`${interSans.className} ${interSans.variable} ${geistMono.variable}`}>
+            <Loading />
             <Component {...restPageProps} />
             <Toaster closeButton position="top-center" richColors />
           </div>
