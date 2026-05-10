@@ -1,6 +1,6 @@
 .page {
   min-height: 100vh;
-  padding: 1rem 1.25rem 3rem;
+  padding: 0rem 1.25rem 3rem;
 }
 
 .layout {
@@ -28,7 +28,7 @@
   z-index: 20;
   margin-block: 0;
   margin-inline: -1.25rem;
-  padding: 0.35rem 1.25rem;
+  padding: 1rem 1.25rem;
   background: color-mix(in srgb, var(--background) 92%, transparent 8%);
   backdrop-filter: blur(6px);
 }
