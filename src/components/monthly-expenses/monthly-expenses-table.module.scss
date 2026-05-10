@@ -263,8 +263,8 @@
 }
 
 .tableWrapper :global([data-slot="table-container"]) {
-  max-height: 80vh;
-  overflow: auto;
+  max-height: none;
+  overflow: visible;
 }
 
 .tableWrapper :global([data-slot="table"]) {
