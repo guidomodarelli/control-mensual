@@ -42,25 +42,14 @@ function mockRouter(asPath = "/gastos") {
 }
 
 describe("Loading", () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-  });
-
   afterEach(() => {
-    jest.useRealTimers();
     mockedUseRouter.mockReset();
   });
 
-  it("shows loading on first entry and hides it after the initial loading window", () => {
+  it("does not force loading on first entry", () => {
     mockRouter("/cotizaciones");
 
     render(<Loading />);
-
-    expect(screen.getByRole("status")).toHaveTextContent("Cargando sección...");
-
-    act(() => {
-      jest.advanceTimersByTime(450);
-    });
 
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
@@ -69,10 +58,6 @@ describe("Loading", () => {
     const events = mockRouter("/cotizaciones");
 
     render(<Loading />);
-
-    act(() => {
-      jest.advanceTimersByTime(450);
-    });
 
     act(() => {
       events.emit("routeChangeStart", "/gastos");
@@ -91,10 +76,6 @@ describe("Loading", () => {
     const events = mockRouter("/gastos?month=2026-05");
 
     render(<Loading />);
-
-    act(() => {
-      jest.advanceTimersByTime(450);
-    });
 
     act(() => {
       events.emit("routeChangeStart", "/gastos?month=2026-06");

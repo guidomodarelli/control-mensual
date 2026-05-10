@@ -9,7 +9,6 @@ const SECTION_PATHS = new Set([
   "/prestamistas",
   "/reportes/deudas",
 ]);
-const INITIAL_LOADING_DURATION_MS = 450;
 
 function getPathnameFromUrl(url: string): string {
   try {
@@ -28,19 +27,7 @@ function getSectionPath(url: string): string | null {
 export function Loading() {
   const router = useRouter();
   const currentSectionPathRef = useRef(getSectionPath(router.asPath));
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const [isRouteLoading, setIsRouteLoading] = useState(false);
-  const isVisible = isInitialLoading || isRouteLoading;
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setIsInitialLoading(false);
-    }, INITIAL_LOADING_DURATION_MS);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, []);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     currentSectionPathRef.current = getSectionPath(router.asPath);
@@ -50,7 +37,7 @@ export function Loading() {
     const handleRouteChangeStart = (nextUrl: string) => {
       const nextSectionPath = getSectionPath(nextUrl);
 
-      setIsRouteLoading(
+      setIsVisible(
         Boolean(nextSectionPath) &&
           nextSectionPath !== currentSectionPathRef.current,
       );
@@ -58,7 +45,7 @@ export function Loading() {
 
     const handleRouteChangeEnd = (nextUrl: string) => {
       currentSectionPathRef.current = getSectionPath(nextUrl);
-      setIsRouteLoading(false);
+      setIsVisible(false);
     };
 
     router.events.on("routeChangeStart", handleRouteChangeStart);
