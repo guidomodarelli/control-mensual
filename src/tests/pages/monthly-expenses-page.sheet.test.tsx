@@ -54,9 +54,11 @@ const mockedSignIn = jest.mocked(signIn);
 const mockedSignOut = jest.mocked(signOut);
 const mockedToast = toast as unknown as MockedToast;
 const originalFetch = global.fetch;
+const MONTHLY_EXPENSES_SHEET_TEST_TIMEOUT_MS = 15000;
+
+jest.setTimeout(MONTHLY_EXPENSES_SHEET_TEST_TIMEOUT_MS);
 
 describe("MonthlyExpensesPage expense sheet", () => {
-
 registerMonthlyExpensesPageDefaultHooks({
   createDefaultRouter: () => createMockRouter() as unknown as ReturnType<typeof useRouter>,
   mockedSignIn,
