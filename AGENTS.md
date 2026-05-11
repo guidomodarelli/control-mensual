@@ -320,6 +320,7 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
   - `npm run typecheck`
   - The relevant targeted test command for the changed files
 - Run `npm run test` instead of a targeted command when the changed files affect shared behavior, cross-module contracts, test setup, global configuration, or when no reliable targeted test command exists.
+- Never remove `.next/dev/types/**/*.ts` from `tsconfig.json` includes. If stale generated dev types reference removed routes, regenerate or clean the generated Next.js artifacts instead of changing this include.
 - A task is blocked from completion if any of these commands exits with a non-zero status code.
 - If any check fails, fix the issues in the same work item and rerun the failed command(s) until all applicable checks are green.
 - Do not defer these checks to follow-up tasks.
