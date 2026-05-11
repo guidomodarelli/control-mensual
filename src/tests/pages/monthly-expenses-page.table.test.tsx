@@ -1,13 +1,13 @@
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useRouter } from "next/router";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { toast } from "sonner";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { MonthlyExpensesDocumentResult } from "@/modules/monthly-expenses/application/results/monthly-expenses-document-result";
 import { copyMonthlyExpenseTemplatesToMonth } from "@/modules/monthly-expenses/shared/pages/monthly-expenses-page";
-import MonthlyExpensesPage, { getRequestedMonthlyExpensesTab } from "@/pages/gastos";
+import MonthlyExpensesPage, { getRequestedMonthlyExpensesTab } from "@/modules/monthly-expenses/shared/pages/monthly-expenses-page";
 
 import {
   basePageProps,
@@ -23,8 +23,10 @@ import {
   TABLE_PREFERENCES_STORAGE_KEY,
 } from "./monthly-expenses-page-test-helpers";
 
-jest.mock("next/router", () => ({
+jest.mock("next/navigation", () => ({
+  usePathname: jest.fn(),
   useRouter: jest.fn(),
+  useSearchParams: jest.fn(),
 }));
 
 jest.mock("next-auth/react", () => ({
@@ -55,7 +57,9 @@ type MockedToast = jest.Mock & {
   warning: jest.Mock;
 };
 
+const mockedUsePathname = jest.mocked(usePathname);
 const mockedUseRouter = jest.mocked(useRouter);
+const mockedUseSearchParams = jest.mocked(useSearchParams);
 const mockedUseSession = jest.mocked(useSession);
 const mockedSignIn = jest.mocked(signIn);
 const mockedSignOut = jest.mocked(signOut);
@@ -66,11 +70,13 @@ const ADVANCED_FILTERS_TEST_TIMEOUT_MS = 15000;
 describe("MonthlyExpensesPage table and navigation", () => {
 
 registerMonthlyExpensesPageDefaultHooks({
-  createDefaultRouter: () => createMockRouter() as unknown as ReturnType<typeof useRouter>,
+  createDefaultRouter: () => createMockRouter(),
+  mockedUsePathname,
   mockedSignIn,
   mockedSignOut,
   mockedToast,
   mockedUseRouter,
+  mockedUseSearchParams,
   mockedUseSession,
   originalFetch,
 });
@@ -1259,7 +1265,9 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    const sidebarTrigger = screen.getByRole("button", { name: "Toggle Sidebar" });
+    const sidebarTrigger = screen.getByRole("button", {
+      name: "Abrir menu lateral",
+    });
 
     expect(sidebarTrigger).toHaveAttribute("data-sidebar", "trigger");
   });
@@ -1298,11 +1306,11 @@ registerMonthlyExpensesPageDefaultHooks({
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
+    await user.click(screen.getByRole("button", { name: "Abrir menu lateral" }));
 
     expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe("false");
 
-    await user.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
+    await user.click(screen.getByRole("button", { name: "Abrir menu lateral" }));
 
     expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe("true");
   });
@@ -1336,7 +1344,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     mockedUseRouter.mockReturnValue(
-      router as unknown as ReturnType<typeof useRouter>,
+      router,
     );
     mockedUseSession.mockReturnValue({
       data: {
@@ -1401,21 +1409,10 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(fetchMock).not.toHaveBeenCalledWith("/api/storage/monthly-expenses-report");
 
     await waitFor(() => {
-      expect(router.push).toHaveBeenCalledWith(
-        {
-          pathname: "/gastos",
-          query: {
-            month: "2026-04",
-            tab: "expenses",
-          },
-        },
-        undefined,
-        {
-          scroll: false,
-          shallow: true,
-        },
-      );
+      expect(window.location.pathname).toBe("/gastos");
+      expect(window.location.search).toBe("?month=2026-04&tab=expenses");
     });
+    expect(router.push).not.toHaveBeenCalled();
 
     expect(screen.getByLabelText("Mes")).toHaveValue("2026-04");
     expect(screen.getByText("Abril")).toBeInTheDocument();
@@ -1513,7 +1510,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     mockedUseRouter.mockReturnValue(
-      router as unknown as ReturnType<typeof useRouter>,
+      router,
     );
     mockedUseSession.mockReturnValue({
       data: {
@@ -1664,7 +1661,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     mockedUseRouter.mockReturnValue(
-      router as unknown as ReturnType<typeof useRouter>,
+      router,
     );
     mockedUseSession.mockReturnValue({
       data: {
@@ -1705,21 +1702,10 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     await waitFor(() => {
-      expect(router.push).toHaveBeenCalledWith(
-        {
-          pathname: "/gastos",
-          query: {
-            month: "2026-04",
-            tab: "expenses",
-          },
-        },
-        undefined,
-        {
-          scroll: false,
-          shallow: true,
-        },
-      );
+      expect(window.location.pathname).toBe("/gastos");
+      expect(window.location.search).toBe("?month=2026-04&tab=expenses");
     });
+    expect(router.push).not.toHaveBeenCalled();
 
     await waitFor(() => {
       expect(screen.getByLabelText("Mes")).toHaveValue("2026-04");
@@ -1783,7 +1769,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     mockedUseRouter.mockReturnValue(
-      router as unknown as ReturnType<typeof useRouter>,
+      router,
     );
     mockedUseSession.mockReturnValue({
       data: {
@@ -1829,21 +1815,10 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     await waitFor(() => {
-      expect(router.push).toHaveBeenCalledWith(
-        {
-          pathname: "/gastos",
-          query: {
-            month: "2026-04",
-            tab: "expenses",
-          },
-        },
-        undefined,
-        {
-          scroll: false,
-          shallow: true,
-        },
-      );
+      expect(window.location.pathname).toBe("/gastos");
+      expect(window.location.search).toBe("?month=2026-04&tab=expenses");
     });
+    expect(router.push).not.toHaveBeenCalled();
 
     expect(screen.getByLabelText("Mes")).toHaveValue("2026-04");
     expect(screen.getByRole("button", { name: "Replicar gastos/deudas del mes anterior" })).toBeDisabled();
@@ -1925,7 +1900,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     mockedUseRouter.mockReturnValue(
-      router as unknown as ReturnType<typeof useRouter>,
+      router,
     );
     mockedUseSession.mockReturnValue({
       data: {
@@ -2042,15 +2017,8 @@ registerMonthlyExpensesPageDefaultHooks({
     expect(screen.getByText("Marzo")).toBeInTheDocument();
     expect(screen.queryByText("Abril")).not.toBeInTheDocument();
     expect(router.push).not.toHaveBeenCalledWith(
-      expect.objectContaining({
-        query: expect.objectContaining({
-          month: "2026-04",
-        }),
-      }),
-      undefined,
-      expect.objectContaining({
-        shallow: true,
-      }),
+      "/gastos?month=2026-04&tab=expenses",
+      expect.anything(),
     );
   });
 
@@ -2101,7 +2069,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     mockedUseRouter.mockReturnValue(
-      router as unknown as ReturnType<typeof useRouter>,
+      router,
     );
     mockedUseSession.mockReturnValue({
       data: {
@@ -2213,7 +2181,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     mockedUseRouter.mockReturnValue(
-      router as unknown as ReturnType<typeof useRouter>,
+      router,
     );
     mockedUseSession.mockReturnValue({
       data: {
@@ -2262,7 +2230,7 @@ registerMonthlyExpensesPageDefaultHooks({
     const fetchMock = createMonthlyExpensesFetchMock();
 
     mockedUseRouter.mockReturnValue(
-      router as unknown as ReturnType<typeof useRouter>,
+      router,
     );
     global.fetch = fetchMock as typeof fetch;
 
@@ -2292,20 +2260,10 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     await waitFor(() => {
-      expect(router.push).toHaveBeenCalledWith(
-        {
-          pathname: "/gastos",
-          query: {
-            month: "2026-04",
-            tab: "expenses",
-          },
-        },
-        undefined,
-        {
-          scroll: false,
-        },
-      );
+      expect(window.location.pathname).toBe("/gastos");
+      expect(window.location.search).toBe("?month=2026-04&tab=expenses");
     });
+    expect(router.push).not.toHaveBeenCalled();
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(mockedToast.error).not.toHaveBeenCalled();
@@ -2344,7 +2302,7 @@ registerMonthlyExpensesPageDefaultHooks({
     });
 
     mockedUseRouter.mockReturnValue(
-      router as unknown as ReturnType<typeof useRouter>,
+      router,
     );
     mockedUseSession.mockReturnValue({
       data: {

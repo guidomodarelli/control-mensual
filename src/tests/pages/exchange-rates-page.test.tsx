@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import type { ReactElement } from "react";
 import { toast } from "sonner";
@@ -9,7 +9,7 @@ import ExchangeRatesPage from "@/modules/exchange-rates/shared/pages/exchange-ra
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { StorageBootstrapResult } from "@/modules/storage/application/results/storage-bootstrap";
 
-jest.mock("next/router", () => ({
+jest.mock("next/navigation", () => ({
   useRouter: jest.fn(),
 }));
 
@@ -56,7 +56,7 @@ const bootstrap: StorageBootstrapResult = {
   architecture: {
     dataStrategy: "ssr-first",
     middleendLocation: "src/modules",
-    routing: "pages-router",
+    routing: "app-router",
   },
   authStatus: "configured",
   requiredScopes: [
@@ -101,8 +101,6 @@ describe("ExchangeRatesPage", () => {
     mockedToast.success.mockReset();
     mockedToast.warning.mockReset();
     mockedUseRouter.mockReturnValue({
-      pathname: "/cotizaciones",
-      query: {},
       replace: jest.fn().mockResolvedValue(true),
     } as unknown as ReturnType<typeof useRouter>);
     mockedUseSession.mockReturnValue({
@@ -179,8 +177,6 @@ describe("ExchangeRatesPage", () => {
   it("navigates with the selected month in the query string", async () => {
     const replace = jest.fn().mockResolvedValue(true);
     mockedUseRouter.mockReturnValue({
-      pathname: "/cotizaciones",
-      query: {},
       replace,
     } as unknown as ReturnType<typeof useRouter>);
 
@@ -194,13 +190,7 @@ describe("ExchangeRatesPage", () => {
 
     await waitFor(() => {
       expect(replace).toHaveBeenCalledWith(
-        {
-          pathname: "/cotizaciones",
-          query: {
-            month: "2026-02",
-          },
-        },
-        undefined,
+        "/cotizaciones?month=2026-02",
         {
           scroll: false,
         },

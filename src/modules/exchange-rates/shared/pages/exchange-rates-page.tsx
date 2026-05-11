@@ -1,6 +1,8 @@
+"use client";
+
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { FinanceAppShell } from "@/components/finance-app-shell/finance-app-shell";
@@ -92,18 +94,9 @@ export default function ExchangeRatesPage({
       return;
     }
 
-    void router.replace(
-      {
-        pathname: "/cotizaciones",
-        query: {
-          month: normalizedMonth,
-        },
-      },
-      undefined,
-      {
-        scroll: false,
-      },
-    );
+    void router.replace(`/cotizaciones?month=${encodeURIComponent(normalizedMonth)}`, {
+      scroll: false,
+    });
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

@@ -1,8 +1,10 @@
+"use client";
+
 import type {
   GetServerSidePropsContext,
 } from "next";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/router";
+import { usePathname, useSearchParams } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { toast } from "sonner";
 
@@ -1484,7 +1486,8 @@ export default function MonthlyExpensesPage({
   reportLoadErrorCode,
   reportLoadError,
 }: MonthlyExpensesPageProps) {
-  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const isOAuthConfigured = bootstrap.authStatus === "configured";
   const { status } = useSession();
   const activeTab = initialActiveTab;
@@ -1696,22 +1699,16 @@ export default function MonthlyExpensesPage({
   };
 
   const navigateToMonth = useCallback(
-    async (normalizedMonth: string, options?: { shallow?: boolean }) =>
-      router.push(
-        {
-          pathname: router.pathname,
-          query: {
-            ...router.query,
-            month: normalizedMonth,
-          },
-        },
-        undefined,
-        {
-          scroll: false,
-          ...(options?.shallow ? { shallow: true } : {}),
-        },
-      ),
-    [router],
+    async (normalizedMonth: string) => {
+      const nextSearchParams = new URLSearchParams(searchParams?.toString());
+      nextSearchParams.set("month", normalizedMonth);
+      window.history.pushState(
+        null,
+        "",
+        `${pathname}?${nextSearchParams.toString()}`,
+      );
+    },
+    [pathname, searchParams],
   );
 
   const loadMonth = useCallback(
@@ -1746,7 +1743,7 @@ export default function MonthlyExpensesPage({
         }
 
         if (options.updateRoute ?? true) {
-          await navigateToMonth(normalizedMonth, { shallow: true });
+          await navigateToMonth(normalizedMonth);
 
           if (latestMonthLoadRequestIdRef.current !== requestId) {
             return;
@@ -1803,11 +1800,13 @@ export default function MonthlyExpensesPage({
   );
 
   useEffect(() => {
-    if (!router.isReady || !isOAuthConfigured || !isAuthenticated || isSessionLoading) {
+    if (!isOAuthConfigured || !isAuthenticated || isSessionLoading) {
       return;
     }
 
-    const requestedMonth = getRequestedMonthFromQuery(router.query.month);
+    const requestedMonth = getRequestedMonthFromQuery(
+      searchParams?.get("month") ?? undefined,
+    );
 
     if (
       !requestedMonth ||
@@ -1825,8 +1824,7 @@ export default function MonthlyExpensesPage({
     isSessionLoading,
     loadMonth,
     pendingMonth,
-    router.isReady,
-    router.query.month,
+    searchParams,
   ]);
 
   const handleMonthChange = async (value: string) => {

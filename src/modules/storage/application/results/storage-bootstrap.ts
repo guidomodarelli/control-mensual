@@ -10,7 +10,7 @@ export interface StorageBootstrapResult {
   architecture: {
     dataStrategy: "ssr-first";
     middleendLocation: "src/modules";
-    routing: "pages-router";
+    routing: "app-router";
   };
   authStatus: "configured" | "pending";
   requiredScopes: string[];

@@ -1,5 +1,7 @@
+"use client";
+
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/router";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { toast } from "sonner";
 import Image from "next/image";
@@ -174,6 +176,7 @@ function normalizeExpenseItemsForSave(
 
 export default function ReceiptShareTargetPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { status } = useSession();
   const [selectedMonth, setSelectedMonth] = useState(() => getCurrentMonthIdentifier());
   const [loadSharedReceiptState, setLoadSharedReceiptState] =
@@ -256,9 +259,7 @@ export default function ReceiptShareTargetPage() {
   }, []);
 
   useEffect(() => {
-    const shareErrorValue = Array.isArray(router.query.shareError)
-      ? router.query.shareError[0]
-      : router.query.shareError;
+    const shareErrorValue = searchParams?.get("shareError");
 
     if (typeof shareErrorValue === "string" && SHARE_ERROR_MESSAGES[shareErrorValue]) {
       setLoadSharedReceiptState({
@@ -296,7 +297,7 @@ export default function ReceiptShareTargetPage() {
     return () => {
       isDisposed = true;
     };
-  }, [router.query.shareError]);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!isAuthenticated) {

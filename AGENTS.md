@@ -22,7 +22,7 @@
   - `https://www.googleapis.com/auth/drive.file`
 - Do not request `https://www.googleapis.com/auth/drive` unless there is an explicit product requirement for full My Drive access.
 - Request offline access only from the server-side OAuth flow and persist refresh tokens securely.
-- Use the Google callback path for Pages Router: `/api/auth/callback/google`.
+- Use the Google callback path for App Router: `/api/auth/callback/google`.
 
 ## 2. Core Architecture
 
@@ -38,22 +38,22 @@
 
 - Dependencies must always point inward.
 - Allowed directions:
-  - `pages` or `pages/api` entrypoints -> `application`
-  - `pages` or `pages/api` entrypoints -> `infrastructure` only for framework wiring, adapter selection, and dependency composition
+  - `app` page/layout/loading/route entrypoints -> `application`
+  - `app` page/layout/loading/route entrypoints -> `infrastructure` only for framework wiring, adapter selection, and dependency composition
   - `application` -> `domain`
   - `infrastructure` -> `application`
   - `infrastructure` -> `domain`
 - Forbidden directions:
   - `domain` -> `application` or `infrastructure`
   - `application` -> `infrastructure` or generic `lib`
-  - UI or pages importing external DTOs directly
+  - UI or route entrypoints importing external DTOs directly
   - Any layer importing from a generic `src/server` folder
 
 ### Target structure
 
 ```text
 src/
-  pages/
+  app/
     api/
   modules/
     <feature>/
@@ -86,11 +86,11 @@ src/
 
 ### Layer responsibilities
 
-- `src/pages/*`
+- `src/app/*`
   - Route entrypoints and framework composition roots only.
-  - Compose dependencies for SSR, API handlers, and page-level interactions.
+  - Compose dependencies for server components, route handlers, layouts, loading states, and page-level interactions.
   - They may import `application` and module-scoped `infrastructure` only to wire framework adapters to use cases.
-  - Keep client-side session lookup, async workflows, and complex form orchestration in the page or in a module-scoped container, not inside presentational components.
+  - Keep client-side session lookup, async workflows, and complex form orchestration in client components or module-scoped containers, not inside presentational components.
   - Never host domain rules.
 - `src/components/*`
   - Presentational components by default.
@@ -118,7 +118,7 @@ src/
 
 ### Framework baseline
 
-- The project must be built with Next.js using Pages Router.
+- The project must be built with Next.js using App Router.
 - Use the official CLI to initialize the repository.
 - Preferred bootstrap command:
 
@@ -126,7 +126,7 @@ src/
 npx create-next-app@latest . --ts --eslint --tailwind --src-dir --import-alias "@/*" --disable-git
 ```
 
-- When prompted by the CLI, choose `No` for App Router.
+- When prompted by the CLI, choose `Yes` for App Router.
 - If the current directory is not compatible with direct initialization, scaffold into a temporary directory with the official CLI and then move the generated files into this repository without touching the existing `.git`.
 
 ### UI baseline
@@ -160,7 +160,7 @@ npx shadcn@latest add button
 ### Toast notifications baseline
 
 - Use `Sonner` integrated with `shadcn/ui` as the standard notification system for user-facing events.
-- Mount a global toaster once in `src/pages/_app.tsx` and trigger notifications from page/container handlers.
+- Mount a global toaster once through `src/app/layout.tsx` providers and trigger notifications from page/container handlers.
 - Select toast type by event intent:
   - `default`: neutral messages that acknowledge a relevant user action.
   - `success`: completed operations with expected result.
@@ -187,7 +187,7 @@ npx shadcn@latest add button
 ### Default data strategy
 
 - Prioritize SSR for external data retrieval.
-- In Pages Router, `getServerSideProps` is the preferred inbound adapter for page data loading.
+- In App Router, server components are the preferred inbound adapter for page data loading.
 - A page should have a single primary data entrypoint whenever possible.
 - Do not scatter external fetches across presentational components when the page can resolve them server-side.
 
@@ -222,11 +222,11 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 
 ### Authentication setup
 
-- Prepare Google OAuth for user account connection through Pages Router.
-- The default authentication adapter for this project is `next-auth` v4 with `GoogleProvider`, because it is compatible with Pages Router.
-- Keep the NextAuth handler in `src/pages/api/auth/[...nextauth].ts`.
+- Prepare Google OAuth for user account connection through App Router.
+- The default authentication adapter for this project is `next-auth` v4 with `GoogleProvider`, wired through App Router route handlers.
+- Keep the NextAuth handler in `src/app/api/auth/[...nextauth]/route.ts`.
 - Keep `authOptions`, OAuth config, token refresh logic, and Google client factories inside `src/modules/auth/infrastructure/*`.
-- Wrap the application session boundary in `src/pages/_app.tsx`.
+- Wrap the application session boundary through providers mounted by `src/app/layout.tsx`.
 
 ### OAuth behavior
 
@@ -295,14 +295,14 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
   - Unit tests for use cases using doubles for domain ports.
 - `infrastructure`
   - Integration tests for adapters, DTO mappers, auth wiring, and Google API boundaries.
-- `pages` and UI
-  - React Testing Library tests for SSR props handling, rendering, and critical user flows.
+- `app` routes and UI
+  - React Testing Library tests for server-loaded props, rendering, and critical user flows.
 - End-to-end
   - Add smoke coverage for critical authentication and Drive workflows.
 
 ### Testing rules
 
-- Never place test files inside `src/pages`, because Pages Router will treat them as routes.
+- Never place test files inside `src/app`, because App Router will treat special files and route folders as routing surface. Tests for App Router pages, layouts, loading states, route handlers, and related helpers must live under `src/tests/app/`.
 - When functionality changes, add or update the corresponding tests in the same work item.
 - Prefer mocks at the port boundary, not at low-level vendor internals, unless the test is explicitly for an adapter.
 
@@ -320,6 +320,7 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
   - `npm run typecheck`
   - The relevant targeted test command for the changed files
 - Run `npm run test` instead of a targeted command when the changed files affect shared behavior, cross-module contracts, test setup, global configuration, or when no reliable targeted test command exists.
+- Never remove `.next/dev/types/**/*.ts` from `tsconfig.json` includes. If stale generated dev types reference removed routes, regenerate or clean the generated Next.js artifacts instead of changing this include.
 - A task is blocked from completion if any of these commands exits with a non-zero status code.
 - If any check fails, fix the issues in the same work item and rerun the failed command(s) until all applicable checks are green.
 - Do not defer these checks to follow-up tasks.
@@ -334,7 +335,7 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 
 - Does the change preserve hexagonal boundaries?
 - Is there any new or restored code under `src/server/`? If yes, move it into a module.
-- Is Pages Router still the routing mechanism?
+- Is App Router still the routing mechanism?
 - Is SSR the default data-loading strategy for this use case?
 - Are external DTOs isolated in infrastructure?
 - Are UI-facing models isolated from vendor payloads?

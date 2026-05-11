@@ -1,6 +1,10 @@
 import type { GetServerSidePropsContext } from "next";
 
 import { isGoogleOAuthConfigured } from "@/modules/auth/infrastructure/oauth/google-oauth-config";
+import {
+  GoogleOAuthAuthenticationError,
+  GoogleOAuthConfigurationError,
+} from "@/modules/auth/infrastructure/oauth/google-oauth-token";
 import { GOOGLE_OAUTH_SCOPES } from "@/modules/auth/infrastructure/oauth/google-oauth-scopes";
 import { createGetMonthlyExchangeRateSnapshot } from "@/modules/exchange-rates/infrastructure/create-get-monthly-exchange-rate-snapshot";
 import {
@@ -79,6 +83,16 @@ function omitUndefinedDeep<T>(value: T): T {
   }
 
   return value;
+}
+
+function isRecoverableGoogleOAuthError(error: unknown): boolean {
+  return (
+    error instanceof GoogleOAuthAuthenticationError ||
+    error instanceof GoogleOAuthConfigurationError ||
+    (error instanceof Error &&
+      (error.name === "GoogleOAuthAuthenticationError" ||
+        error.name === "GoogleOAuthConfigurationError"))
+  );
 }
 
 export function toSerializableMonthlyExpensesPageProps(
@@ -319,15 +333,29 @@ export async function getMonthlyExpensesServerSidePropsForTab(
       }),
     };
   } catch (error) {
-    appLogger.error("monthly-expenses SSR request failed", {
-      context: {
-        ...requestContext,
-        initialActiveTab,
-        month: selectedMonth,
-        operation: "monthly-expenses-ssr:get-server-side-props",
-      },
-      error,
-    });
+    if (isRecoverableGoogleOAuthError(error)) {
+      appLogger.warn("monthly-expenses SSR skipped authenticated data", {
+        context: {
+          ...requestContext,
+          initialActiveTab,
+          month: selectedMonth,
+          operation: "monthly-expenses-ssr:unauthenticated",
+        },
+        error,
+      });
+    } else {
+      appLogger.error("monthly-expenses SSR request failed", {
+        context: {
+          ...requestContext,
+          initialActiveTab,
+          month: selectedMonth,
+          operation: "monthly-expenses-ssr:get-server-side-props",
+        },
+        error,
+      });
+    }
+
+    const isRecoverableAuthenticationState = isRecoverableGoogleOAuthError(error);
 
     return {
       props: toSerializableMonthlyExpensesPageProps({
@@ -343,18 +371,12 @@ export async function getMonthlyExpensesServerSidePropsForTab(
         initialLoansReport: createEmptyMonthlyExpensesLoansReportResult(),
         lendersLoadErrorCode: null,
         lendersLoadError: null,
-        loadErrorCode:
-          error instanceof Error &&
-          (error.name === "GoogleOAuthAuthenticationError" ||
-            error.name === "GoogleOAuthConfigurationError")
-            ? null
-            : TECHNICAL_ERROR_CODES.MONTHLY_EXPENSES_SSR_UNEXPECTED_ERROR,
-        loadError:
-          error instanceof Error &&
-          (error.name === "GoogleOAuthAuthenticationError" ||
-            error.name === "GoogleOAuthConfigurationError")
-            ? null
-            : "No pudimos cargar el control mensual desde la base de datos. Igual podés editar la tabla y volver a guardarla.",
+        loadErrorCode: isRecoverableAuthenticationState
+          ? null
+          : TECHNICAL_ERROR_CODES.MONTHLY_EXPENSES_SSR_UNEXPECTED_ERROR,
+        loadError: isRecoverableAuthenticationState
+          ? null
+          : "No pudimos cargar el control mensual desde la base de datos. Igual podés editar la tabla y volver a guardarla.",
         reportLoadErrorCode: null,
         reportLoadError: null,
       }),

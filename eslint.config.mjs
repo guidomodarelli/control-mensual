@@ -3,9 +3,25 @@ import boundaries from "eslint-plugin-boundaries";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
+const APP_ROUTE_TEST_FILE_GLOBS = ["src/app/**/*.{test,spec}.{ts,tsx}"];
+const APP_ROUTE_TEST_FILE_MESSAGE =
+  "Place App Router tests under src/tests/app instead of src/app.";
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    files: APP_ROUTE_TEST_FILE_GLOBS,
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          message: APP_ROUTE_TEST_FILE_MESSAGE,
+          selector: "Program",
+        },
+      ],
+    },
+  },
   {
     files: ["src/**/*.{ts,tsx}"],
     plugins: {
@@ -27,7 +43,7 @@ const eslintConfig = defineConfig([
                     "components",
                     "infrastructure",
                     "lib",
-                    "pages",
+                    "app-routes",
                     "shared",
                   ],
                 },
@@ -42,7 +58,7 @@ const eslintConfig = defineConfig([
                     "components",
                     "infrastructure",
                     "lib",
-                    "pages",
+                    "app-routes",
                     "shared",
                   ],
                 },
@@ -57,19 +73,19 @@ const eslintConfig = defineConfig([
                     "client-adapters",
                     "domain",
                     "infrastructure",
-                    "pages",
+                    "app-routes",
                   ],
                 },
               },
             },
             {
-              from: { type: "pages" },
+              from: { type: "app-routes" },
               disallow: { to: { type: ["domain", "lib"] } },
             },
             {
               from: { type: "infrastructure" },
               disallow: {
-                to: { type: ["client-adapters", "components", "lib", "pages"] },
+                to: { type: ["client-adapters", "components", "lib", "app-routes"] },
               },
             },
           ],
@@ -80,8 +96,8 @@ const eslintConfig = defineConfig([
     settings: {
       "boundaries/root-path": process.cwd(),
       "boundaries/elements": [
-        { mode: "full", pattern: "src/pages/*", type: "pages" },
-        { mode: "full", pattern: "src/pages/**/*", type: "pages" },
+        { mode: "full", pattern: "src/app/*", type: "app-routes" },
+        { mode: "full", pattern: "src/app/**/*", type: "app-routes" },
         { mode: "full", pattern: "src/components/*", type: "components" },
         { mode: "full", pattern: "src/components/**/*", type: "components" },
         { mode: "full", pattern: "src/hooks/*", type: "hooks" },
