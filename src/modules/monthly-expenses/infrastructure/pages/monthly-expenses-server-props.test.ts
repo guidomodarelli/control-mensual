@@ -1,5 +1,8 @@
 import type { GetServerSidePropsContext } from "next";
 
+import {
+  GoogleOAuthAuthenticationError,
+} from "@/modules/auth/infrastructure/oauth/google-oauth-token";
 import type { MonthlyExpensesPageProps } from "@/modules/monthly-expenses/shared/pages/monthly-expenses-page";
 
 import {
@@ -148,7 +151,7 @@ describe("toSerializableMonthlyExpensesPageProps", () => {
         architecture: {
           dataStrategy: "ssr-first",
           middleendLocation: "src/modules",
-          routing: "pages-router",
+          routing: "app-router",
         },
         authStatus: "configured",
         requiredScopes: [
@@ -238,7 +241,7 @@ describe("getMonthlyExpensesServerSidePropsForTab", () => {
       architecture: {
         dataStrategy: "ssr-first",
         middleendLocation: "src/modules",
-        routing: "pages-router",
+        routing: "app-router",
       },
       authStatus: "configured",
       requiredScopes: [
@@ -315,5 +318,28 @@ describe("getMonthlyExpensesServerSidePropsForTab", () => {
         lenders: [],
       }),
     );
+  });
+
+  it("renders empty unauthenticated state when Google session is missing", async () => {
+    mockGetAuthenticatedUserSubjectFromRequest.mockRejectedValue(
+      new GoogleOAuthAuthenticationError(
+        "authenticated-user-subject:request requires an authenticated Google session.",
+      ),
+    );
+
+    const result = await getMonthlyExpensesServerSidePropsForTab(
+      createServerSideContext("2026-04"),
+      "expenses",
+    );
+
+    expect(result.props.initialDocument).toEqual({
+      exchangeRateLoadError: null,
+      exchangeRateSnapshot: null,
+      items: [],
+      month: "2026-04",
+    });
+    expect(result.props.loadError).toBeNull();
+    expect(result.props.loadErrorCode).toBeNull();
+    expect(mockCreateMigratedTursoDatabase).not.toHaveBeenCalled();
   });
 });

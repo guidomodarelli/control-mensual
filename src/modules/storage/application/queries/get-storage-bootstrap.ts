@@ -13,7 +13,7 @@ export function getStorageBootstrap({
     architecture: {
       dataStrategy: "ssr-first",
       middleendLocation: "src/modules",
-      routing: "pages-router",
+      routing: "app-router",
     },
     authStatus: isGoogleOAuthConfigured ? "configured" : "pending",
     requiredScopes: [...requiredScopes],

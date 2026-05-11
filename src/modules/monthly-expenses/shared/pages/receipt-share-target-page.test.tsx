@@ -1,13 +1,14 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useRouter } from "next/router";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import type { ReactNode } from "react";
 
 import ReceiptShareTargetPage from "./receipt-share-target-page";
 
-jest.mock("next/router", () => ({
+jest.mock("next/navigation", () => ({
   useRouter: jest.fn(),
+  useSearchParams: jest.fn(),
 }));
 
 jest.mock("next-auth/react", () => ({
@@ -53,16 +54,18 @@ jest.mock("@/modules/monthly-expenses/infrastructure/pwa/shared-receipt-payload"
 }));
 
 const mockedUseRouter = jest.mocked(useRouter);
+const mockedUseSearchParams = jest.mocked(useSearchParams);
 const mockedUseSession = jest.mocked(useSession);
 
 describe("ReceiptShareTargetPage", () => {
   beforeEach(() => {
     mockedUseRouter.mockReturnValue({
-      pathname: "/recibir-comprobante",
       push: jest.fn().mockResolvedValue(true),
-      query: {},
       replace: jest.fn().mockResolvedValue(true),
     } as unknown as ReturnType<typeof useRouter>);
+    mockedUseSearchParams.mockReturnValue({
+      get: jest.fn().mockReturnValue(null),
+    } as unknown as ReturnType<typeof useSearchParams>);
     mockedUseSession.mockReturnValue({
       data: null,
       status: "unauthenticated",

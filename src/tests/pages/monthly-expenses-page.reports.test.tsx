@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useRouter } from "next/router";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { toast } from "sonner";
 
@@ -10,7 +10,7 @@ import {
   getSafeMonthlyExpensesLoadErrorMessage,
   getSafeMonthlyExpensesErrorMessage,
 } from "@/modules/monthly-expenses/application/queries/get-monthly-expenses-page-feedback";
-import MonthlyExpensesPage, { getReportProviderFilterOptions } from "@/pages/gastos";
+import MonthlyExpensesPage, { getReportProviderFilterOptions } from "@/modules/monthly-expenses/shared/pages/monthly-expenses-page";
 
 import {
   basePageProps,
@@ -25,8 +25,10 @@ import {
   TABLE_PREFERENCES_STORAGE_KEY,
 } from "./monthly-expenses-page-test-helpers";
 
-jest.mock("next/router", () => ({
+jest.mock("next/navigation", () => ({
+  usePathname: jest.fn(),
   useRouter: jest.fn(),
+  useSearchParams: jest.fn(),
 }));
 
 jest.mock("next-auth/react", () => ({
@@ -57,7 +59,9 @@ type MockedToast = jest.Mock & {
   warning: jest.Mock;
 };
 
+const mockedUsePathname = jest.mocked(usePathname);
 const mockedUseRouter = jest.mocked(useRouter);
+const mockedUseSearchParams = jest.mocked(useSearchParams);
 const mockedUseSession = jest.mocked(useSession);
 const mockedSignIn = jest.mocked(signIn);
 const mockedSignOut = jest.mocked(signOut);
@@ -68,11 +72,13 @@ const REPORTS_SORT_TEST_TIMEOUT_MS = 15000;
 describe("MonthlyExpensesPage lenders and reports", () => {
 
 registerMonthlyExpensesPageDefaultHooks({
-  createDefaultRouter: () => createMockRouter() as unknown as ReturnType<typeof useRouter>,
+  createDefaultRouter: () => createMockRouter(),
+  mockedUsePathname,
   mockedSignIn,
   mockedSignOut,
   mockedToast,
   mockedUseRouter,
+  mockedUseSearchParams,
   mockedUseSession,
   originalFetch,
 });

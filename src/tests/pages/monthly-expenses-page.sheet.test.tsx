@@ -1,10 +1,10 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useRouter } from "next/router";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { toast } from "sonner";
 
-import MonthlyExpensesPage from "@/pages/gastos";
+import MonthlyExpensesPage from "@/modules/monthly-expenses/shared/pages/monthly-expenses-page";
 
 import {
   basePageProps,
@@ -16,8 +16,10 @@ import {
   renderWithProviders,
 } from "./monthly-expenses-page-test-helpers";
 
-jest.mock("next/router", () => ({
+jest.mock("next/navigation", () => ({
+  usePathname: jest.fn(),
   useRouter: jest.fn(),
+  useSearchParams: jest.fn(),
 }));
 
 jest.mock("next-auth/react", () => ({
@@ -48,7 +50,9 @@ type MockedToast = jest.Mock & {
   warning: jest.Mock;
 };
 
+const mockedUsePathname = jest.mocked(usePathname);
 const mockedUseRouter = jest.mocked(useRouter);
+const mockedUseSearchParams = jest.mocked(useSearchParams);
 const mockedUseSession = jest.mocked(useSession);
 const mockedSignIn = jest.mocked(signIn);
 const mockedSignOut = jest.mocked(signOut);
@@ -60,11 +64,13 @@ jest.setTimeout(MONTHLY_EXPENSES_SHEET_TEST_TIMEOUT_MS);
 
 describe("MonthlyExpensesPage expense sheet", () => {
 registerMonthlyExpensesPageDefaultHooks({
-  createDefaultRouter: () => createMockRouter() as unknown as ReturnType<typeof useRouter>,
+  createDefaultRouter: () => createMockRouter(),
+  mockedUsePathname,
   mockedSignIn,
   mockedSignOut,
   mockedToast,
   mockedUseRouter,
+  mockedUseSearchParams,
   mockedUseSession,
   originalFetch,
 });
@@ -1334,6 +1340,7 @@ registerMonthlyExpensesPageDefaultHooks({
     await user.click(
       screen.getByRole("button", { name: "Conectar cuenta de Google" }),
     );
+    await user.click(screen.getByRole("menuitem", { name: "Iniciar sesión" }));
 
     expect(mockedSignIn).toHaveBeenCalledWith("google", {
       callbackUrl: "/gastos",
