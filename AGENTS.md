@@ -285,6 +285,7 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 
 - Run the relevant test suite until it is green.
 - A task is not complete until the relevant tests and lint checks pass.
+- Select tests according to the files changed. Prefer the smallest real command that exercises the affected behavior, such as a specific Jest file, integration test, or E2E spec. Run the full `npm run test` suite only when the changed files affect shared behavior, cross-module contracts, test setup, global configuration, or when no reliable targeted test command exists.
 
 ### Testing responsibilities by layer
 
@@ -314,12 +315,13 @@ External API/SDK -> infrastructure DTO -> infrastructure mapper -> domain entity
 
 ### Quality gates (mandatory)
 
-- Every work item must run all three checks before completion:
+- Every work item must run the applicable checks before completion:
   - `npm run lint`
   - `npm run typecheck`
-  - `npm run test`
+  - The relevant targeted test command for the changed files
+- Run `npm run test` instead of a targeted command when the changed files affect shared behavior, cross-module contracts, test setup, global configuration, or when no reliable targeted test command exists.
 - A task is blocked from completion if any of these commands exits with a non-zero status code.
-- If any check fails, fix the issues in the same work item and rerun the failed command(s) until all three are green.
+- If any check fails, fix the issues in the same work item and rerun the failed command(s) until all applicable checks are green.
 - Do not defer these checks to follow-up tasks.
 
 ### SQL migrations push command (mandatory)
